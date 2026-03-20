@@ -48,17 +48,20 @@ If **port 4000** is already used by another program, the UI may fail to reach th
 1. Open the app URL in your browser.  
 2. Choose **Create account** (or go to `/register`).  
 3. Enter **email** and **password** (minimum length enforced on the form).  
-4. After success you are signed in and taken to **Expenses**.  
+4. After success you are signed in and taken to **Expense**.  
 
 To sign in later, use **Sign in** (`/login`) with the same email and password.
 
-**Sign out** clears your session in the browser (you will need to sign in again to use Expenses and Reports).
+**Sign out** clears your session in the browser (you will need to sign in again to use Expense and Reports).
 
 ---
 
-## Expenses screen
+## Expense screen
 
-The **Expenses** page is where you add and review individual transactions.
+The **Expense** page is where you add and review individual transactions.
+
+- **First-time / no saved expenses:** you see the **manual add** form and **Import from statement** so you can enter data or upload a file. After you save at least one expense, the layout changes.
+- **When you already have expenses:** the **Expense** page shows **Import from statement** and optional **Add expense manually** (expand the section). Open **Your expenses** in the header (or the button on **Expense**) to view, edit, and delete saved rows on a separate page. After your **first** saved expense (from the onboarding form) or after you **commit** an import that adds rows, you are taken to **Your expenses** automatically.
 
 ### Add an expense
 
@@ -73,7 +76,7 @@ Fill in the form and click **Add expense**:
 | **Date** | The **spent** date for this line item. |
 | **Note** | Optional free text. |
 
-The table lists your expenses (newest first). Click **Enter modification mode** to show **Edit** on each row; then **Edit** / **Save** / **Cancel** work as before. Click **Exit modification mode** to go back to read-only rows (unsaved edits on the active row are cleared). **Delete** is always available. 
+On the **Your expenses** page, the table lists your expenses (newest first). **Projection** in the table header opens a **combined** report: **daily**, **monthly**, and **yearly** run-rate totals across **all** saved expenses (one-time amounts summed separately), plus a **pie chart** of annualized share by category (and a **One-time** slice when applicable). Click a slice to list the expenses in that segment; click the same slice again to clear. Each row also has **Projection** for **that expense only** (same numbers plus a single-slice or small pie); if you are editing a row, row **Projection** uses your unsaved values in the form. Click **Enter modification mode** to show **Edit** on each row; then **Edit** / **Save** / **Cancel** work as before. Click **Exit modification mode** to go back to read-only rows (unsaved edits on the active row are cleared). **Delete** is always available. If you have no expenses yet, that page offers a link back to **Expense** to add or import.
 
 ### Import from a statement (CSV or PDF)
 

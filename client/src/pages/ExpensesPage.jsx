@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import api from "../api";
 import { getApiErrorMessage } from "../apiError.js";
 import {
@@ -7,26 +8,124 @@ import {
   FINANCIAL_INSTITUTION_OPTIONS,
   PAYMENT_DAY_OPTIONS,
   IMPORT_PAYMENT_DAY_OPTIONS,
-  formatCategory,
-  formatFinancialInstitution,
-  formatFrequency,
-  formatPaymentDay,
 } from "../expenseOptions.js";
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Normalize API spent_at to YYYY-MM-DD for date inputs. */
-function toDateInputValue(spentAt) {
-  if (spentAt == null) return "";
-  const s = String(spentAt);
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  const t = Date.parse(s);
-  return Number.isNaN(t) ? "" : new Date(t).toISOString().slice(0, 10);
+function ManualExpenseForm({ form, setForm, onSubmit }) {
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-8 items-end bg-slate-900/50 border border-slate-800 rounded-xl p-4"
+    >
+      <div>
+        <label className="text-xs text-slate-500 block mb-1">Amount</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={form.amount}
+          onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          placeholder="0.00"
+          required
+        />
+      </div>
+      <div>
+        <label className="text-xs text-slate-500 block mb-1">Category</label>
+        <select
+          value={form.category}
+          onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+        >
+          {CATEGORY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs text-slate-500 block mb-1">Frequency</label>
+        <select
+          value={form.frequency}
+          onChange={(e) => setForm((f) => ({ ...f, frequency: e.target.value }))}
+          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+        >
+          {FREQUENCY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs text-slate-500 block mb-1">
+          Date <span className="text-slate-600 font-normal normal-case">(1–30)</span>
+        </label>
+        <select
+          value={form.payment_day}
+          onChange={(e) => setForm((f) => ({ ...f, payment_day: e.target.value }))}
+          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          title="Day of the month the payment is typically made"
+          aria-label="Date as day of month, 1 to 30"
+        >
+          {PAYMENT_DAY_OPTIONS.map((o) => (
+            <option key={o.value === "" ? "unset" : o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
+        <label className="text-xs text-slate-500 block mb-1">Financial institution</label>
+        <select
+          value={form.financial_institution}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, financial_institution: e.target.value }))
+          }
+          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+        >
+          {FINANCIAL_INSTITUTION_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs text-slate-500 block mb-1">Transaction date</label>
+        <input
+          type="date"
+          value={form.spent_at}
+          onChange={(e) => setForm((f) => ({ ...f, spent_at: e.target.value }))}
+          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          required
+        />
+      </div>
+      <div className="sm:col-span-2 xl:col-span-2">
+        <label className="text-xs text-slate-500 block mb-1">Note</label>
+        <input
+          value={form.description}
+          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          placeholder="Optional"
+        />
+      </div>
+      <button
+        type="submit"
+        className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-4 justify-self-start sm:col-span-2 xl:col-span-8"
+      >
+        Add expense
+      </button>
+    </form>
+  );
 }
 
 export default function ExpensesPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -49,11 +148,6 @@ export default function ExpensesPage() {
   const [importNotice, setImportNotice] = useState("");
   const [staging, setStaging] = useState(null);
   const [committing, setCommitting] = useState(false);
-  const [expenseEditId, setExpenseEditId] = useState(null);
-  const [expenseEditDraft, setExpenseEditDraft] = useState(null);
-  const [expenseSaving, setExpenseSaving] = useState(false);
-  /** When false, expense rows are read-only (no Edit). Delete still available. */
-  const [expensesModifyMode, setExpensesModifyMode] = useState(false);
 
   const loadStaging = useCallback(async () => {
     try {
@@ -92,6 +186,7 @@ export default function ExpensesPage() {
       setError("Enter a valid amount");
       return;
     }
+    const wasEmpty = items.length === 0;
     try {
       await api.post("/expenses", {
         amount,
@@ -111,71 +206,10 @@ export default function ExpensesPage() {
         description: "",
         spent_at: todayISODate(),
       });
-      load();
+      await load();
+      if (wasEmpty) navigate("/expenses/list", { replace: true });
     } catch (err) {
       setError(err.response?.data?.error || "Could not save");
-    }
-  }
-
-  function openExpenseEdit(row) {
-    if (!expensesModifyMode) return;
-    setError("");
-    setExpenseEditId(row.id);
-    setExpenseEditDraft({
-      spent_at: toDateInputValue(row.spent_at),
-      amount: String(row.amount),
-      category: row.category,
-      frequency: row.frequency,
-      payment_day: row.payment_day != null ? String(row.payment_day) : "",
-      financial_institution: row.financial_institution,
-      description: row.description ?? "",
-    });
-  }
-
-  function cancelExpenseEdit() {
-    setExpenseEditId(null);
-    setExpenseEditDraft(null);
-  }
-
-  async function saveExpenseEdit() {
-    if (!expenseEditId || !expenseEditDraft) return;
-    const amount = Number(expenseEditDraft.amount);
-    if (!Number.isFinite(amount) || amount < 0) {
-      setError("Enter a valid amount");
-      return;
-    }
-    setExpenseSaving(true);
-    setError("");
-    try {
-      await api.patch(`/expenses/${expenseEditId}`, {
-        spent_at: expenseEditDraft.spent_at,
-        amount,
-        category: expenseEditDraft.category,
-        frequency: expenseEditDraft.frequency,
-        financial_institution: expenseEditDraft.financial_institution,
-        description: expenseEditDraft.description,
-        payment_day:
-          expenseEditDraft.payment_day === ""
-            ? null
-            : Number(expenseEditDraft.payment_day),
-      });
-      cancelExpenseEdit();
-      load();
-    } catch (err) {
-      setError(err.response?.data?.error || "Could not save changes");
-    } finally {
-      setExpenseSaving(false);
-    }
-  }
-
-  async function remove(id) {
-    if (!confirm("Delete this expense?")) return;
-    if (expenseEditId === id) cancelExpenseEdit();
-    try {
-      await api.delete(`/expenses/${id}`);
-      load();
-    } catch (err) {
-      setError(err.response?.data?.error || "Delete failed");
     }
   }
 
@@ -255,7 +289,8 @@ export default function ExpensesPage() {
       );
       setStaging(null);
       await loadStaging();
-      load();
+      await load();
+      if (data.added > 0) navigate("/expenses/list");
     } catch (err) {
       setError(err.response?.data?.error || "Could not commit import");
     } finally {
@@ -279,120 +314,49 @@ export default function ExpensesPage() {
 
   const uncategorizedCount = staging ? staging.rows.filter((r) => !r.category).length : 0;
 
+  const hasSavedExpenses = items.length > 0;
+  const showOnboarding = !loading && !hasSavedExpenses;
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Expenses</h1>
-        <p className="text-sm text-slate-400 mt-1">Add and review your spending.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-white">Expense</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            {loading
+              ? "Loading…"
+              : showOnboarding
+                ? "Add an expense manually, or import a statement to get started."
+                : "Import from a statement, or open Your expenses to review saved transactions."}
+          </p>
+        </div>
+        {!loading && hasSavedExpenses && (
+          <NavLink
+            to="/expenses/list"
+            className="shrink-0 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium px-3 py-2"
+          >
+            Your expenses
+          </NavLink>
+        )}
       </div>
 
-      <form
-        onSubmit={addExpense}
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-8 items-end bg-slate-900/50 border border-slate-800 rounded-xl p-4"
-      >
-        <div>
-          <label className="text-xs text-slate-500 block mb-1">Amount</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={form.amount}
-            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-            placeholder="0.00"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-xs text-slate-500 block mb-1">Category</label>
-          <select
-            value={form.category}
-            onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-          >
-            {CATEGORY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-slate-500 block mb-1">Frequency</label>
-          <select
-            value={form.frequency}
-            onChange={(e) => setForm((f) => ({ ...f, frequency: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-          >
-            {FREQUENCY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-slate-500 block mb-1">
-            Date{" "}
-            <span className="text-slate-600 font-normal normal-case">(1–30)</span>
-          </label>
-          <select
-            value={form.payment_day}
-            onChange={(e) => setForm((f) => ({ ...f, payment_day: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-            title="Day of the month the payment is typically made"
-            aria-label="Date as day of month, 1 to 30"
-          >
-            {PAYMENT_DAY_OPTIONS.map((o) => (
-              <option key={o.value === "" ? "unset" : o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
-          <label className="text-xs text-slate-500 block mb-1">Financial institution</label>
-          <select
-            value={form.financial_institution}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, financial_institution: e.target.value }))
-            }
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-          >
-            {FINANCIAL_INSTITUTION_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-slate-500 block mb-1">Transaction date</label>
-          <input
-            type="date"
-            value={form.spent_at}
-            onChange={(e) => setForm((f) => ({ ...f, spent_at: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-            required
-          />
-        </div>
-        <div className="sm:col-span-2 xl:col-span-2">
-          <label className="text-xs text-slate-500 block mb-1">Note</label>
-          <input
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-            placeholder="Optional"
-          />
-        </div>
-        <button
-          type="submit"
-          className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-4 justify-self-start sm:col-span-2 xl:col-span-8"
-        >
-          Add expense
-        </button>
-      </form>
+      {showOnboarding && (
+        <ManualExpenseForm form={form} setForm={setForm} onSubmit={addExpense} />
+      )}
 
+      {!loading && hasSavedExpenses && (
+        <details className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 group">
+          <summary className="cursor-pointer text-sm font-medium text-slate-200 list-none [&::-webkit-details-marker]:hidden flex items-center gap-2">
+            <span className="text-slate-500 group-open:rotate-90 transition-transform inline-block">▸</span>
+            Add expense manually
+          </summary>
+          <div className="mt-4 pt-4 border-t border-slate-800">
+            <ManualExpenseForm form={form} setForm={setForm} onSubmit={addExpense} />
+          </div>
+        </details>
+      )}
+
+      {!loading && (
       <section className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 space-y-4">
         <div>
           <h2 className="text-sm font-semibold text-white">Import from statement</h2>
@@ -476,8 +440,9 @@ export default function ExpensesPage() {
           </button>
         </form>
       </section>
+      )}
 
-      {staging && staging.rows?.length > 0 && (
+      {!loading && staging && staging.rows?.length > 0 && (
         <section className="rounded-xl border border-amber-900/40 bg-amber-950/10 p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -596,278 +561,17 @@ export default function ExpensesPage() {
         </section>
       )}
 
-      {importNotice && (
+      {!loading && importNotice && (
         <p className="text-sm text-emerald-400/90 bg-emerald-950/30 border border-emerald-900/50 rounded-lg px-3 py-2">
           {importNotice}
         </p>
       )}
 
-      {error && (
+      {!loading && error && (
         <p className="text-sm text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-lg px-3 py-2">
           {error}
         </p>
       )}
-
-      <div className="rounded-xl border border-slate-800 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-900/80 border-b border-slate-800">
-          <h2 className="text-sm font-medium text-slate-200">Your expenses</h2>
-          <div className="flex items-center gap-2">
-            {expensesModifyMode ? (
-              <button
-                type="button"
-                onClick={() => {
-                  cancelExpenseEdit();
-                  setExpensesModifyMode(false);
-                }}
-                className="rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5"
-              >
-                Exit modification mode
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setError("");
-                  setExpensesModifyMode(true);
-                }}
-                className="rounded-lg bg-sky-700/80 hover:bg-sky-600 text-white text-xs font-medium px-3 py-1.5"
-              >
-                Enter modification mode
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-        <table className="w-full min-w-[72rem] text-sm text-left">
-          <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
-            <tr>
-              <th className="px-4 py-3 w-[9.5rem]">Transaction</th>
-              <th className="px-4 py-3 w-[5.5rem]">Amount</th>
-              <th className="px-4 py-3 w-[7.5rem]">Category</th>
-              <th className="px-4 py-3 hidden lg:table-cell w-[6.5rem]">Frequency</th>
-              <th className="px-4 py-3 hidden lg:table-cell w-[5.5rem]">
-                Date <span className="normal-case font-normal text-slate-500">(1–30)</span>
-              </th>
-              <th className="px-4 py-3 hidden md:table-cell w-[7rem]">Institution</th>
-              <th className="px-4 py-3 hidden sm:table-cell min-w-[8rem]">Note</th>
-              <th className="px-4 py-3 text-right whitespace-nowrap min-w-[11rem]">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800 bg-slate-950/40">
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                  Loading…
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                  No expenses yet. Add one above.
-                </td>
-              </tr>
-            ) : (
-              items.map((row) => {
-                const editing = expensesModifyMode && expenseEditId === row.id;
-                const d = expenseEditDraft;
-                return (
-                  <tr key={row.id} className={editing ? "bg-slate-900/80" : "hover:bg-slate-900/60"}>
-                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap align-middle">
-                      {editing && d ? (
-                        <input
-                          type="date"
-                          value={d.spent_at}
-                          onChange={(e) =>
-                            setExpenseEditDraft((prev) =>
-                              prev ? { ...prev, spent_at: e.target.value } : prev
-                            )
-                          }
-                          className="w-full min-w-[9.5rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                        />
-                      ) : (
-                        toDateInputValue(row.spent_at) || "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-3 align-middle">
-                      {editing && d ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={d.amount}
-                          onChange={(e) =>
-                            setExpenseEditDraft((prev) =>
-                              prev ? { ...prev, amount: e.target.value } : prev
-                            )
-                          }
-                          className="w-full max-w-[7rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs tabular-nums"
-                        />
-                      ) : (
-                        <span className="font-medium text-white tabular-nums">
-                          ${Number(row.amount).toFixed(2)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-slate-300 align-middle">
-                      {editing && d ? (
-                        <select
-                          value={d.category}
-                          onChange={(e) =>
-                            setExpenseEditDraft((prev) =>
-                              prev ? { ...prev, category: e.target.value } : prev
-                            )
-                          }
-                          className="w-full max-w-[11rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                        >
-                          {CATEGORY_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        formatCategory(row.category)
-                      )}
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-slate-300 align-middle ${editing ? "" : "hidden lg:table-cell"}`}
-                    >
-                      {editing && d ? (
-                        <select
-                          value={d.frequency}
-                          onChange={(e) =>
-                            setExpenseEditDraft((prev) =>
-                              prev ? { ...prev, frequency: e.target.value } : prev
-                            )
-                          }
-                          className="w-full max-w-[8rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                        >
-                          {FREQUENCY_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        formatFrequency(row.frequency)
-                      )}
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-slate-300 align-middle tabular-nums ${editing ? "" : "hidden lg:table-cell"}`}
-                    >
-                      {editing && d ? (
-                        <select
-                          value={d.payment_day}
-                          onChange={(e) =>
-                            setExpenseEditDraft((prev) =>
-                              prev ? { ...prev, payment_day: e.target.value } : prev
-                            )
-                          }
-                          className="w-full max-w-[4.5rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                          title="Day of month (1–30)"
-                        >
-                          {PAYMENT_DAY_OPTIONS.map((o) => (
-                            <option key={o.value === "" ? "unset" : o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        formatPaymentDay(row.payment_day)
-                      )}
-                    </td>
-                    <td
-                      className={`px-4 py-3 text-slate-300 align-middle ${editing ? "" : "hidden md:table-cell"}`}
-                    >
-                      {editing && d ? (
-                        <select
-                          value={d.financial_institution}
-                          onChange={(e) =>
-                            setExpenseEditDraft((prev) =>
-                              prev
-                                ? { ...prev, financial_institution: e.target.value }
-                                : prev
-                            )
-                          }
-                          className="w-full max-w-[10rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                        >
-                          {FINANCIAL_INSTITUTION_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        formatFinancialInstitution(row.financial_institution)
-                      )}
-                    </td>
-                    <td
-                      className={`px-4 py-3 align-middle ${editing ? "" : "hidden sm:table-cell"}`}
-                    >
-                      {editing && d ? (
-                        <input
-                          value={d.description}
-                          onChange={(e) =>
-                            setExpenseEditDraft((prev) =>
-                              prev ? { ...prev, description: e.target.value } : prev
-                            )
-                          }
-                          className="w-full min-w-[8rem] max-w-xs rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-slate-300 text-xs"
-                          placeholder="Note"
-                        />
-                      ) : (
-                        <span className="text-slate-500 max-w-xs truncate block">{row.description}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right align-middle min-w-[11rem]">
-                      {editing ? (
-                        <div className="flex flex-row flex-nowrap gap-3 justify-end items-center">
-                          <button
-                            type="button"
-                            disabled={expenseSaving}
-                            onClick={() => saveExpenseEdit()}
-                            className="shrink-0 text-emerald-400 hover:text-emerald-300 text-xs disabled:opacity-50"
-                          >
-                            {expenseSaving ? "Saving…" : "Save"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={expenseSaving}
-                            onClick={cancelExpenseEdit}
-                            className="shrink-0 text-slate-400 hover:text-slate-300 text-xs"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-row flex-nowrap gap-3 justify-end items-center">
-                          {expensesModifyMode && (
-                            <button
-                              type="button"
-                              onClick={() => openExpenseEdit(row)}
-                              className="shrink-0 text-sky-400 hover:text-sky-300 text-xs"
-                            >
-                              Edit
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => remove(row.id)}
-                            className="shrink-0 text-rose-400 hover:text-rose-300 text-xs"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-        </div>
-      </div>
     </div>
   );
 }

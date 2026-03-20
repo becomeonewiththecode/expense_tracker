@@ -47,7 +47,7 @@ flowchart LR
 ### Stack
 
 - **React 18** with function components.  
-- **React Router v6** — public routes (`/login`, `/register`) vs private shell (`/`, `/expenses`, `/reports`).  
+- **React Router v6** — public routes (`/login`, `/register`) vs private shell (`/`, `/expenses`, `/expenses/list`, `/reports`).  
 - **Tailwind CSS** — utility-first styling, dark theme.  
 - **Axios** — single instance with `baseURL: "/api"`; **`FormData`** uploads omit `Content-Type` so the browser sets the multipart boundary.  
 - **Recharts** — bar charts on the Reports page.  
@@ -70,7 +70,7 @@ flowchart LR
 ### Pages
 
 - **`LoginPage` / `RegisterPage`** — auth forms, errors via **`apiError.js`** helpers where used.  
-- **`ExpensesPage`** — list + create form; **statement import** with staging review table, per-row **category** and **frequency**, then commit; table reflects server fields.  
+- **`ExpensesPage`** — **Expense** title; onboarding (manual add + import) when there are no saved expenses; after that, import + optional collapsible manual add; link/nav to list page. **`YourExpensesPage`** (`/expenses/list`) — **Your expenses** table with modification mode for row edits; empty state links to **Expense**. **Statement import** staging lives on **Expense**, then commit.  
 - **`ReportsPage`** — tabbed report types, fetches report endpoints, shows monthly summary list.  
 - **`Layout`** — navigation and sign-out.
 

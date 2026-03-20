@@ -157,6 +157,7 @@ flowchart LR
     LP[LoginPage]
     RP[RegisterPage]
     EP[ExpensesPage]
+    YEP[YourExpensesPage]
     RPg[ReportsPage]
   end
 
@@ -170,6 +171,7 @@ flowchart LR
   LP --> A1
   RP --> A1
   EP --> A2 & A3
+  YEP --> A2
   RPg --> A4
 ```
 

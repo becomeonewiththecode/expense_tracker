@@ -4,6 +4,7 @@ import Layout from "./components/Layout.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import ExpensesPage from "./pages/ExpensesPage.jsx";
+import YourExpensesPage from "./pages/YourExpensesPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 
 function Private({ children }) {
@@ -26,6 +27,7 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to="/expenses" replace />} />
+        <Route path="expenses/list" element={<YourExpensesPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="reports" element={<ReportsPage />} />
       </Route>
