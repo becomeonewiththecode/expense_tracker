@@ -638,19 +638,19 @@ export default function ExpensesPage() {
           </div>
         </div>
         <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
+        <table className="w-full min-w-[72rem] text-sm text-left">
           <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
             <tr>
-              <th className="px-4 py-3">Transaction</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3 hidden lg:table-cell">Frequency</th>
-              <th className="px-4 py-3 hidden lg:table-cell">
+              <th className="px-4 py-3 w-[9.5rem]">Transaction</th>
+              <th className="px-4 py-3 w-[5.5rem]">Amount</th>
+              <th className="px-4 py-3 w-[7.5rem]">Category</th>
+              <th className="px-4 py-3 hidden lg:table-cell w-[6.5rem]">Frequency</th>
+              <th className="px-4 py-3 hidden lg:table-cell w-[5.5rem]">
                 Date <span className="normal-case font-normal text-slate-500">(1–30)</span>
               </th>
-              <th className="px-4 py-3 hidden md:table-cell">Institution</th>
-              <th className="px-4 py-3 hidden sm:table-cell">Note</th>
-              <th className="px-4 py-3 text-right min-w-[6.5rem]">Actions</th>
+              <th className="px-4 py-3 hidden md:table-cell w-[7rem]">Institution</th>
+              <th className="px-4 py-3 hidden sm:table-cell min-w-[8rem]">Note</th>
+              <th className="px-4 py-3 text-right whitespace-nowrap min-w-[11rem]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800 bg-slate-950/40">
@@ -819,14 +819,14 @@ export default function ExpensesPage() {
                         <span className="text-slate-500 max-w-xs truncate block">{row.description}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
+                    <td className="px-4 py-3 text-right align-middle min-w-[11rem]">
                       {editing ? (
-                        <div className="flex flex-col gap-1 items-end sm:flex-row sm:justify-end sm:gap-2">
+                        <div className="flex flex-row flex-nowrap gap-3 justify-end items-center">
                           <button
                             type="button"
                             disabled={expenseSaving}
                             onClick={() => saveExpenseEdit()}
-                            className="text-emerald-400 hover:text-emerald-300 text-xs disabled:opacity-50"
+                            className="shrink-0 text-emerald-400 hover:text-emerald-300 text-xs disabled:opacity-50"
                           >
                             {expenseSaving ? "Saving…" : "Save"}
                           </button>
@@ -834,18 +834,18 @@ export default function ExpensesPage() {
                             type="button"
                             disabled={expenseSaving}
                             onClick={cancelExpenseEdit}
-                            className="text-slate-400 hover:text-slate-300 text-xs"
+                            className="shrink-0 text-slate-400 hover:text-slate-300 text-xs"
                           >
                             Cancel
                           </button>
                         </div>
                       ) : (
-                        <div className="flex flex-col gap-1 items-end sm:flex-row sm:justify-end sm:gap-2">
+                        <div className="flex flex-row flex-nowrap gap-3 justify-end items-center">
                           {expensesModifyMode && (
                             <button
                               type="button"
                               onClick={() => openExpenseEdit(row)}
-                              className="text-sky-400 hover:text-sky-300 text-xs"
+                              className="shrink-0 text-sky-400 hover:text-sky-300 text-xs"
                             >
                               Edit
                             </button>
@@ -853,7 +853,7 @@ export default function ExpensesPage() {
                           <button
                             type="button"
                             onClick={() => remove(row.id)}
-                            className="text-rose-400 hover:text-rose-300 text-xs"
+                            className="shrink-0 text-rose-400 hover:text-rose-300 text-xs"
                           >
                             Delete
                           </button>
