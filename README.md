@@ -1,6 +1,6 @@
 # Expense Tracker
 
-**Documentation index:** [User guide](./docs/USER_GUIDE.md). [Architecture](./docs/ARCHITECTURE.md), including how development work leads to a production deployment. [Architecture diagrams](./docs/ARCHITECTURE_DIAGRAM.md), including OAuth single sign-on sequences and the development-then-production topology. [PM2 and controlling applications](./docs/HOWTO_CONTROLLING_APPLICATIONS.md).
+**Documentation index:** [User guide](./docs/USER_GUIDE.md). [Architecture](./docs/ARCHITECTURE.md), including how development work leads to a production deployment. [Architecture diagrams](./docs/ARCHITECTURE_DIAGRAM.md), including OAuth single sign-on sequences and the development-then-production topology. [PM2 and controlling applications](./docs/HOWTO_CONTROLLING_APPLICATIONS.md). **[Deployment](./deployment/README.md)** (Docker Compose and Kubernetes).
 
 This is a full-stack application. The **client** uses React, Tailwind CSS, Recharts, React Router, and Axios. The **server** uses Express, PostgreSQL, JSON Web Tokens for authentication, and optional Redis caching. Optional **OAuth**-based single sign-on is supported for Google, GitHub, GitLab, and Microsoft 365. A scheduled **cron** job writes **monthly summary** rows to the database.
 

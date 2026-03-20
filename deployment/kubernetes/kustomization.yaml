@@ -1,0 +1,14 @@
+# Apply base stack (after creating the API secret — see README):
+#   kubectl apply -k deployment/kubernetes/
+#
+# Ingress (ingress.yaml) is optional; apply it when you have TLS and an Ingress controller.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: expense-tracker
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - redis.yaml
+  - api.yaml
+  - web.yaml

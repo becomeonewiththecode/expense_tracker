@@ -1,0 +1,17 @@
+# Expense Tracker web — nginx serving Vite build, proxies /api to api service
+# Build from repository root:
+#   docker build -f deployment/docker/Dockerfile.web -t expense-tracker-web:latest .
+
+FROM node:20-alpine AS builder
+WORKDIR /build
+
+COPY client/package.json client/package-lock.json ./
+RUN npm ci
+
+COPY client/ ./
+RUN npm run build
+
+FROM nginx:1.27-alpine
+COPY deployment/docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /build/dist /usr/share/nginx/html
+EXPOSE 80

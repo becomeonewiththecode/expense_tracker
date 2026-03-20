@@ -1,0 +1,83 @@
+# In-cluster PostgreSQL for small or test clusters. For production, prefer a managed database
+# and point the API Deployment at it via DATABASE_URL in the secret.
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: expense-tracker
+type: Opaque
+stringData:
+  # Change POSTGRES_PASSWORD before applying; keep DATABASE_URL in api secrets in sync.
+  POSTGRES_USER: expense
+  POSTGRES_PASSWORD: change-this-password-before-apply
+  POSTGRES_DB: expense_tracker
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: expense-tracker
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: expense-tracker
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

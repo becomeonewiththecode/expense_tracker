@@ -57,6 +57,8 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 **Summary:** During **development**, you run Vite, Express, PostgreSQL, and optionally Redis. **After that**, in **production**, you serve the static bundle produced by **`npm run build`**, run Express with PostgreSQL and optional Redis, terminate **HTTPS** at the edge, and route paths for `/` versus `/api` accordingly.
 
+**Container deployment:** The repository includes **`deployment/docker-compose/`** for a full stack on one host and **`deployment/kubernetes/`** for a cluster. See [deployment/README.md](../deployment/README.md).
+
 ---
 
 ## Repository layout
@@ -67,6 +69,7 @@ The lifecycle is **development first**, **production second**: you run and test 
 | `server/` | Backend API (Express, ECMAScript modules via `"type": "module"` in `package.json`). |
 | `docker-compose.yml` | PostgreSQL and Redis for local development. |
 | `docs/` | User-facing and architecture documentation. |
+| `deployment/` | Dockerfiles, Docker Compose stack, and Kubernetes manifests for container deployment. |
 
 ---
 

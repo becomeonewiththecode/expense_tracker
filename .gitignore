@@ -4,3 +4,7 @@ dist
 *.log
 .DS_Store
 logs/
+
+# Local deployment secrets
+deployment/docker-compose/.env
+deployment/kubernetes/secret-api.yaml
