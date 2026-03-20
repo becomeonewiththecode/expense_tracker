@@ -51,9 +51,68 @@ flowchart TB
 
 ---
 
-## 2. Runtime: development vs PM2
+## 1b. From development to production (topology)
 
-Two common ways to run the **same logical apps** (`expense-client`, `expense-api`); databases are unchanged.
+**§1** shows **development** (Vite + Express). **Then** you **`vite build`** and deploy: the **Vite dev server is not part of production**; the browser loads **static files** from **`dist/`**, and an **edge** (reverse proxy, CDN, or host) routes **`/api`** to **Express**.
+
+```mermaid
+flowchart LR
+  subgraph lifecycle [Lifecycle]
+    D[Development]
+    B[vite build → dist/]
+    P[Production]
+    D --> B
+    B --> P
+  end
+```
+
+```mermaid
+flowchart TB
+  subgraph dev [1. Development — typical local]
+    BD[Browser]
+    VD["Vite dev server<br/>:5173"]
+    AD["Express API<br/>:4000 default"]
+    PGD[(PostgreSQL)]
+    RDV[(Redis optional)]
+
+    BD -->|"HTML/JS/CSS + HMR"| VD
+    BD -->|GET /api/*| VD
+    VD -->|proxy API_PROXY_TARGET| AD
+    AD --> PGD
+    AD --> RDV
+  end
+```
+
+```mermaid
+flowchart TB
+  subgraph prod [2. Production — after build and deploy]
+    BP[Browser]
+    EDGE["TLS edge — nginx, Caddy, LB, or CDN"]
+    STATIC["Static host — dist/ from vite build"]
+    AP["Express API — separate process or container"]
+    PGP[(PostgreSQL)]
+    RDP[(Redis optional)]
+
+    BP -->|HTTPS| EDGE
+    EDGE -->|"/" app routes → files| STATIC
+    EDGE -->|"/api/*"| AP
+    AP --> PGP
+    AP --> RDP
+  end
+```
+
+| Stage | What runs |
+|-------|-----------|
+| **1. Development** | Vite dev server + **HMR**; same-origin **`/api`** proxied to Express; often HTTP on `localhost`. Commands: `npm run dev` in `client/` and `server/`. |
+| **2. Production** | **`npm run build`** in `client/` → serve **`client/dist/`** (no Vite); Express behind TLS; **`/api`** via edge or CORS. `NODE_ENV=production` (or equivalent) for the API process. |
+
+Narrative detail: [ARCHITECTURE.md — From development to production](./ARCHITECTURE.md#from-development-to-production).
+
+---
+
+## 2. Runtime: manual npm or PM2 (during development)
+
+Two common ways to run the **same logical apps** (`expense-client`, `expense-api`) while developing; databases are unchanged.
 
 ```mermaid
 flowchart LR
@@ -284,6 +343,8 @@ sequenceDiagram
   Vite-->>Browser: 200 JSON
 ```
 
+**After deployment**, the first hop is not Vite: the browser talks to your **edge** (e.g. nginx); **`GET /api/...`** is forwarded to Express. The SPA still issues `/api` requests if deployed **same-origin** behind that edge.
+
 ---
 
 ## 7. OAuth SSO sign-in (redirect flow)
@@ -325,6 +386,15 @@ After this, subsequent API calls match **§6** (Bearer JWT on `/api/expenses`, e
 - **GitHub:** Markdown preview renders Mermaid in many views.  
 - **VS Code / Cursor:** use a Mermaid preview extension if built-in preview does not draw.  
 - **Export:** paste into [mermaid.live](https://mermaid.live) for PNG/SVG.
+
+**Heading anchor IDs (GitHub):** In-repo links like `./ARCHITECTURE.md#from-development-to-production` rely on GitHub-generated heading IDs. Those IDs follow the same rules as the [`github-slugger`](https://github.com/Flet/github-slugger) `slug()` function (lowercase, strip punctuation, spaces → hyphens). Verified examples used in this repo:
+
+| Heading | Fragment |
+|---------|----------|
+| `## From development to production` | `#from-development-to-production` |
+| `## 1b. From development to production (topology)` | `#1b-from-development-to-production-topology` |
+
+If you rename a heading, update any links to it. Duplicate headings on the same page get `-1`, `-2`, … suffixes.
 
 ---
 

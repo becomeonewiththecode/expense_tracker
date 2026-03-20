@@ -2,9 +2,11 @@
 
 This document describes how the application is structured, how major components interact, and the main design choices.
 
-**Diagrams (apps, integrations, data):** see [**ARCHITECTURE_DIAGRAM.md**](./ARCHITECTURE_DIAGRAM.md) for Mermaid figures: system context, PM2 vs manual dev, server modules, client → API map, ER model, JWT auth sequence, and **OAuth SSO redirect sequence**.
+**Diagrams (apps, integrations, data):** see [**ARCHITECTURE_DIAGRAM.md**](./ARCHITECTURE_DIAGRAM.md) for Mermaid figures: system context (**§1**), **development → production topology (§1b)**, manual npm or PM2 during development, server modules, client → API map, ER model, JWT auth sequence, and **OAuth SSO redirect sequence**.
 
 ## High-level overview
+
+The diagram below describes **development** (local). **Then**, to ship: you run **`vite build`**, serve **`dist/`** as static assets, and run the API behind **TLS** and a **reverse proxy** (or separate host) — see [**From development to production**](#from-development-to-production) and [ARCHITECTURE_DIAGRAM.md §1b](./ARCHITECTURE_DIAGRAM.md#1b-from-development-to-production-topology).
 
 The system is a **classic three-tier setup** for local development:
 
@@ -28,6 +30,32 @@ flowchart LR
 - **Client:** Vite + React SPA, styled with Tailwind, routing via React Router, HTTP via Axios.  
 - **Server:** Node.js **Express** REST API, **JWT** bearer authentication, **node-postgres** (`pg`) for SQL, **ioredis** for optional caching.  
 - **Infrastructure (local):** Docker Compose provides **PostgreSQL** and **Redis**; the API and SPA are started with **npm** (not containerized in the default compose file).
+
+---
+
+## From development to production
+
+The lifecycle is **development first**, **production second**: you run and test locally, **then** build and deploy the same codebase to a hosted environment.
+
+### Development (local)
+
+- **Frontend:** **Vite dev server** (`vite`, e.g. `:5173`) — serves sources with **HMR** and proxies **`/api`** to the API.  
+- **API:** **Express** on `PORT` (e.g. `:4000`), reachable via Vite’s proxy or directly.  
+- **SPA → API:** Browser uses the **same origin** as Vite (`localhost:5173`); **`/api`** is proxied (`API_PROXY_TARGET`).  
+- **PostgreSQL:** Local or Docker Compose; **Redis** optional (report cache).  
+- **Config:** `server/.env`, `client/.env`.  
+- **OAuth:** **`CLIENT_ORIGIN`** typically `http://localhost:5173`; IdP redirect URIs match that origin.
+
+### Then: production (deployed)
+
+- **Build:** `cd client && npm run build` → **`client/dist/`** (static HTML, JS, CSS). **Do not** run `vite dev` for end users — serve **`dist/`** only.  
+- **Frontend hosting:** **nginx**, **Caddy**, object storage + CDN, PaaS static hosting, etc.  
+- **API:** Same **Express** app, typically behind **TLS**, a **process manager** (systemd, PM2, Docker), or **orchestration**.  
+- **SPA → API:** Often **one origin** (edge routes `/` → static files, `/api` → Node) so the built app keeps `baseURL: "/api"`; or **two origins** with **CORS** on Express.  
+- **PostgreSQL / Redis:** Managed or hardened self-hosted; backups; **secrets** via env / secret manager (never commit production secrets).  
+- **OAuth:** **`CLIENT_ORIGIN`** and IdP redirect URIs use your public **HTTPS** URL.
+
+**Summary:** **Development** → Vite + Express + Postgres (+ optional Redis). **Then production** → static bundle from **`vite build`** + Express + Postgres (+ optional Redis) + **HTTPS** at the edge, with routing for `/` vs `/api`.
 
 ---
 
@@ -63,6 +91,7 @@ flowchart LR
 ### Dev proxy
 
 - **`vite.config.js`** uses `loadEnv` so **`API_PROXY_TARGET`** (from `client/.env`) can point the `/api` proxy at the correct host/port (e.g. when the API is not on 4000).  
+- This proxy exists **only in development**; after **`vite build`**, static hosting does not run Vite — see [From development to production](#from-development-to-production).
 
 ### Domain helpers
 

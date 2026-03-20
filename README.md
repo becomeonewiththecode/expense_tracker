@@ -1,6 +1,6 @@
 # Expense Tracker
 
-**Docs:** [User guide](./docs/USER_GUIDE.md) · [Architecture](./docs/ARCHITECTURE.md) · [**Architecture diagrams**](./docs/ARCHITECTURE_DIAGRAM.md) (includes **OAuth SSO** sequence) · [PM2 / controlling apps](./docs/HOWTO_CONTROLLING_APPLICATIONS.md)
+**Docs:** [User guide](./docs/USER_GUIDE.md) · [Architecture](./docs/ARCHITECTURE.md) (incl. **development → production**) · [**Architecture diagrams**](./docs/ARCHITECTURE_DIAGRAM.md) (OAuth SSO + **dev → prod** topology) · [PM2 / controlling apps](./docs/HOWTO_CONTROLLING_APPLICATIONS.md)
 
 Full-stack app: **React + Tailwind + Recharts + React Router + Axios** on the client; **Express + PostgreSQL + JWT + Redis** on the server, with optional **OAuth SSO** (Google, GitHub, GitLab, Microsoft 365) and a **cron job** that writes **monthly summary** rows.
 
