@@ -52,6 +52,8 @@ export default function ExpensesPage() {
   const [expenseEditId, setExpenseEditId] = useState(null);
   const [expenseEditDraft, setExpenseEditDraft] = useState(null);
   const [expenseSaving, setExpenseSaving] = useState(false);
+  /** When false, expense rows are read-only (no Edit). Delete still available. */
+  const [expensesModifyMode, setExpensesModifyMode] = useState(false);
 
   const loadStaging = useCallback(async () => {
     try {
@@ -116,6 +118,7 @@ export default function ExpensesPage() {
   }
 
   function openExpenseEdit(row) {
+    if (!expensesModifyMode) return;
     setError("");
     setExpenseEditId(row.id);
     setExpenseEditDraft({
@@ -605,7 +608,36 @@ export default function ExpensesPage() {
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-800">
+      <div className="rounded-xl border border-slate-800 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-900/80 border-b border-slate-800">
+          <h2 className="text-sm font-medium text-slate-200">Your expenses</h2>
+          <div className="flex items-center gap-2">
+            {expensesModifyMode ? (
+              <button
+                type="button"
+                onClick={() => {
+                  cancelExpenseEdit();
+                  setExpensesModifyMode(false);
+                }}
+                className="rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5"
+              >
+                Exit modification mode
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setExpensesModifyMode(true);
+                }}
+                className="rounded-lg bg-sky-700/80 hover:bg-sky-600 text-white text-xs font-medium px-3 py-1.5"
+              >
+                Enter modification mode
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
             <tr>
@@ -636,7 +668,7 @@ export default function ExpensesPage() {
               </tr>
             ) : (
               items.map((row) => {
-                const editing = expenseEditId === row.id;
+                const editing = expensesModifyMode && expenseEditId === row.id;
                 const d = expenseEditDraft;
                 return (
                   <tr key={row.id} className={editing ? "bg-slate-900/80" : "hover:bg-slate-900/60"}>
@@ -809,13 +841,15 @@ export default function ExpensesPage() {
                         </div>
                       ) : (
                         <div className="flex flex-col gap-1 items-end sm:flex-row sm:justify-end sm:gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openExpenseEdit(row)}
-                            className="text-sky-400 hover:text-sky-300 text-xs"
-                          >
-                            Edit
-                          </button>
+                          {expensesModifyMode && (
+                            <button
+                              type="button"
+                              onClick={() => openExpenseEdit(row)}
+                              className="text-sky-400 hover:text-sky-300 text-xs"
+                            >
+                              Edit
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => remove(row.id)}
@@ -832,6 +866,7 @@ export default function ExpensesPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

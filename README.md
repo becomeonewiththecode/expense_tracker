@@ -1,6 +1,6 @@
 # Expense Tracker
 
-**Docs:** [User guide](./docs/USER_GUIDE.md) · [Architecture & design](./docs/ARCHITECTURE.md) · [PM2 / controlling apps](./docs/HOWTO_CONTROLLING_APPLICATIONS.md)
+**Docs:** [User guide](./docs/USER_GUIDE.md) · [Architecture](./docs/ARCHITECTURE.md) · [**Architecture diagrams**](./docs/ARCHITECTURE_DIAGRAM.md) · [PM2 / controlling apps](./docs/HOWTO_CONTROLLING_APPLICATIONS.md)
 
 Full-stack app: **React + Tailwind + Recharts + React Router + Axios** on the client; **Express + PostgreSQL + JWT + Redis** on the server, with a **cron job** that writes **monthly summary** rows.
 

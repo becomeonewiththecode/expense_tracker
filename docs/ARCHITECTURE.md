@@ -2,6 +2,8 @@
 
 This document describes how the application is structured, how major components interact, and the main design choices.
 
+**Diagrams (apps, integrations, data):** see [**ARCHITECTURE_DIAGRAM.md**](./ARCHITECTURE_DIAGRAM.md) for Mermaid figures: system context, PM2 vs manual dev, server modules, client → API map, ER model, and auth sequence.
+
 ## High-level overview
 
 The system is a **classic three-tier setup** for local development:

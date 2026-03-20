@@ -73,7 +73,7 @@ Fill in the form and click **Add expense**:
 | **Date** | The **spent** date for this line item. |
 | **Note** | Optional free text. |
 
-The table lists your expenses (newest first). Use **Edit** to change transaction date, amount, category, frequency, payment day, institution, or note, then **Save** (or **Cancel**). Use **Delete** to remove a row (this cannot be undone).
+The table lists your expenses (newest first). Click **Enter modification mode** to show **Edit** on each row; then **Edit** / **Save** / **Cancel** work as before. Click **Exit modification mode** to go back to read-only rows (unsaved edits on the active row are cleared). **Delete** is always available. 
 
 ### Import from a statement (CSV or PDF)
 
