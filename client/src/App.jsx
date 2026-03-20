@@ -7,6 +7,7 @@ import ExpensesPage from "./pages/ExpensesPage.jsx";
 import YourExpensesPage from "./pages/YourExpensesPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import PostLoginRedirect from "./components/PostLoginRedirect.jsx";
+import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
 
 function Private({ children }) {
   const { isAuthed } = useAuth();
@@ -19,6 +20,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
       <Route
         path="/"
         element={

@@ -321,7 +321,7 @@ export default function ExpensesPage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Expense</h1>
+          <h1 className="text-xl font-semibold text-white">Import</h1>
           <p className="text-sm text-slate-400 mt-1">
             {loading
               ? "Loading…"

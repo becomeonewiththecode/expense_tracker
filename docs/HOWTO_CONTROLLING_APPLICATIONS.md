@@ -21,8 +21,9 @@ Commands below assume your shell’s current directory is the **repository root*
 ## Before first start
 
 1. **Databases:** `docker compose up -d` (Postgres + Redis), unless you point `server/.env` elsewhere.  
-2. **`server/.env`:** copy from `server/.env.example` and adjust.  
-3. **Dependencies:** install at root, server, and client:
+2. **`server/.env`:** copy from `server/.env.example` and adjust. For **SSO**, set **`CLIENT_ORIGIN`** to the URL users use to open the app (e.g. `http://localhost:5173` or your deployed origin) and add **`OAUTH_*`** credentials for each provider you enable — see `server/.env.example` and the root **README.md**.  
+3. **`client/.env`:** copy from `client/.env.example`; **`API_PROXY_TARGET`** must match the API **`PORT`** when using PM2 or manual dev.  
+4. **Dependencies:** install at root, server, and client:
 
    ```bash
    npm install
@@ -89,6 +90,7 @@ npx pm2 restart expense-api --update-env
 | **API crashes / many restarts** (`↺` rising) | `npx pm2 logs expense-api`; verify Postgres/Redis and `DATABASE_URL` / `REDIS_URL` in `server/.env`. |
 | **In-memory PM2 is out-of-date** | From repo root: `npm install` then `npx pm2 update` so the CLI and daemon stay aligned. |
 | **Port already in use** | See [Port in use (PM2 vs manual dev)](#port-in-use-pm2-vs-manual-dev) below. |
+| **SSO redirect errors / “redirect_uri mismatch”** | **`CLIENT_ORIGIN`** in `server/.env` must equal the browser’s origin (no trailing slash). Registered redirect in Google/GitHub/GitLab/Microsoft must be `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback`. Restart the API after env changes. |
 
 ---
 
@@ -145,5 +147,7 @@ Follow the one-line command PM2 prints (often requires sudo). Use carefully in s
 
 ## Related docs
 
-- [User guide](./USER_GUIDE.md) — product behavior and local setup overview  
-- [Architecture](./ARCHITECTURE.md) — system design  
+- [User guide](./USER_GUIDE.md) — product behavior, account types, and local setup overview  
+- [Architecture](./ARCHITECTURE.md) — system design, including OAuth routes  
+- [Architecture diagrams](./ARCHITECTURE_DIAGRAM.md) — SSO sequence and data model  
+- Root [README.md](../README.md) — API list and OAuth troubleshooting  

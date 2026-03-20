@@ -159,7 +159,7 @@ export default function YourExpensesPage() {
             to="/expenses"
             className="inline-block rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium py-2 px-4"
           >
-            Add or import on Expense
+            Go to Import
           </Link>
         </div>
       )}

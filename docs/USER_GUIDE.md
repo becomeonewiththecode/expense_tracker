@@ -8,7 +8,7 @@ Expense Tracker is a web application for **recording expenses** and **viewing sp
 
 You can:
 
-- **Register** and **sign in** with email and password  
+- **Register** and **sign in** with email and password, or **sign in with Google, GitHub, GitLab, or Microsoft** when the server admin has configured OAuth  
 - **Add expenses** with amount, transaction date, category, how often the cost occurs, optional **date (1–30)** for the day of the month the payment is made, how you paid, and an optional note  
 - **Import** a **CSV / PDF** statement, **review** each line, set **categories** (and frequency / payment day if needed), then commit (see below)  
 - **Delete** expenses from the list  
@@ -25,9 +25,9 @@ You need **three** things running for the app to work end to end:
 
 | Piece | Purpose |
 |--------|---------|
-| **PostgreSQL** | Stores users and expenses |
+| **PostgreSQL** | Stores users, expenses, OAuth identity links (`oauth_identities`), and related data |
 | **Redis** (optional but recommended) | Caches report responses for faster repeats |
-| **Node API** (`server/`) | REST backend and auth |
+| **Node API** (`server/`) | REST backend, JWT auth, and optional OAuth SSO |
 
 The **browser app** (`client/`) is separate and talks to the API through the dev proxy or your deployment setup.
 
@@ -48,20 +48,32 @@ If **port 4000** is already used by another program, the UI may fail to reach th
 1. Open the app URL in your browser.  
 2. Choose **Create account** (or go to `/register`).  
 3. Enter **email** and **password** (minimum length enforced on the form).  
-4. After success you are signed in and taken to **Your expenses** if you already have saved expenses, otherwise to **Expense** (add/import).  
+4. After success you are signed in and taken to **Your expenses** if you already have saved expenses, otherwise to **Import** (add/import).  
 
 To sign in later, use **Sign in** (`/login`) with the same email and password.
 
-**Sign out** clears your session in the browser (you will need to sign in again to use Expense and Reports).
+### Sign in with Google, GitHub, GitLab, or Microsoft
+
+If your deployment has **OAuth** configured on the API, the **Sign in** and **Create account** screens show buttons for those providers. Choosing one sends you to that service to approve access; you are then redirected back to the app (`/oauth/callback`) and signed in with a normal session.
+
+**Self-hosted setup:** In each provider’s developer console, register an OAuth application whose **redirect URI** is exactly:
+
+`{your app origin}/api/auth/oauth/{provider}/callback`
+
+For example, with `CLIENT_ORIGIN=http://localhost:5173` and Google: `http://localhost:5173/api/auth/oauth/google/callback`. The Vite dev server proxies `/api` to the Node API, so this path still hits the backend. Set `OAUTH_*` variables in `server/.env` as described in `server/.env.example`.
+
+If you already registered with **email and password**, signing in with SSO using the **same email** attaches to the same account when the provider returns that email.
+
+**Sign out** clears your session in the browser (you will need to sign in again to use **Import** and **Reports**).
 
 ---
 
-## Expense screen
+## Import screen
 
-The **Expense** page is where you add and review individual transactions.
+The **Import** page (`/expenses`) is where you add and review individual transactions.
 
 - **First-time / no saved expenses:** you see the **manual add** form and **Import from statement** so you can enter data or upload a file. After you save at least one expense, the layout changes.
-- **When you already have expenses:** the **Expense** page shows **Import from statement** and optional **Add expense manually** (expand the section). Open **Your expenses** in the header (or the button on **Expense**) to view, edit, and delete saved rows on a separate page. After your **first** saved expense (from the onboarding form) or after you **commit** an import that adds rows, you are taken to **Your expenses** automatically.
+- **When you already have expenses:** the **Import** page shows **Import from statement** and optional **Add expense manually** (expand the section). Open **Your expenses** in the header (or the button on **Import**) to view, edit, and delete saved rows on a separate page. After your **first** saved expense (from the onboarding form) or after you **commit** an import that adds rows, you are taken to **Your expenses** automatically.
 
 ### Add an expense
 
@@ -76,7 +88,7 @@ Fill in the form and click **Add expense**:
 | **Date** | The **spent** date for this line item. |
 | **Note** | Optional free text. |
 
-On the **Your expenses** page, the table lists your expenses (newest first). **Projection** in the table header opens a **combined** report: **daily**, **monthly**, and **yearly** run-rate totals across **all** saved expenses (one-time amounts summed separately), plus a **pie chart** of annualized share by category (and a **One-time** slice when applicable). Click a slice to list the expenses in that segment; click the same slice again to clear. Each row also has **Projection** for **that expense only** (same numbers plus a single-slice or small pie); if you are editing a row, row **Projection** uses your unsaved values in the form. Click **Enter modification mode** to show **Edit** on each row; then **Edit** / **Save** / **Cancel** work as before. Click **Exit modification mode** to go back to read-only rows (unsaved edits on the active row are cleared). **Delete** is always available. If you have no expenses yet, that page offers a link back to **Expense** to add or import.
+On the **Your expenses** page, the table lists your expenses (newest first). **Projection** in the table header opens a **combined** report: **daily**, **monthly**, and **yearly** run-rate totals across **all** saved expenses (one-time amounts summed separately), plus a **pie chart** of annualized share by category (and a **One-time** slice when applicable). Click a slice to list the expenses in that segment; click the same slice again to clear. Each row also has **Projection** for **that expense only** (same numbers plus a single-slice or small pie); if you are editing a row, row **Projection** uses your unsaved values in the form. Click **Enter modification mode** to show **Edit** on each row; then **Edit** / **Save** / **Cancel** work as before. Click **Exit modification mode** to go back to read-only rows (unsaved edits on the active row are cleared). **Delete** is always available. If you have no expenses yet, that page offers a link back to **Import** to add or import.
 
 ### Import from a statement (CSV or PDF)
 
@@ -113,13 +125,15 @@ The app can show **precomputed monthly totals** from the `monthly_summaries` tab
 
 ## Session and security (short)
 
-- After login, the app stores a **JWT** in the browser and sends it on API requests.  
-- Do not share your password.  
-- On a shared computer, **sign out** when finished.  
+- After **email/password** login or **SSO** completion, the app stores a **JWT** in the browser (`localStorage`) and sends it on API requests — same session model for both.  
+- **Password accounts:** do not share your password; choose a strong password for your account.  
+- **SSO accounts:** sign-in is delegated to Google, GitHub, GitLab, or Microsoft; use that provider’s account security settings (2FA, etc.) as appropriate.  
+- On a shared computer, **sign out** when finished (clears the token from this browser).  
 
 ---
 
 ## Where to go next
 
-- **Installation and ports:** root `README.md`  
-- **How the system is built:** [ARCHITECTURE.md](./ARCHITECTURE.md)
+- **Installation, ports, and OAuth env:** root `README.md`  
+- **How the system is built (including SSO):** [ARCHITECTURE.md](./ARCHITECTURE.md)  
+- **PM2:** [HOWTO_CONTROLLING_APPLICATIONS.md](./HOWTO_CONTROLLING_APPLICATIONS.md)

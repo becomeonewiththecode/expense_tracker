@@ -21,7 +21,7 @@ export default function Layout() {
           </span>
           <nav className="flex items-center gap-1 sm:gap-2">
             <NavLink to="/expenses" end className={linkClass}>
-              Expense
+              Import
             </NavLink>
             <NavLink to="/expenses/list" className={linkClass}>
               Your expenses

@@ -11,9 +11,20 @@ export async function initDb() {
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
+      password_hash TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+    CREATE TABLE IF NOT EXISTS oauth_identities (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,
+      provider_user_id TEXT NOT NULL,
+      email TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (provider, provider_user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_oauth_identities_user ON oauth_identities(user_id);
     CREATE TABLE IF NOT EXISTS expenses (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

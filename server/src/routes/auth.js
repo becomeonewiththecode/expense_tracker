@@ -2,8 +2,28 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { pool } from "../db.js";
+import { authRequired } from "../middleware/auth.js";
+import { registerOAuthRoutes } from "../oauth/oauthRoutes.js";
 
 export const authRouter = Router();
+
+function signUserToken(user) {
+  const secret = process.env.JWT_SECRET;
+  return jwt.sign({ sub: user.id, email: user.email }, secret, { expiresIn: "7d" });
+}
+
+registerOAuthRoutes(authRouter);
+
+authRouter.get("/me", authRequired, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`SELECT id, email FROM users WHERE id = $1`, [req.userId]);
+    if (!rows[0]) return res.status(404).json({ error: "Not found" });
+    res.json({ user: rows[0] });
+  } catch (e) {
+    console.error("auth/me:", e);
+    res.status(500).json({ error: "Failed to load user" });
+  }
+});
 
 function dbConnectivityMessage(e) {
   const code = e?.code;
@@ -43,7 +63,7 @@ authRouter.post("/register", async (req, res) => {
       [email, hash]
     );
     const user = rows[0];
-    const token = jwt.sign({ sub: user.id }, secret, { expiresIn: "7d" });
+    const token = signUserToken(user);
     res.status(201).json({ user: { id: user.id, email: user.email }, token });
   } catch (e) {
     if (e.code === "23505") {
@@ -88,9 +108,18 @@ authRouter.post("/login", async (req, res) => {
     return res.status(500).json({ error: "Login failed" });
   }
   const user = rows[0];
-  if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+  if (!user) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
-  const token = jwt.sign({ sub: user.id }, secret, { expiresIn: "7d" });
+  if (!user.password_hash) {
+    return res.status(401).json({
+      error:
+        "This account uses single sign-on. Use Google, GitHub, GitLab, or Microsoft to sign in.",
+    });
+  }
+  if (!(await bcrypt.compare(password, user.password_hash))) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+  const token = signUserToken(user);
   res.json({ user: { id: user.id, email: user.email }, token });
 });

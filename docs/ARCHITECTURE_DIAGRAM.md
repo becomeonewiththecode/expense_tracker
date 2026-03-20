@@ -47,6 +47,7 @@ flowchart TB
 | Browser (via Vite) | Express | HTTP REST, path prefix `/api` proxied by Vite |
 | Express | PostgreSQL | TCP, `DATABASE_URL`, SQL |
 | Express | Redis | TCP, `REDIS_URL`, optional |
+| Express | Google / GitHub / GitLab / Microsoft | OAuth 2.0 (browser redirect + HTTPS token endpoints); redirect URI on the SPA origin, proxied `/api` → API |
 
 ---
 
@@ -135,7 +136,8 @@ flowchart TB
 
 | Module | Role | Integrations |
 |--------|------|----------------|
-| `routes/auth.js` | Register / login | `bcryptjs`, `jsonwebtoken`, `pg` |
+| `routes/auth.js` | Register / login / `me` | `bcryptjs`, `jsonwebtoken`, `pg`; mounts **`oauth/*`** from `oauth/oauthRoutes.js` |
+| `oauth/oauthRoutes.js` (+ `oauthService.js`, `oauthState.js`) | SSO: authorize + callback | `fetch` to IdPs, `pg` → `oauth_identities` |
 | `routes/expenses.js` | Expense CRUD | JWT middleware, `pg`, `expenseEnums.js` |
 | `routes/imports.js` | Upload → staging → commit | JWT, `multer`, `visaStatement.js` (CSV/PDF), `pg` |
 | `routes/reports.js` | Aggregates + charts data | JWT, `pg`, optional `redis.js` |
@@ -162,7 +164,7 @@ flowchart LR
   end
 
   subgraph api [Express /api]
-    A1["/auth/login, register"]
+    A1["/auth/login, register, oauth/..."]
     A2["/expenses"]
     A3["/imports ..."]
     A4["/reports/..."]
@@ -183,6 +185,7 @@ flowchart LR
 | Auth state | `auth.jsx` — `AuthProvider`, protected routes |
 | Errors | `apiError.js` — network / proxy messages |
 | Labels vs server enums | `expenseOptions.js` |
+| SSO return route | `OAuthCallbackPage` (`/oauth/callback`) — reads JWT from query after API redirect; same post-login landing as email/password |
 
 ---
 
@@ -193,6 +196,7 @@ Logical schema the API owns (Postgres). Redis holds **ephemeral** report cache k
 ```mermaid
 erDiagram
   users ||--o{ expenses : has
+  users ||--o{ oauth_identities : has
   users ||--o{ import_batches : has
   users ||--o{ import_staging_rows : has
   users ||--o{ monthly_summaries : has
@@ -203,6 +207,14 @@ erDiagram
     text email UK
     text password_hash
     timestamptz created_at
+  }
+
+  oauth_identities {
+    serial id PK
+    int user_id FK
+    text provider
+    text provider_user_id
+    text email
   }
 
   expenses {
@@ -274,6 +286,40 @@ sequenceDiagram
 
 ---
 
+## 7. OAuth SSO sign-in (redirect flow)
+
+High-level flow when the user clicks a provider on **Login** / **Register**. The **redirect URI** registered at the IdP is `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback` (browser hits Vite → proxied to Express).
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant Vite
+  participant API as Express API
+  participant IdP as Google/GitHub/GitLab/Microsoft
+  participant PG as PostgreSQL
+
+  Browser->>Vite: GET /api/auth/oauth/google (example)
+  Vite->>API: proxy
+  API->>API: create state, redirect
+  API-->>Browser: 302 to IdP authorize URL
+  Browser->>IdP: user consents
+  IdP-->>Browser: 302 to .../oauth/google/callback?code=&state=
+  Browser->>Vite: GET .../callback?code=&state=
+  Vite->>API: proxy callback
+  API->>IdP: POST token endpoint (code exchange)
+  IdP-->>API: access_token
+  API->>IdP: GET user profile / email
+  IdP-->>API: profile
+  API->>PG: findOrCreate user + oauth_identities
+  PG-->>API: user row
+  API-->>Browser: 302 to CLIENT_ORIGIN/oauth/callback?token=JWT
+  Browser->>Browser: OAuthCallbackPage stores JWT, navigates
+```
+
+After this, subsequent API calls match **§6** (Bearer JWT on `/api/expenses`, etc.).
+
+---
+
 ## Viewing these diagrams
 
 - **GitHub:** Markdown preview renders Mermaid in many views.  
@@ -282,4 +328,4 @@ sequenceDiagram
 
 ---
 
-[← Architecture prose](./ARCHITECTURE.md) · [User guide](./USER_GUIDE.md)
+[← Architecture prose](./ARCHITECTURE.md) · [User guide](./USER_GUIDE.md) · [README — OAuth env & troubleshooting](../README.md)
