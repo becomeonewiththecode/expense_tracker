@@ -103,7 +103,7 @@ Use the tabs:
 - **Yearly** — totals by month for a year.  
 - **Custom range** — start and end dates.  
 
-Each view shows a **bar chart** (Recharts) and a **total** for the period.
+Each view shows a **bar chart** (Recharts) and a **total** for the period. **Click the trend chart** (or focus it and press Enter / Space) to open the same **Projection** modal as on **Your expenses** — combined daily / monthly / yearly run rates, pie chart, and slice drill-down — using your **saved expenses** (up to 500 rows). The bar chart reflects the **selected report period**; the projection is always **all saved expenses**, not filtered to that period.
 
 ### Stored monthly summaries
 

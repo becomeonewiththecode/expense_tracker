@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -9,6 +9,8 @@ import {
   YAxis,
 } from "recharts";
 import api from "../api";
+import ProjectionModal from "../components/ProjectionModal.jsx";
+import { computeProjectionPieData, computeSpendingProjection } from "../projection.js";
 
 const tabs = [
   { id: "daily", label: "Daily" },
@@ -17,6 +19,23 @@ const tabs = [
   { id: "yearly", label: "Yearly" },
   { id: "custom", label: "Custom range" },
 ];
+
+/** Short copy for the Total card: how this number is defined for each report tab. */
+const TOTAL_HELP = {
+  daily:
+    "This total is the sum of every saved expense whose transaction date is the day you selected. Each bar is that same day (one bar).",
+  weekly:
+    "This total is all spending in the current calendar week (Mon–Sun, UTC). Each bar is one day; the number is the sum of those days.",
+  monthly:
+    "This total is every saved expense in the calendar month you chose (first through last day of that month). Each bar is one day in that month.",
+  yearly:
+    "This total is every saved expense in the calendar year you chose. Each bar is one month’s total; the number is spending for the full year.",
+  custom:
+    "This total is every saved expense whose transaction date falls between your start and end dates, inclusive. Each bar is one day in that range.",
+};
+
+const TOTAL_HELP_FOOTNOTE =
+  "It uses the amounts you actually recorded. Weekly/monthly frequency on an expense is not used here—that metadata is for labels and projection elsewhere.";
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -42,12 +61,24 @@ export default function ReportsPage() {
   );
   const [rangeEnd, setRangeEnd] = useState(todayISODate());
   const [summaries, setSummaries] = useState([]);
+  const [projectionOpen, setProjectionOpen] = useState(false);
+  const [projectionItems, setProjectionItems] = useState([]);
 
   useEffect(() => {
     api
       .get("/reports/summaries")
       .then((r) => setSummaries(r.data))
       .catch(() => setSummaries([]));
+  }, []);
+
+  const openProjectionModal = useCallback(async () => {
+    try {
+      const r = await api.get("/expenses", { params: { limit: 500 } });
+      setProjectionItems(r.data || []);
+    } catch {
+      setProjectionItems([]);
+    }
+    setProjectionOpen(true);
   }, []);
 
   useEffect(() => {
@@ -197,12 +228,27 @@ export default function ReportsPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-900/30 p-4 min-h-[280px]">
           <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Trend</p>
+          <p className="text-xs text-slate-600 mb-2">
+            Click the chart to open the projection view (daily / monthly / yearly run rates and pie chart from your saved expenses).
+          </p>
           {loading ? (
             <p className="text-slate-500 py-12 text-center">Loading chart…</p>
           ) : chartData.length === 0 ? (
             <p className="text-slate-500 py-12 text-center">No data for this period.</p>
           ) : (
-            <div className="h-64 w-full">
+            <div
+              className="h-64 w-full cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+              onClick={() => void openProjectionModal()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  void openProjectionModal();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="Open spending projection and pie chart"
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
@@ -226,6 +272,10 @@ export default function ReportsPage() {
         <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 space-y-3">
           <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
           <p className="text-3xl font-semibold text-white tabular-nums">{totalFmt}</p>
+          <div className="text-xs text-slate-500 leading-relaxed space-y-2 pt-1 border-t border-slate-800/80">
+            <p>{TOTAL_HELP[tab]}</p>
+            <p className="text-slate-600">{TOTAL_HELP_FOOTNOTE}</p>
+          </div>
           {tab === "daily" && data?.byCategory?.length > 0 && (
             <div>
               <p className="text-xs text-slate-500 mb-2">By category</p>
@@ -262,6 +312,17 @@ export default function ReportsPage() {
           </ul>
         )}
       </div>
+
+      <ProjectionModal
+        open={projectionOpen}
+        onClose={() => setProjectionOpen(false)}
+        projection={computeSpendingProjection(projectionItems)}
+        contextLabel="All expenses (combined) — from Reports"
+        singleItem={false}
+        pieData={computeProjectionPieData(projectionItems)}
+        projectionItems={projectionItems}
+        projectionScopeKey="reports"
+      />
     </div>
   );
 }
