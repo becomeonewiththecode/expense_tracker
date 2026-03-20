@@ -1,0 +1,26 @@
+Expense tracker
+
+Web frontend.
+
+javascript
+- Should be built with React for the UI components
+- Use Tailwind CSS for styling to keep the design consistent
+- Chart.js or Recharts for visualizing spending trends
+- React Router for navigation between different views
+- Axios for API calls to the backend
+- web page should be viewable on all devices.
+
+Options
+- list daily spend
+- Weekly spend
+- monthly spend
+- yearly spend
+- custom date range
+
+Backend
+
+- Postgres database
+- REST API with Express.js for CRUD operations
+- Authentication using JWT tokens
+- Background job for generating monthly summary reports
+- Redis cache for frequently accessed spending totals
