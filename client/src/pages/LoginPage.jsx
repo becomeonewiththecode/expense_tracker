@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import { getApiErrorMessage } from "../apiError.js";
 import { useAuth } from "../auth.jsx";
+import PostLoginRedirect from "../components/PostLoginRedirect.jsx";
+import { getPostLoginPath } from "../postLoginLanding.js";
 
 export default function LoginPage() {
   const { isAuthed, setSession } = useAuth();
@@ -12,7 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (isAuthed) return <Navigate to="/expenses" replace />;
+  if (isAuthed) return <PostLoginRedirect />;
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -21,7 +23,7 @@ export default function LoginPage() {
     try {
       const { data } = await api.post("/auth/login", { email, password });
       setSession(data.token, data.user);
-      navigate("/expenses", { replace: true });
+      navigate(await getPostLoginPath(), { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, "Login failed"));
     } finally {

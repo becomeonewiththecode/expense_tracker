@@ -47,7 +47,7 @@ flowchart LR
 ### Stack
 
 - **React 18** with function components.  
-- **React Router v6** — public routes (`/login`, `/register`) vs private shell (`/`, `/expenses`, `/expenses/list`, `/reports`).  
+- **React Router v6** — public routes (`/login`, `/register`) vs private shell (`/`, `/expenses`, `/expenses/list`, `/reports`). **Post-login landing:** `GET /api/expenses?limit=1` — if any row exists, navigate to **`/expenses/list`**; otherwise **`/expenses`** (same for `/` index, login/register success, and already-authed visits to `/login`).  
 - **Tailwind CSS** — utility-first styling, dark theme.  
 - **Axios** — single instance with `baseURL: "/api"`; **`FormData`** uploads omit `Content-Type` so the browser sets the multipart boundary.  
 - **Recharts** — bar charts on the Reports page.  

@@ -6,6 +6,7 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import ExpensesPage from "./pages/ExpensesPage.jsx";
 import YourExpensesPage from "./pages/YourExpensesPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
+import PostLoginRedirect from "./components/PostLoginRedirect.jsx";
 
 function Private({ children }) {
   const { isAuthed } = useAuth();
@@ -26,7 +27,7 @@ export default function App() {
           </Private>
         }
       >
-        <Route index element={<Navigate to="/expenses" replace />} />
+        <Route index element={<PostLoginRedirect />} />
         <Route path="expenses/list" element={<YourExpensesPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="reports" element={<ReportsPage />} />

@@ -48,7 +48,7 @@ If **port 4000** is already used by another program, the UI may fail to reach th
 1. Open the app URL in your browser.  
 2. Choose **Create account** (or go to `/register`).  
 3. Enter **email** and **password** (minimum length enforced on the form).  
-4. After success you are signed in and taken to **Expense**.  
+4. After success you are signed in and taken to **Your expenses** if you already have saved expenses, otherwise to **Expense** (add/import).  
 
 To sign in later, use **Sign in** (`/login`) with the same email and password.
 
