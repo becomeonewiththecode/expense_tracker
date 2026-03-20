@@ -1,14 +1,14 @@
-# Expense Tracker — Architecture & Design
+# Expense Tracker — Architecture and design
 
 This document describes how the application is structured, how major components interact, and the main design choices.
 
-**Diagrams (apps, integrations, data):** see [**ARCHITECTURE_DIAGRAM.md**](./ARCHITECTURE_DIAGRAM.md) for Mermaid figures: system context (**§1**), **development → production topology (§1b)**, manual npm or PM2 during development, server modules, client → API map, ER model, JWT auth sequence, and **OAuth SSO redirect sequence**.
+**Diagrams:** See [**ARCHITECTURE_DIAGRAM.md**](./ARCHITECTURE_DIAGRAM.md) for figures that illustrate: the system context (section 1), the topology from local development through a production deployment (section 1b), running processes with manual `npm` commands or PM2 during development, server modules, how client pages map to API routes, the entity-relationship model, a typical authenticated request sequence, and the OAuth single sign-on redirect sequence.
 
 ## High-level overview
 
-The diagram below describes **development** (local). **Then**, to ship: you run **`vite build`**, serve **`dist/`** as static assets, and run the API behind **TLS** and a **reverse proxy** (or separate host) — see [**From development to production**](#from-development-to-production) and [ARCHITECTURE_DIAGRAM.md §1b](./ARCHITECTURE_DIAGRAM.md#1b-from-development-to-production-topology).
+The diagram in this section describes **local development**. When you are ready to ship: you run the Vite **production build**, serve the generated **`dist/`** directory as static files, and run the API behind **Transport Layer Security** and a **reverse proxy** (or on a separate host). See [**From development to production**](#from-development-to-production) and [Architecture diagrams, section 1b](./ARCHITECTURE_DIAGRAM.md#1b-from-development-to-production-topology).
 
-The system is a **classic three-tier setup** for local development:
+During local development, the system follows a **three-tier** pattern:
 
 ```mermaid
 flowchart LR
@@ -27,35 +27,35 @@ flowchart LR
   API --> RD
 ```
 
-- **Client:** Vite + React SPA, styled with Tailwind, routing via React Router, HTTP via Axios.  
-- **Server:** Node.js **Express** REST API, **JWT** bearer authentication, **node-postgres** (`pg`) for SQL, **ioredis** for optional caching.  
-- **Infrastructure (local):** Docker Compose provides **PostgreSQL** and **Redis**; the API and SPA are started with **npm** (not containerized in the default compose file).
+- **Client:** The Vite development server serves a **React** single-page application, styled with Tailwind, with routes handled by React Router and HTTP calls made with Axios.  
+- **Server:** A **Node.js** **Express** Representational State Transfer API, **JSON Web Token** bearer authentication, the **node-postgres** library (`pg`) for SQL, and **ioredis** for optional caching.  
+- **Infrastructure (local):** Docker Compose can provide **PostgreSQL** and **Redis**. The API and single-page application are started with **npm** scripts; the default `docker-compose.yml` does not containerize those Node processes.
 
 ---
 
 ## From development to production
 
-The lifecycle is **development first**, **production second**: you run and test locally, **then** build and deploy the same codebase to a hosted environment.
+The lifecycle is **development first**, **production second**: you run and test on your machine, **then** build and deploy the same codebase to a hosted environment.
 
 ### Development (local)
 
-- **Frontend:** **Vite dev server** (`vite`, e.g. `:5173`) — serves sources with **HMR** and proxies **`/api`** to the API.  
-- **API:** **Express** on `PORT` (e.g. `:4000`), reachable via Vite’s proxy or directly.  
-- **SPA → API:** Browser uses the **same origin** as Vite (`localhost:5173`); **`/api`** is proxied (`API_PROXY_TARGET`).  
-- **PostgreSQL:** Local or Docker Compose; **Redis** optional (report cache).  
-- **Config:** `server/.env`, `client/.env`.  
-- **OAuth:** **`CLIENT_ORIGIN`** typically `http://localhost:5173`; IdP redirect URIs match that origin.
+- **Frontend:** The **Vite development server** runs the `vite` command and listens on a port such as **5173**. It serves source files with **Hot Module Replacement** (updates in the editor refresh parts of the page without a full reload) and **proxies** requests whose path begins with **`/api`** to the Express API.  
+- **API:** **Express** listens on the port given by the `PORT` environment variable (for example **4000**). It is reachable through the Vite proxy or by calling the API host and port directly.  
+- **Single-page application to API:** The browser treats the Vite origin (for example `http://localhost:5173`) as the **same origin** for JavaScript. Requests to **`/api`** are forwarded by Vite to the URL in **`API_PROXY_TARGET`** inside `client/.env`.  
+- **PostgreSQL:** Runs locally or via Docker Compose. **Redis** is optional and used to cache report responses.  
+- **Configuration:** Environment variables live in `server/.env` and `client/.env`.  
+- **OAuth:** **`CLIENT_ORIGIN`** is typically `http://localhost:5173` during development. Identity-provider redirect URLs must match that origin.
 
-### Then: production (deployed)
+### Production (deployed)
 
-- **Build:** `cd client && npm run build` → **`client/dist/`** (static HTML, JS, CSS). **Do not** run `vite dev` for end users — serve **`dist/`** only.  
-- **Frontend hosting:** **nginx**, **Caddy**, object storage + CDN, PaaS static hosting, etc.  
-- **API:** Same **Express** app, typically behind **TLS**, a **process manager** (systemd, PM2, Docker), or **orchestration**.  
-- **SPA → API:** Often **one origin** (edge routes `/` → static files, `/api` → Node) so the built app keeps `baseURL: "/api"`; or **two origins** with **CORS** on Express.  
-- **PostgreSQL / Redis:** Managed or hardened self-hosted; backups; **secrets** via env / secret manager (never commit production secrets).  
-- **OAuth:** **`CLIENT_ORIGIN`** and IdP redirect URIs use your public **HTTPS** URL.
+- **Build step:** Change into the `client` directory and run **`npm run build`**. That command runs the production build (Vite `build`) and writes static files—HTML, JavaScript, and CSS—into **`client/dist/`**. **Do not** run the Vite **development** server for end users. Serve only the contents of **`dist/`** from a static file server.  
+- **Frontend hosting:** Use **nginx**, **Caddy**, a cloud object store with a content delivery network, a platform-as-a-service static host, or similar.  
+- **API:** The same **Express** application, typically behind **Transport Layer Security**, a **process manager** (systemd, PM2, Docker), or **orchestration** software.  
+- **Single-page application to API:** Often **one public origin** where the edge server routes `/` to static files and `/api` to Node.js, so the built client can keep `baseURL: "/api"`. Alternatively, **two origins** (separate URLs for the static site and the API) with **Cross-Origin Resource Sharing** configured on Express.  
+- **PostgreSQL and Redis:** Managed services or hardened self-hosted instances; backups; **secrets** supplied through environment variables or a secret manager (never commit production secrets to the repository).  
+- **OAuth:** **`CLIENT_ORIGIN`** and identity-provider redirect URLs use your public **HTTPS** application URL.
 
-**Summary:** **Development** → Vite + Express + Postgres (+ optional Redis). **Then production** → static bundle from **`vite build`** + Express + Postgres (+ optional Redis) + **HTTPS** at the edge, with routing for `/` vs `/api`.
+**Summary:** During **development**, you run Vite, Express, PostgreSQL, and optionally Redis. **After that**, in **production**, you serve the static bundle produced by **`npm run build`**, run Express with PostgreSQL and optional Redis, terminate **HTTPS** at the edge, and route paths for `/` versus `/api` accordingly.
 
 ---
 
@@ -63,10 +63,10 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 | Path | Role |
 |------|------|
-| `client/` | Frontend SPA (Vite, React, Tailwind). |
-| `server/` | Backend API (Express, ESM `"type": "module"`). |
-| `docker-compose.yml` | Postgres + Redis for local dev. |
-| `docs/` | User and architecture documentation. |
+| `client/` | Frontend single-page application (Vite, React, Tailwind). |
+| `server/` | Backend API (Express, ECMAScript modules via `"type": "module"` in `package.json`). |
+| `docker-compose.yml` | PostgreSQL and Redis for local development. |
+| `docs/` | User-facing and architecture documentation. |
 
 ---
 
@@ -75,35 +75,35 @@ The lifecycle is **development first**, **production second**: you run and test 
 ### Stack
 
 - **React 18** with function components.  
-- **React Router v6** — public routes (`/login`, `/register`, **`/oauth/callback`** for SSO return) vs private shell (`/`, `/expenses`, `/expenses/list`, `/reports`). **Post-login landing:** `GET /api/expenses?limit=1` — if any row exists, navigate to **`/expenses/list`**; otherwise **`/expenses`** (same for `/` index, login/register success, OAuth success, and already-authed visits to `/login`).  
-- **Tailwind CSS** — utility-first styling, dark theme.  
-- **Axios** — single instance with `baseURL: "/api"`; **`FormData`** uploads omit `Content-Type` so the browser sets the multipart boundary.  
-- **Recharts** — bar charts on the Reports page.  
+- **React Router version 6** — Public routes include `/login`, `/register`, and **`/oauth/callback`** (where the user returns after single sign-on). Authenticated users use a private shell with routes such as `/`, `/expenses`, `/expenses/list`, and `/reports`. **Post-login navigation:** the app calls `GET /api/expenses?limit=1`. If at least one expense exists, the user is sent to **`/expenses/list`**; otherwise to **`/expenses`**. The same rule applies for the index route `/`, successful login or registration, successful OAuth, and visits to `/login` while already signed in.  
+- **Tailwind CSS** — Utility-first styling with a dark theme.  
+- **Axios** — A single HTTP client instance with `baseURL: "/api"`. **`FormData`** uploads omit the `Content-Type` header so the browser sets the multipart boundary automatically.  
+- **Recharts** — Bar charts on the Reports page.  
 
-### Auth flow
+### Authentication flow
 
-- Tokens and user profile fragments are stored in **`localStorage`** (`authStorage.js` keys).  
-- An Axios **request interceptor** (`api.js`) attaches `Authorization: Bearer <token>` on **every** request from the current `localStorage` value. That avoids a race where child components fired API calls before a `useEffect` could set default headers (see historical “Missing token” issue).  
-- **`AuthProvider`** (`auth.jsx`) exposes session state (`setSession`, `logout`) to the tree.  
-- **Protected routes** wrap the main layout in a guard that redirects unauthenticated users to `/login`.  
-- **SSO:** `SsoButtons` navigate the browser to `GET /api/auth/oauth/:provider` (proxied); the API redirects to the IdP, then to `GET /api/auth/oauth/:provider/callback`, exchanges the code, issues a JWT, and redirects the browser to **`/oauth/callback?token=…`** (or `?error=…`). **`OAuthCallbackPage`** stores the token and applies the same post-login landing as email/password.
+- Tokens and user profile fragments are stored in the browser’s **`localStorage`** (keys defined in `authStorage.js`).  
+- An Axios **request interceptor** in `api.js` adds `Authorization: Bearer <token>` to **every** request, reading the current token from `localStorage`. That avoids a race where child components issued API calls before a `useEffect` could set default headers (a historical “Missing token” issue).  
+- **`AuthProvider`** in `auth.jsx` exposes session state (`setSession`, `logout`) to the component tree.  
+- **Protected routes** wrap the main layout and redirect unauthenticated users to `/login`.  
+- **Single sign-on:** **`SsoButtons`** send the browser to `GET /api/auth/oauth/:provider` (proxied to Express). The API redirects to the identity provider, then handles `GET /api/auth/oauth/:provider/callback`, exchanges the authorization code, issues a JSON Web Token, and redirects the browser to **`/oauth/callback?token=…`** or **`/oauth/callback?error=…`**. **`OAuthCallbackPage`** stores the token and uses the same post-login navigation as email-and-password flows.
 
-### Dev proxy
+### Development-only proxy
 
-- **`vite.config.js`** uses `loadEnv` so **`API_PROXY_TARGET`** (from `client/.env`) can point the `/api` proxy at the correct host/port (e.g. when the API is not on 4000).  
-- This proxy exists **only in development**; after **`vite build`**, static hosting does not run Vite — see [From development to production](#from-development-to-production).
+- **`vite.config.js`** uses `loadEnv` so **`API_PROXY_TARGET`** from `client/.env` can point the `/api` proxy at the correct host and port (for example when the API does not use port 4000).  
+- This proxy runs **only during development**. After **`npm run build`**, static hosting does not run Vite. See [From development to production](#from-development-to-production).
 
 ### Domain helpers
 
-- **`expenseOptions.js`** — canonical option lists and display formatters for **category**, **frequency**, and **financial institution**, keeping labels aligned with server-accepted values.
+- **`expenseOptions.js`** — Canonical option lists and display formatters for **category**, **frequency**, and **financial institution**, aligned with values the server accepts.
 
 ### Pages
 
-- **`LoginPage` / `RegisterPage`** — email/password auth forms; **`SsoButtons`** (Google, GitHub, GitLab, Microsoft) when OAuth is configured on the server; errors via **`apiError.js`** where used.  
-- **`OAuthCallbackPage`** (`/oauth/callback`) — reads **`token`** or **`error`** from the query string after the API redirects back from **`GET /api/auth/oauth/:provider/callback`**; stores JWT and runs the same post-login landing as password flows.  
-- **`ExpensesPage`** — **Import** title (nav label **Import**); onboarding (manual add + import) when there are no saved expenses; after that, import + optional collapsible manual add; link/nav to list page. **`YourExpensesPage`** (`/expenses/list`) — **Your expenses** table with modification mode for row edits; empty state links to **Import**. **Statement import** staging lives on **Import**, then commit.  
-- **`ReportsPage`** — tabbed report types, fetches report endpoints, shows monthly summary list.  
-- **`Layout`** — navigation and sign-out.
+- **`LoginPage` and `RegisterPage`** — Email and password forms; **`SsoButtons`** for Google, GitHub, GitLab, and Microsoft when OAuth is configured on the server; error display uses **`apiError.js`** where applicable.  
+- **`OAuthCallbackPage`** at `/oauth/callback` — Reads **`token`** or **`error`** from the query string after the API redirects from **`GET /api/auth/oauth/:provider/callback`**, stores the JSON Web Token, and applies the same post-login navigation as password-based flows.  
+- **`ExpensesPage`** — Titled **Import** in navigation; onboarding when there are no saved expenses; later, import plus optional collapsible manual entry; links to the list page. **`YourExpensesPage`** at `/expenses/list` — Table of expenses with modification mode; empty state links to **Import**. Statement import staging lives on **Import**, then commit.  
+- **`ReportsPage`** — Tabbed report types, fetches report endpoints, shows monthly summary list.  
+- **`Layout`** — Navigation and sign-out.
 
 ---
 
@@ -111,43 +111,43 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 ### Entry and lifecycle
 
-- **`index.js`** loads env (`dotenv`), runs **`ensureJwtSecret()`** (weak/missing `JWT_SECRET` → generate and persist to `server/.env`), **`initDb()`** (DDL + additive migrations), starts the **monthly summary cron**, then **`listen`** on `PORT`.  
-- **CORS** allows `CLIENT_ORIGIN` or reflects open config in dev.
+- **`index.js`** loads environment variables (`dotenv`), runs **`ensureJwtSecret()`** (if `JWT_SECRET` is weak or missing, generate one and persist it to `server/.env`), runs **`initDb()`** (data definition language and additive migrations), starts the **monthly summary** scheduled job, then calls **`listen`** on `PORT`.  
+- **Cross-Origin Resource Sharing** allows `CLIENT_ORIGIN` or reflects an open configuration in development.
 
 ### Routing
 
 | Mount | Responsibility |
 |--------|----------------|
-| `GET /health` | Liveness check (no auth). |
-| `/api/auth` | `POST /register`, `POST /login` — bcrypt password hashing, JWT issuance; `GET /me` (JWT); **`GET /oauth/:provider`**, **`GET /oauth/:provider/callback`** — OAuth2 code flow for `google` / `github` / `gitlab` / `microsoft`, `findOrCreate` user + `oauth_identities`, JWT redirect to `CLIENT_ORIGIN/oauth/callback`. |
-| `/api/expenses` | CRUD for expenses; **JWT required**. |
-| `/api/imports` | Statement upload → **`import_batches`** + **`import_staging_rows`**; per-row **category** / **frequency**; **commit** inserts into `expenses` only where `category` is set; **JWT required**. |
-| `/api/reports` | Aggregated spending endpoints + list of persisted summaries; **JWT required**. |
+| `GET /health` | Liveness check; no authentication. |
+| `/api/auth` | `POST /register` and `POST /login` use bcrypt for passwords and issue JSON Web Tokens; `GET /me` requires a token; **`GET /oauth/:provider`** and **`GET /oauth/:provider/callback`** implement the OAuth2 authorization code flow for `google`, `github`, `gitlab`, and `microsoft`, find or create users and **`oauth_identities`** rows, then redirect the browser to `CLIENT_ORIGIN/oauth/callback` with a token. |
+| `/api/expenses` | Create, read, update, delete for expenses; **JSON Web Token required**. |
+| `/api/imports` | Statement upload into **`import_batches`** and **`import_staging_rows`**; per-row **category** and **frequency**; **commit** inserts into **`expenses`** only where **category** is set; **JSON Web Token required**. |
+| `/api/reports` | Aggregated spending endpoints and list of persisted summaries; **JSON Web Token required**. |
 
 ### Authentication
 
-- **JWT** payload uses `sub` as the numeric user id (`middleware/auth.js`).  
-- Protected handlers read **`req.userId`**.  
-- **Password-only users** have `password_hash` set; **SSO-only users** may have `password_hash` null — login with password rejects those with a message to use SSO (`routes/auth.js`).  
-- **OAuth** (`server/src/oauth/`): short-lived random `state` (CSRF), per-provider token exchange and profile fetch, **link or create** user by email / identity (`oauth_identities`).  
-- Auth errors return **401** with JSON `{ error: ... }`; connectivity issues to Postgres return **503** with a clearer message where detected (`routes/auth.js`).
+- The **JSON Web Token** payload uses **`sub`** as the numeric user id (see `middleware/auth.js`).  
+- Protected route handlers read **`req.userId`**.  
+- Users who registered with a password have **`password_hash`** set. **Single-sign-on-only** users may have **`password_hash`** null; password login rejects those accounts with a message to use single sign-on (`routes/auth.js`).  
+- **OAuth** code in `server/src/oauth/`: short-lived random **`state`** (CSRF protection), per-provider token exchange and profile retrieval, **link or create** user by email and identity (`oauth_identities`).  
+- Authentication errors return HTTP **401** with JSON `{ error: ... }`. PostgreSQL connectivity issues may return **503** with a clearer message where detected (`routes/auth.js`).
 
 ### Expenses domain
 
-- **Validation** enforces **allow-lists** for category, `financial_institution`, and `frequency` (aligned with the client dropdowns).  
+- **Validation** uses **allow-lists** for category, `financial_institution`, and `frequency` (matching client dropdowns).  
 - Dates are stored as **`DATE`** (`spent_at`); amounts as **`NUMERIC`**.  
-- List supports optional `from` / `to` query filters and pagination caps.  
-- **Statement import:** **`multer`** + **`parseVisaStatement.js`** → staging tables; upload form sets **institution**, **frequency**, and optional **`payment_day`** (or derive from each line’s date). User assigns **category** (required to import), may adjust **frequency** / **`payment_day`** per row; **commit** writes only categorized rows to **`expenses`** (**`financial_institution`** from batch; **`frequency`** and **`payment_day`** from row). **`pdf-parse`** is loaded via subpath to avoid ESM debug harness.
+- List endpoints support optional `from` and `to` query filters and pagination limits.  
+- **Statement import:** **`multer`** and **`parseVisaStatement.js`** populate staging tables. The upload form sets **institution**, **frequency**, and optional **`payment_day`** (or derives from each line’s date). The user assigns **category** (required to import) and may adjust **frequency** and **`payment_day`** per row; **commit** writes only categorized rows to **`expenses`**, taking **`financial_institution`** from the batch and **`frequency`** and **`payment_day`** from the row. **`pdf-parse`** is loaded via a subpath import to avoid an ECMAScript module debug harness issue.
 
 ### Reports
 
-- Separate handlers for **daily**, **weekly**, **monthly**, **yearly**, and **custom range** queries; responses include **series** for charting and **totals**.  
-- **Redis:** report payloads are cached with a short TTL (~2 minutes) when `REDIS_URL` is set; failures degrade to uncached DB queries.  
+- Separate handlers for **daily**, **weekly**, **monthly**, **yearly**, and **custom range** queries; responses include **series** for charts and **totals**.  
+- **Redis:** Report payloads may be cached with a short time-to-live (about two minutes) when `REDIS_URL` is set; failures fall back to uncached database queries.  
 
 ### Background job
 
-- **`node-cron`** schedules a job (documented as **03:00 UTC on day 1** of each month) that aggregates **the previous calendar month** per user into **`monthly_summaries`**, upserting rows.  
-- This is **decoupled** from interactive reporting (live reports always query `expenses`).
+- **`node-cron`** schedules a job (documented as **03:00 UTC on day 1** of each month) that aggregates **the previous calendar month** per user into **`monthly_summaries`**, using upserts.  
+- This job is **separate** from interactive reporting (live reports always read **`expenses`**).
 
 ---
 
@@ -155,56 +155,56 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 ### `users`
 
-- `id`, `email` (unique), `password_hash` (nullable for SSO-only accounts), `created_at`.
+Columns include **`id`**, **`email`** (unique), **`password_hash`** (nullable for single-sign-on-only accounts), **`created_at`**.
 
 ### `oauth_identities`
 
-- `user_id` → `users`, `provider` (`google` / `github` / `gitlab` / `microsoft`), `provider_user_id`, `email` snapshot; unique **`(provider, provider_user_id)`**.
+**`user_id`** references **`users`**. **`provider`** is one of `google`, `github`, `gitlab`, `microsoft`. **`provider_user_id`** and **`email`** store identity data; uniqueness is enforced on **`(provider, provider_user_id)`**.
 
 ### `expenses`
 
-- `user_id` → `users`, `amount`, `category`, `financial_institution`, `frequency`, **`payment_day`** (optional day-of-month 1–30), `description`, `spent_at`, `created_at`.  
-- Index **`(user_id, spent_at)`** for typical list and report filters.  
-- Schema evolution uses **`CREATE TABLE IF NOT EXISTS`** plus **`ALTER TABLE … ADD COLUMN IF NOT EXISTS`** so existing databases upgrade on API startup.
+**`user_id`** references **`users`**, plus **`amount`**, **`category`**, **`financial_institution`**, **`frequency`**, optional **`payment_day`** (day of month 1–30), **`description`**, **`spent_at`**, **`created_at`**.  
+An index on **`(user_id, spent_at)`** supports typical lists and reports.  
+Schema changes use **`CREATE TABLE IF NOT EXISTS`** and **`ALTER TABLE … ADD COLUMN IF NOT EXISTS`** so existing databases upgrade when the API starts.
 
 ### `monthly_summaries`
 
-- `user_id`, `year`, `month`, `total`, `generated_at`, unique **`(user_id, year, month)`** for idempotent updates from the cron job.
+**`user_id`**, **`year`**, **`month`**, **`total`**, **`generated_at`**, with a unique constraint on **`(user_id, year, month)`** for idempotent updates from the cron job.
 
-### `import_batches` / `import_staging_rows`
+### `import_batches` and `import_staging_rows`
 
-- **`import_batches`:** `user_id`, `source_filename`, `default_financial_institution`, `default_frequency`. A new upload **deletes** prior batches for that user (cascade removes old staging rows).  
-- **`import_staging_rows`:** `batch_id`, `spent_at`, `amount`, `description`, **`category` nullable** (required before commit), **`frequency`**, **`payment_day`** (1–30; seeded from posting date). **`PATCH /api/imports/rows/:id`** updates **`category`**, **`frequency`**, and/or **`payment_day`**.
+- **`import_batches`:** **`user_id`**, **`source_filename`**, **`default_financial_institution`**, **`default_frequency`**. A new upload **deletes** prior batches for that user (cascade deletes old staging rows).  
+- **`import_staging_rows`:** **`batch_id`**, **`spent_at`**, **`amount`**, **`description`**, **`category`** nullable until required for commit, **`frequency`**, **`payment_day`** (1–30; seeded from posting date). **`PATCH /api/imports/rows/:id`** updates **`category`**, **`frequency`**, and **`payment_day`** as needed.
 
 ---
 
 ## Cross-cutting design decisions
 
-1. **JWT stateless sessions** — no server-side session store; scale-out friendly at the cost of no instant server-side revocation without extras (e.g. blocklist).  
-2. **Allow-lists on the API** — prevents arbitrary strings for enum-like fields even if the UI is bypassed.  
-3. **Additive DB migrations in `initDb`** — simple for a small app; larger teams might move to explicit migration tooling.  
-4. **Frequency as metadata** — stored for user clarity; **reporting** is driven by `spent_at`, not by projecting recurring expenses into future periods.  
-5. **Redis optional** — correct behavior without Redis; with Redis, repeated report reads are cheaper.  
-6. **OAuth optional** — each provider is enabled only when its `OAUTH_*` client id/secret pair is set; unconfigured providers return **503** on `GET /oauth/:provider`. Identity linking uses **`oauth_identities`** plus email match for existing **`users`** rows.
+1. **Stateless JSON Web Token sessions** — No server-side session store; easier horizontal scaling, but no instant server-side revocation without extra machinery (for example a token blocklist).  
+2. **Allow-lists on the API** — Prevents arbitrary strings for enum-like fields even if the user interface is bypassed.  
+3. **Additive database migrations in `initDb`** — Simple for a small application; larger teams might adopt explicit migration tools.  
+4. **Frequency as metadata** — Stored for the user’s records; **reporting** uses **`spent_at`**, not projected recurring charges into future periods.  
+5. **Redis optional** — Behavior is correct without Redis; with Redis, repeated report reads cost less.  
+6. **OAuth optional** — Each provider is enabled only when its **`OAUTH_*`** client identifier and secret are set; unconfigured providers return HTTP **503** on `GET /oauth/:provider`. Identity linking uses **`oauth_identities`** and email matching for existing **`users`** rows.
 
 ---
 
-## Related files (quick reference)
+## Related files
 
 | Concern | Location |
 |---------|-----------|
-| DB bootstrap | `server/src/db.js` |
-| JWT bootstrap | `server/src/ensureJwtSecret.js` |
-| Auth routes | `server/src/routes/auth.js` |
-| OAuth (SSO) | `server/src/oauth/oauthRoutes.js`, `oauthService.js`, `oauthState.js` |
+| Database bootstrap | `server/src/db.js` |
+| JSON Web Token secret bootstrap | `server/src/ensureJwtSecret.js` |
+| Authentication routes | `server/src/routes/auth.js` |
+| OAuth (single sign-on) | `server/src/oauth/oauthRoutes.js`, `oauthService.js`, `oauthState.js` |
 | Expense routes | `server/src/routes/expenses.js` |
-| Import staging + commit | `server/src/routes/imports.js` |
-| Category / institution enums | `server/src/expenseEnums.js` |
+| Import staging and commit | `server/src/routes/imports.js` |
+| Category and institution enums | `server/src/expenseEnums.js` |
 | Statement parsing | `server/src/parsers/visaStatement.js` |
-| Report routes + cache | `server/src/routes/reports.js`, `server/src/redis.js` |
+| Report routes and cache | `server/src/routes/reports.js`, `server/src/redis.js` |
 | Monthly job | `server/src/jobs/monthlySummary.js` |
-| Client API + token | `client/src/api.js`, `client/src/authStorage.js` |
-| SSO UI | `client/src/components/SsoButtons.jsx`, `client/src/pages/OAuthCallbackPage.jsx` |
-| Expense enums / labels | `client/src/expenseOptions.js` |
+| Client HTTP client and token storage | `client/src/api.js`, `client/src/authStorage.js` |
+| Single sign-on user interface | `client/src/components/SsoButtons.jsx`, `client/src/pages/OAuthCallbackPage.jsx` |
+| Expense enums and labels | `client/src/expenseOptions.js` |
 
 For day-to-day usage, see [USER_GUIDE.md](./USER_GUIDE.md).

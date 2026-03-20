@@ -1,12 +1,12 @@
 # Expense Tracker — Architecture diagrams
 
-Visual overview of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
 
 ## 1. System context (containers)
 
-Who talks to whom at deployment boundaries: browser, Node apps, and data services.
+This diagram shows **who talks to whom** at major boundaries: the user’s browser, the Node.js processes in this repository, and data services.
 
 ```mermaid
 flowchart TB
@@ -18,7 +18,7 @@ flowchart TB
     subgraph fe [Frontend app — client/]
       RS[React SPA]
       VT[Vite dev server]
-      VT -->|serves bundle + HMR| RS
+      VT -->|serves bundle and Hot Module Replacement| RS
     end
     subgraph be [Backend app — server/]
       EX[Express API]
@@ -33,119 +33,125 @@ flowchart TB
   end
 
   B -->|HTTPS or http://localhost:5173| VT
-  B -->|page JS calls /api/*| VT
-  VT -->|"proxy /api → API_PROXY_TARGET<br/>default :4000"| EX
-  EX -->|SQL node-postgres| PG
-  EX -->|optional cache ioredis| RD
+  B -->|page JavaScript calls paths under /api/| VT
+  VT -->|"proxy /api to API_PROXY_TARGET (default port 4000)"| EX
+  EX -->|SQL via node-postgres| PG
+  EX -->|optional cache via ioredis| RD
 ```
 
-**Integrations (this diagram):**
+**Integrations described by this diagram:**
 
-| From | To | Protocol / mechanism |
+| From | To | Protocol or mechanism |
 |------|-----|----------------------|
-| Browser | Vite | HTTP (HTML/JS/CSS), WebSocket (HMR) |
-| Browser (via Vite) | Express | HTTP REST, path prefix `/api` proxied by Vite |
-| Express | PostgreSQL | TCP, `DATABASE_URL`, SQL |
-| Express | Redis | TCP, `REDIS_URL`, optional |
-| Express | Google / GitHub / GitLab / Microsoft | OAuth 2.0 (browser redirect + HTTPS token endpoints); redirect URI on the SPA origin, proxied `/api` → API |
+| Browser | Vite | Hypertext Transfer Protocol for HTML, JavaScript, and style sheets; WebSocket for Hot Module Replacement during development |
+| Browser (via Vite) | Express | Hypertext Transfer Protocol REST calls; paths beginning with `/api` are forwarded by Vite to the API port |
+| Express | PostgreSQL | Transmission Control Protocol using `DATABASE_URL`; Structured Query Language queries |
+| Express | Redis | Transmission Control Protocol using `REDIS_URL`; optional caching |
+| Express | Google, GitHub, GitLab, or Microsoft | OAuth 2.0: browser redirects and HTTPS calls to token and profile endpoints; the redirect URL is registered on the same origin as the single-page application, and `/api` requests reach Express through the Vite proxy during development |
 
 ---
 
 ## 1b. From development to production (topology)
 
-**§1** shows **development** (Vite + Express). **Then** you **`vite build`** and deploy: the **Vite dev server is not part of production**; the browser loads **static files** from **`dist/`**, and an **edge** (reverse proxy, CDN, or host) routes **`/api`** to **Express**.
+**Section 1** above shows **development**: Vite plus Express. **After** you run **`npm run build`** in the client and deploy, the **Vite development server is not part of production**. The browser loads **static files** from the **`dist/`** output directory, and a network **edge** (reverse proxy, content delivery network, or host) routes requests whose path begins with **`/api`** to **Express**.
+
+The small diagram below shows the **order of stages**: first development, then a production build that writes `dist/`, then a production deployment.
 
 ```mermaid
 flowchart LR
   subgraph lifecycle [Lifecycle]
     D[Development]
-    B[vite build → dist/]
+    B[vite build writes client/dist]
     P[Production]
     D --> B
     B --> P
   end
 ```
 
+**Development (typical local machine):**
+
 ```mermaid
 flowchart TB
-  subgraph dev [1. Development — typical local]
+  subgraph dev [Step 1 — Development, typical local setup]
     BD[Browser]
-    VD["Vite dev server<br/>:5173"]
-    AD["Express API<br/>:4000 default"]
+    VD["Vite dev server on port 5173"]
+    AD["Express API on port 4000 by default"]
     PGD[(PostgreSQL)]
     RDV[(Redis optional)]
 
-    BD -->|"HTML/JS/CSS + HMR"| VD
-    BD -->|GET /api/*| VD
-    VD -->|proxy API_PROXY_TARGET| AD
+    BD -->|"HTML, JavaScript, CSS, Hot Module Replacement"| VD
+    BD -->|HTTP GET for paths under /api/| VD
+    VD -->|forward to API_PROXY_TARGET| AD
     AD --> PGD
     AD --> RDV
   end
 ```
 
+**Production (after build and deploy):**
+
 ```mermaid
 flowchart TB
-  subgraph prod [2. Production — after build and deploy]
+  subgraph prod [Step 2 — Production, after build and deploy]
     BP[Browser]
-    EDGE["TLS edge — nginx, Caddy, LB, or CDN"]
-    STATIC["Static host — dist/ from vite build"]
-    AP["Express API — separate process or container"]
+    EDGE["Transport Layer Security edge: nginx, Caddy, load balancer, or CDN"]
+    STATIC["Static files from client/dist after vite build"]
+    AP["Express API in its own process or container"]
     PGP[(PostgreSQL)]
     RDP[(Redis optional)]
 
     BP -->|HTTPS| EDGE
-    EDGE -->|"/" app routes → files| STATIC
-    EDGE -->|"/api/*"| AP
+    EDGE -->|routes for the app shell to files| STATIC
+    EDGE -->|paths under /api/ to Node| AP
     AP --> PGP
     AP --> RDP
   end
 ```
 
 | Stage | What runs |
-|-------|-----------|
-| **1. Development** | Vite dev server + **HMR**; same-origin **`/api`** proxied to Express; often HTTP on `localhost`. Commands: `npm run dev` in `client/` and `server/`. |
-| **2. Production** | **`npm run build`** in `client/` → serve **`client/dist/`** (no Vite); Express behind TLS; **`/api`** via edge or CORS. `NODE_ENV=production` (or equivalent) for the API process. |
+|-------|-------------|
+| **Step 1 — Development** | The Vite development server with Hot Module Replacement; the browser uses the same origin for `/api`, which Vite forwards to Express; often plain HTTP on `localhost`. Typical commands: `npm run dev` in the `client` directory and `npm run dev` in the `server` directory. |
+| **Step 2 — Production** | Run `npm run build` in the `client` directory, then serve the **`client/dist/`** directory (the Vite development process does not run in production). Express runs behind Transport Layer Security; `/api` is reached through the edge or via Cross-Origin Resource Sharing if the static site and API use different origins. Set `NODE_ENV=production` (or your host’s equivalent) for the API process. |
 
-Narrative detail: [ARCHITECTURE.md — From development to production](./ARCHITECTURE.md#from-development-to-production).
+More detail: [ARCHITECTURE.md — From development to production](./ARCHITECTURE.md#from-development-to-production).
 
 ---
 
 ## 2. Runtime: manual npm or PM2 (during development)
 
-Two common ways to run the **same logical apps** (`expense-client`, `expense-api`) while developing; databases are unchanged.
+There are two common ways to run the **same** logical applications (`expense-client` and `expense-api`) while you are developing. The databases are the same in both cases.
 
 ```mermaid
 flowchart LR
   subgraph terminals [Manual npm]
-    T1["npm run dev<br/>client/ :5173"]
-    T2["npm run dev<br/>server/ :4000"]
+    T1["npm run dev in client/ on port 5173"]
+    T2["npm run dev in server/ on port 4000"]
   end
 
   subgraph pm2 [PM2 — ecosystem.config.cjs]
-    P1[expense-client<br/>Vite dev]
-    P2[expense-api<br/>Node src/index.js]
+    P1[expense-client — Vite dev]
+    P2[expense-api — Node src/index.js]
   end
 
-  DC[(Docker Compose<br/>Postgres + Redis)]
+  DC[(Docker Compose — Postgres and Redis)]
 
   T1 & T2 --> DC
   P1 & P2 --> DC
 ```
 
-- **Manual:** two shells; Vite proxy must match API `PORT` (`client/.env` → `API_PROXY_TARGET`).  
-- **PM2:** both processes from repo root; logs under `logs/`. Other PM2 apps on the host (e.g. unrelated projects) share the same PM2 daemon but are separate apps.
+- **Manual two-terminal workflow:** Run the client and server in separate shells. The Vite proxy target must match the API **`PORT`**; set **`API_PROXY_TARGET`** in `client/.env` accordingly.  
+- **PM2 workflow:** Both processes are started from the repository root; logs go under `logs/`. Other PM2-managed applications on the same machine share the same PM2 daemon but are separate registered apps.
 
 ---
 
 ## 3. Backend application — modules and integrations
 
-Everything inside the **Express** process and how it connects to libraries and data.
+This diagram shows everything that runs inside the **Express** process and how it connects to libraries and data stores.
 
 ```mermaid
 flowchart TB
   subgraph api [Express server/src/index.js]
     BOOT[index.js bootstrap]
-    MW[CORS + JSON body<br/>+ error handler]
+    MW[CORS plus JSON body plus error handler]
     R0["GET /health"]
     R1["/api/auth"]
     R2["/api/expenses"]
@@ -193,24 +199,24 @@ flowchart TB
   BOOT -.->|schedules| CC
 ```
 
-| Module | Role | Integrations |
+| Module file | Role | Integrations |
 |--------|------|----------------|
-| `routes/auth.js` | Register / login / `me` | `bcryptjs`, `jsonwebtoken`, `pg`; mounts **`oauth/*`** from `oauth/oauthRoutes.js` |
-| `oauth/oauthRoutes.js` (+ `oauthService.js`, `oauthState.js`) | SSO: authorize + callback | `fetch` to IdPs, `pg` → `oauth_identities` |
-| `routes/expenses.js` | Expense CRUD | JWT middleware, `pg`, `expenseEnums.js` |
-| `routes/imports.js` | Upload → staging → commit | JWT, `multer`, `visaStatement.js` (CSV/PDF), `pg` |
-| `routes/reports.js` | Aggregates + charts data | JWT, `pg`, optional `redis.js` |
-| `parsers/visaStatement.js` | Parse statements | `csv-parse/sync`, `pdf-parse` |
-| `jobs/monthlySummary.js` | Monthly rollup | `node-cron`, `pg` → `monthly_summaries` |
-| `db.js` | Connection pool, `initDb()` | `pg` |
-| `middleware/auth.js` | Bearer JWT → `req.userId` | `jsonwebtoken` |
-| `ensureJwtSecret.js` | Stable `JWT_SECRET` | filesystem `server/.env` |
+| `routes/auth.js` | Registration, login, current user endpoint **`me`** | `bcryptjs`, `jsonwebtoken`, `pg`; mounts **`oauth/*`** routes from `oauth/oauthRoutes.js` |
+| `oauth/oauthRoutes.js` together with `oauthService.js` and `oauthState.js` | Single sign-on: authorize and callback | `fetch` to identity providers, `pg` for **`oauth_identities`** |
+| `routes/expenses.js` | Expense create, read, update, delete | JSON Web Token middleware, `pg`, `expenseEnums.js` |
+| `routes/imports.js` | Upload, staging, commit | JSON Web Token, `multer`, `visaStatement.js` for CSV and PDF, `pg` |
+| `routes/reports.js` | Aggregates and chart data | JSON Web Token, `pg`, optional `redis.js` |
+| `parsers/visaStatement.js` | Parse uploaded statements | `csv-parse/sync`, `pdf-parse` |
+| `jobs/monthlySummary.js` | Monthly rollup job | `node-cron`, `pg` writing **`monthly_summaries`** |
+| `db.js` | Connection pool and **`initDb()`** | `pg` |
+| `middleware/auth.js` | Bearer JSON Web Token to **`req.userId`** | `jsonwebtoken` |
+| `ensureJwtSecret.js` | Persist stable **`JWT_SECRET`** | filesystem write to `server/.env` |
 
 ---
 
 ## 4. Frontend application — pages and API surface
 
-How the **React** app maps UI to backend routes (all via Axios `baseURL: "/api"`).
+This diagram shows how **React** pages map to backend routes. The HTTP client uses Axios with `baseURL: "/api"`.
 
 ```mermaid
 flowchart LR
@@ -222,11 +228,11 @@ flowchart LR
     RPg[ReportsPage]
   end
 
-  subgraph api [Express /api]
-    A1["/auth/login, register, oauth/..."]
+  subgraph api [Express paths under /api]
+    A1["/auth: login, register, oauth"]
     A2["/expenses"]
-    A3["/imports ..."]
-    A4["/reports/..."]
+    A3["/imports"]
+    A4["/reports"]
   end
 
   LP --> A1
@@ -236,21 +242,21 @@ flowchart LR
   RPg --> A4
 ```
 
-**Cross-cutting client integrations:**
+**Cross-cutting client pieces:**
 
 | Concern | Implementation |
 |---------|------------------|
-| HTTP client | `api.js` — Axios, `/api` base, `Authorization` from `localStorage` |
-| Auth state | `auth.jsx` — `AuthProvider`, protected routes |
-| Errors | `apiError.js` — network / proxy messages |
-| Labels vs server enums | `expenseOptions.js` |
-| SSO return route | `OAuthCallbackPage` (`/oauth/callback`) — reads JWT from query after API redirect; same post-login landing as email/password |
+| HTTP client | `api.js` — Axios with `/api` base URL; `Authorization` header from `localStorage` |
+| Authentication state | `auth.jsx` — `AuthProvider` and protected routes |
+| Errors | `apiError.js` — network and proxy error messages |
+| Labels versus server enums | `expenseOptions.js` |
+| Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
 
 ---
 
 ## 5. Data model (persistence)
 
-Logical schema the API owns (Postgres). Redis holds **ephemeral** report cache keys only.
+Logical schema owned by the API (PostgreSQL). Redis holds **short-lived** report cache keys only.
 
 ```mermaid
 erDiagram
@@ -321,11 +327,13 @@ erDiagram
   }
 ```
 
-**Import flow (data):** `POST /api/imports` replaces prior `import_batches` for the user, inserts `import_staging_rows`; `POST .../commit` moves categorized rows into `expenses` and deletes the batch.
+**Import data flow:** `POST /api/imports` replaces any previous `import_batches` for that user and inserts `import_staging_rows`. `POST /api/imports/batches/:batchId/commit` on a batch moves categorized rows into `expenses` and removes the batch.
 
 ---
 
 ## 6. Auth sequence (typical protected request)
+
+This sequence shows a **development** setup where the browser talks to Vite first. Vite forwards the request to Express.
 
 ```mermaid
 sequenceDiagram
@@ -336,20 +344,20 @@ sequenceDiagram
 
   Browser->>Vite: GET /api/expenses
   Vite->>API: proxy GET /api/expenses
-  Note over API: authRequired reads Bearer token
+  Note over API: auth middleware validates Authorization Bearer token
   API->>PG: SELECT ... WHERE user_id = sub
   PG-->>API: rows
   API-->>Vite: 200 JSON
   Vite-->>Browser: 200 JSON
 ```
 
-**After deployment**, the first hop is not Vite: the browser talks to your **edge** (e.g. nginx); **`GET /api/...`** is forwarded to Express. The SPA still issues `/api` requests if deployed **same-origin** behind that edge.
+**After you deploy to production**, the first network hop is not Vite: the browser talks to your **edge** server (for example nginx). Requests whose path begins with `/api` (for example `GET /api/expenses`) are forwarded to Express. The single-page application still issues `/api` requests when the static site and API share **one origin** behind that edge.
 
 ---
 
-## 7. OAuth SSO sign-in (redirect flow)
+## 7. OAuth single sign-on (redirect flow)
 
-High-level flow when the user clicks a provider on **Login** / **Register**. The **redirect URI** registered at the IdP is `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback` (browser hits Vite → proxied to Express).
+When the user clicks a provider on **Login** or **Register**, this is the high-level flow. The **redirect URI** you register at the identity provider must be `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback`. During development, the browser first contacts Vite; Vite proxies to Express.
 
 ```mermaid
 sequenceDiagram
@@ -371,31 +379,31 @@ sequenceDiagram
   IdP-->>API: access_token
   API->>IdP: GET user profile / email
   IdP-->>API: profile
-  API->>PG: findOrCreate user + oauth_identities
+  API->>PG: find or create user and oauth_identities rows
   PG-->>API: user row
-  API-->>Browser: 302 to CLIENT_ORIGIN/oauth/callback?token=JWT
-  Browser->>Browser: OAuthCallbackPage stores JWT, navigates
+  API-->>Browser: 302 redirect to CLIENT_ORIGIN/oauth/callback with token query parameter (JSON Web Token)
+  Browser->>Browser: OAuthCallbackPage stores token and navigates
 ```
 
-After this, subsequent API calls match **§6** (Bearer JWT on `/api/expenses`, etc.).
+After this flow completes, later API calls follow **section 6** (Bearer JSON Web Token on paths such as `/api/expenses`).
 
 ---
 
 ## Viewing these diagrams
 
-- **GitHub:** Markdown preview renders Mermaid in many views.  
-- **VS Code / Cursor:** use a Mermaid preview extension if built-in preview does not draw.  
-- **Export:** paste into [mermaid.live](https://mermaid.live) for PNG/SVG.
+- **GitHub:** Many Markdown previews render Mermaid diagrams.  
+- **Visual Studio Code or Cursor:** Install a Mermaid preview extension if the built-in preview does not render diagrams.  
+- **Export:** Copy a diagram into [mermaid.live](https://mermaid.live) to export PNG or SVG.
 
-**Heading anchor IDs (GitHub):** In-repo links like `./ARCHITECTURE.md#from-development-to-production` rely on GitHub-generated heading IDs. Those IDs follow the same rules as the [`github-slugger`](https://github.com/Flet/github-slugger) `slug()` function (lowercase, strip punctuation, spaces → hyphens). Verified examples used in this repo:
+**Heading anchor identifiers on GitHub:** Links such as `./ARCHITECTURE.md#from-development-to-production` depend on GitHub-generated identifiers for headings. GitHub builds those identifiers using the same rules as the [`github-slugger`](https://github.com/Flet/github-slugger) **`slug()`** function: convert to lowercase, remove punctuation, replace spaces with hyphen characters. Examples used in this repository:
 
-| Heading | Fragment |
+| Heading text in the Markdown file | URL fragment (after the hash) |
 |---------|----------|
-| `## From development to production` | `#from-development-to-production` |
-| `## 1b. From development to production (topology)` | `#1b-from-development-to-production-topology` |
+| `## From development to production` | `from-development-to-production` |
+| `## 1b. From development to production (topology)` | `1b-from-development-to-production-topology` |
 
-If you rename a heading, update any links to it. Duplicate headings on the same page get `-1`, `-2`, … suffixes.
+If you rename a heading, update every link that points to it. If two headings on the same page would produce the same slug, GitHub appends `-1`, `-2`, and so on.
 
 ---
 
-[← Architecture prose](./ARCHITECTURE.md) · [User guide](./USER_GUIDE.md) · [README — OAuth env & troubleshooting](../README.md)
+[Architecture prose](./ARCHITECTURE.md) — [User guide](./USER_GUIDE.md) — [README: OAuth environment and troubleshooting](../README.md)

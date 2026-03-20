@@ -1,31 +1,33 @@
 # Expense Tracker
 
-**Docs:** [User guide](./docs/USER_GUIDE.md) · [Architecture](./docs/ARCHITECTURE.md) (incl. **development → production**) · [**Architecture diagrams**](./docs/ARCHITECTURE_DIAGRAM.md) (OAuth SSO + **dev → prod** topology) · [PM2 / controlling apps](./docs/HOWTO_CONTROLLING_APPLICATIONS.md)
+**Documentation index:** [User guide](./docs/USER_GUIDE.md). [Architecture](./docs/ARCHITECTURE.md), including how development work leads to a production deployment. [Architecture diagrams](./docs/ARCHITECTURE_DIAGRAM.md), including OAuth single sign-on sequences and the development-then-production topology. [PM2 and controlling applications](./docs/HOWTO_CONTROLLING_APPLICATIONS.md).
 
-Full-stack app: **React + Tailwind + Recharts + React Router + Axios** on the client; **Express + PostgreSQL + JWT + Redis** on the server, with optional **OAuth SSO** (Google, GitHub, GitLab, Microsoft 365) and a **cron job** that writes **monthly summary** rows.
+This is a full-stack application. The **client** uses React, Tailwind CSS, Recharts, React Router, and Axios. The **server** uses Express, PostgreSQL, JSON Web Tokens for authentication, and optional Redis caching. Optional **OAuth**-based single sign-on is supported for Google, GitHub, GitLab, and Microsoft 365. A scheduled **cron** job writes **monthly summary** rows to the database.
 
 ## Prerequisites
 
-- Node.js 20+
-- Docker (optional, for Postgres + Redis)
+- Node.js version 20 or newer
+- Docker (optional, for running PostgreSQL and Redis locally)
 
-## Database & cache
+## Database and cache
+
+Run the following command to start containers (from the project root):
 
 ```bash
 docker compose up -d
 ```
 
-Copy `server/.env.example` to `server/.env` and adjust if needed. Default URL matches Docker Compose:
+Copy `server/.env.example` to `server/.env` and edit values as needed. The default connection string matches the Docker Compose service names:
 
 - `DATABASE_URL=postgresql://expense:expense@localhost:5432/expense_tracker`
 - `REDIS_URL=redis://localhost:6379`
-- `JWT_SECRET` — on first startup, if it’s missing, shorter than 16 characters, or still the `change-me…` placeholder from the example, the server **generates a random secret and writes it** to `server/.env` so it stays stable across restarts. You can also set it yourself (e.g. `openssl rand -base64 32`).
-- **`CLIENT_ORIGIN`** — must match the URL users open in the browser (e.g. `http://localhost:5173`). Required for OAuth redirects after SSO and for CORS in production-like setups.
-- **OAuth (optional):** set `OAUTH_GOOGLE_*`, `OAUTH_GITHUB_*`, `OAUTH_GITLAB_*`, and/or `OAUTH_MICROSOFT_*` client id/secret pairs; optional `OAUTH_GITLAB_BASE_URL` (default GitLab.com), `OAUTH_MICROSOFT_TENANT` (default `common`). See comments in `server/.env.example`.
+- **`JWT_SECRET`** — On first startup, if the secret is missing, shorter than 16 characters, or still the `change-me…` placeholder from the example file, the server **generates a random secret and writes it** to `server/.env` so the value stays stable across restarts. You can also set it yourself, for example by running `openssl rand -base64 32` and pasting the result into `server/.env`.
+- **`CLIENT_ORIGIN`** — Must match the URL users type in the browser to open the single-page application, for example `http://localhost:5173`. This value is required for OAuth redirect URLs after single sign-on and for Cross-Origin Resource Sharing in setups that behave like production.
+- **OAuth (optional):** Set environment variables `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET`, and the same pattern for GitHub, GitLab, and Microsoft as needed. Optional variables include `OAUTH_GITLAB_BASE_URL` (defaults to GitLab.com if unset) and `OAUTH_MICROSOFT_TENANT` (defaults to `common` if unset). See the comments in `server/.env.example` for the full list.
 
 ## Run with PM2 (optional)
 
-From the **repository root** (install dependencies in `server/`, `client/`, and `.` first):
+From the **repository root**, after installing dependencies in the root `package.json`, in `server/`, and in `client/`:
 
 ```bash
 npm install
@@ -34,24 +36,24 @@ cd client && npm install && cd ..
 npm run pm2:start
 ```
 
-This starts **expense-api** (Express, watches `server/src`) and **expense-client** (`vite dev`). Logs go to `logs/`.
+This starts **expense-api** (the Express server, with file watching on `server/src`) and **expense-client** (the Vite development server). Standard output and error logs are written under `logs/`.
 
 | Command | Purpose |
 |--------|---------|
-| `npm run pm2:start` | Start both apps |
-| `npm run pm2:stop` | Stop both |
-| `npm run pm2:restart` | Hard restart both |
-| `npm run pm2:reload` | Zero-downtime reload (cluster mode not used here ≈ restart) |
-| `npm run pm2:delete` | Remove apps from PM2 |
-| `npm run pm2:logs` | Stream logs |
-| `npm run rebuild` | Restart both after code changes (same as `pm2 restart ecosystem.config.cjs`) |
-| `npm run rebuild:client` | Production build of client + restart Vite process |
+| `npm run pm2:start` | Register and start both applications (or start them if they are already registered) |
+| `npm run pm2:stop` | Stop both applications |
+| `npm run pm2:restart` | Hard restart both applications |
+| `npm run pm2:reload` | Reload the ecosystem. Both apps use fork mode here, so this behaves like a coordinated reload rather than true zero-downtime clustering |
+| `npm run pm2:delete` | Remove both applications from PM2’s list (they will not appear in `pm2 list` until you run `pm2:start` again) |
+| `npm run pm2:logs` | Stream logs for all PM2-managed processes (press Control+C to stop following the log stream) |
+| `npm run rebuild` | Restart both applications after code changes (same as `pm2 restart ecosystem.config.cjs`) |
+| `npm run rebuild:client` | Run a production build of the client, then restart only the `expense-client` process |
 
-Ensure `server/.env` exists and Docker (Postgres/Redis) is up before starting.
+Ensure `server/.env` exists and Docker (PostgreSQL and Redis, if you use them) is running before starting.
 
-**“Process not found”** means nothing named `expense-api` is in PM2 yet — run `npm run pm2:start` once from the repo root.
+If you see **“Process not found”**, no process named `expense-api` has been registered with PM2 yet. Run `npm run pm2:start` once from the repository root.
 
-**CLI vs daemon version mismatch** (`Use pm2 update`): from the repo root run `npx pm2 update`, or install deps so CLI matches: `npm install` then use `npx pm2` for all commands.
+If the command-line **PM2 client** and the **background PM2 daemon** report different versions (message such as `Use pm2 update`), run `npx pm2 update` from the repository root, or run `npm install` so the CLI matches the dependency version, then use `npx pm2` for all commands.
 
 ## API (without PM2)
 
@@ -61,20 +63,15 @@ npm install
 npm run dev
 ```
 
-Tables are created on startup. Endpoints:
+Database tables are created when the server starts. The HTTP API exposes the following behaviors (paths are all under the `/api` prefix; your front end usually calls them through the Vite proxy during development):
 
-- `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` (JWT)
-- **SSO:** `GET /api/auth/oauth/:provider` → redirect to Google, GitHub, GitLab, or Microsoft (`:provider` = `google` | `github` | `gitlab` | `microsoft`); callback `GET /api/auth/oauth/:provider/callback` (registered in each provider as `{CLIENT_ORIGIN}/api/auth/oauth/.../callback`). Configure `OAUTH_*` in `server/.env` — see `server/.env.example`.
-- `GET|POST /api/expenses`, `GET|PATCH|DELETE /api/expenses/:id`
-- `POST /api/imports` (multipart `file` + `financial_institution`, `frequency`, optional `payment_day` 1–30 or omit/empty for per-line day from the statement), `GET /api/imports/latest`, `PATCH /api/imports/rows/:id` (`category`, `frequency`, `payment_day`), `POST /api/imports/batches/:id/commit`, `DELETE /api/imports/batches/:id`
-- `GET /api/reports/daily?date=YYYY-MM-DD`
-- `GET /api/reports/weekly` (current week, Monday start) or `?weekStart=YYYY-MM-DD`
-- `GET /api/reports/monthly?year=&month=`
-- `GET /api/reports/yearly?year=`
-- `GET /api/reports/range?start=&end=`
-- `GET /api/reports/summaries` — persisted monthly totals from the background job
+- **Registration and password login:** `POST /api/auth/register` creates an account. `POST /api/auth/login` returns a JSON Web Token. `GET /api/auth/me` returns the current user when a valid token is sent in the `Authorization` header.
+- **Single sign-on:** `GET /api/auth/oauth/:provider` starts the OAuth flow. Replace `:provider` with one of `google`, `github`, `gitlab`, or `microsoft`. The browser is redirected to that identity provider. After authorization, the provider calls back `GET /api/auth/oauth/:provider/callback`. You must register that callback URL in each provider’s developer console; it must match `{CLIENT_ORIGIN}/api/auth/oauth/<provider>/callback` where `<provider>` is the same name. Set the `OAUTH_*` variables in `server/.env` as documented in `server/.env.example`.
+- **Expenses:** List and create with `GET` and `POST /api/expenses`. Read, update, or delete one row with `GET`, `PATCH`, or `DELETE /api/expenses/:id` where `:id` is the expense identifier.
+- **Imports:** Upload with `POST /api/imports` using multipart form field `file`, plus `financial_institution`, `frequency`, and optional `payment_day` (1 through 30, or omit or leave empty to take the day from each statement line). List the latest batch with `GET /api/imports/latest`. Update a staging row with `PATCH /api/imports/rows/:rowId` (fields such as `category`, `frequency`, `payment_day`). Commit with `POST /api/imports/batches/:batchId/commit`. Delete a batch with `DELETE /api/imports/batches/:batchId`.
+- **Reports:** Daily, weekly, monthly, yearly, and range endpoints under `/api/reports/`, plus `GET /api/reports/summaries` for persisted monthly totals from the background job.
 
-Report totals are cached in Redis (~2 minutes TTL) when `REDIS_URL` is set.
+Report responses may be cached in Redis for approximately two minutes when `REDIS_URL` is set.
 
 ## Web app (without PM2)
 
@@ -84,35 +81,35 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. The dev server proxies `/api` (configure `client/.env` `API_PROXY_TARGET` if the API is not on port 4000).
+Open **http://localhost:5173** in your browser. The Vite development server serves the application and **proxies** any request whose path starts with `/api` to the backend. Set `API_PROXY_TARGET` in `client/.env` if the API does not listen on port 4000.
 
-**SSO:** OAuth redirect URIs and post-login redirects use **`CLIENT_ORIGIN` in `server/.env`** — it must be the exact origin users use in the browser (scheme + host + port, no path), e.g. `http://localhost:5173`. If you deploy behind another hostname or HTTPS, update `CLIENT_ORIGIN` and re-register redirect URLs in each identity provider.
+**Single sign-on note:** OAuth redirect URLs and the redirect back to your application after login use **`CLIENT_ORIGIN` from `server/.env`**. It must be the exact origin users use (scheme, host, and port, with no path), for example `http://localhost:5173`. If you deploy under another hostname or HTTPS, update `CLIENT_ORIGIN` and update the registered redirect URLs in each identity provider’s console.
 
-With PM2, the client is started the same way (`vite dev`); use the URL PM2 prints in logs (usually `http://localhost:5173`).
+If you use PM2, the client is still started with Vite in development mode; use the URL PM2 prints in the logs (often `http://localhost:5173`).
 
 ## Monthly job
 
-`node-cron` runs at **03:00 UTC on the 1st** of each month and aggregates the **previous calendar month** per user into `monthly_summaries`.
+The `node-cron` library schedules a job at **03:00 UTC on the first day** of each calendar month. That job aggregates the **previous** calendar month per user into the `monthly_summaries` table.
 
-## Registration / login fails
+## When registration or login fails
 
-The browser talks to the API via the Vite dev proxy (`/api` → your server). You need **both**:
+The browser talks to the API through the Vite proxy: requests to `/api` are forwarded to your Node server. You need **both** of the following:
 
-1. `docker compose up -d` (Postgres + Redis)
-2. `cd server && npm run dev` with a valid `server/.env` (`DATABASE_URL`, `JWT_SECRET` is auto-set if weak/missing)
+1. `docker compose up -d` if you rely on Docker for PostgreSQL and Redis.
+2. The server running with `cd server && npm run dev` and a valid `server/.env` (the `JWT_SECRET` is generated automatically if it is weak or missing).
 
-If only the client is running (`npm run dev` in `client/`), sign-up will error until the server is up.
+If only the client is running (`npm run dev` inside `client/`), sign-up and sign-in will fail until the API process is started.
 
-### SSO buttons do nothing or return an error
+### Single sign-on buttons do nothing or return an error
 
-- **503** from `GET /api/auth/oauth/...` means that provider is **not configured** — set `OAUTH_<PROVIDER>_CLIENT_ID` and `OAUTH_<PROVIDER>_CLIENT_SECRET` in `server/.env` and restart the API.
-- **Redirect URI mismatch** in the provider’s console: the authorized redirect must be exactly `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback` (see `server/.env.example`). Fix `CLIENT_ORIGIN` or the provider app settings so they match.
-- After OAuth, you land on **`/oauth/callback`**; if you always see “Missing token”, check the API logs for callback errors and confirm the browser is using the same origin as `CLIENT_ORIGIN`.
+- An HTTP **503** response from `GET /api/auth/oauth/...` means that provider is **not configured**. Set `OAUTH_<PROVIDER>_CLIENT_ID` and `OAUTH_<PROVIDER>_CLIENT_SECRET` in `server/.env` for that provider, then restart the API.
+- **Redirect URI mismatch** in the provider’s console: the authorized redirect URL must be exactly `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback` as described in `server/.env.example`. Align `CLIENT_ORIGIN` and the provider application settings.
+- After OAuth completes, you should land on **`/oauth/callback`**. If you always see “Missing token”, check the API logs for callback errors and confirm the browser’s origin matches `CLIENT_ORIGIN`.
 
-### Port 4000 already in use ("Empty reply from server")
+### Port 4000 already in use (“Empty reply from server”)
 
-Another app may be bound to **4000** and is not this API (`curl -v http://127.0.0.1:4000/health` connects then shows **empty reply**). The expense tracker will misbehave if Vite still proxies to 4000.
+Another program may be listening on **port 4000** instead of this API (for example `curl` connects but returns an empty reply). The expense tracker will not work correctly if Vite still proxies to port 4000 while nothing valid responds.
 
-**Fix:** In `server/.env` set e.g. `PORT=4001`, then copy `client/.env.example` to `client/.env` and set `API_PROXY_TARGET=http://127.0.0.1:4001`. Restart `npm run dev` in **both** `server/` and `client/`.
+**Fix:** In `server/.env`, set `PORT` to another port, for example `4001`. Copy `client/.env.example` to `client/.env` and set `API_PROXY_TARGET=http://127.0.0.1:4001` (or the matching host and port). Restart `npm run dev` in **both** `server/` and `client/`.
 
-To see what holds a port: `ss -tlnp | grep ':4000 '` or `lsof -iTCP:4000 -sTCP:LISTEN` (stop that service if you prefer to keep the API on 4000).
+To see which process holds a port, run `ss -tlnp | grep ':4000 '` or `lsof -iTCP:4000 -sTCP:LISTEN`, then stop the conflicting service if you want the API to use port 4000.
