@@ -8,7 +8,12 @@ export function authRequired(req, res, next) {
   }
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = payload.sub;
+    const raw = payload.sub;
+    const n = typeof raw === "string" ? parseInt(raw, 10) : Number(raw);
+    if (!Number.isInteger(n) || n < 1) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    req.userId = n;
     next();
   } catch {
     return res.status(401).json({ error: "Invalid token" });

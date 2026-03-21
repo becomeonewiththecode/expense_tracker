@@ -1,4 +1,6 @@
 import "dotenv/config";
+import path from "path";
+import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
 import { ensureJwtSecret } from "./ensureJwtSecret.js";
@@ -8,6 +10,9 @@ import { expensesRouter } from "./routes/expenses.js";
 import { importsRouter } from "./routes/imports.js";
 import { reportsRouter } from "./routes/reports.js";
 import { startMonthlySummaryJob } from "./jobs/monthlySummary.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadsRoot = path.join(__dirname, "..", "uploads");
 
 const app = express();
 app.use(
@@ -21,6 +26,8 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
+
+app.use("/api/uploads", express.static(path.join(uploadsRoot)));
 
 app.use("/api/auth", authRouter);
 app.use("/api/expenses", expensesRouter);

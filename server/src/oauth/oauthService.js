@@ -164,22 +164,33 @@ export async function findOrCreateUserFromOAuth(provider, providerUserId, email)
     [provider, providerUserId]
   );
   if (existingLink[0]) {
-    const { rows } = await pool.query(`SELECT id, email FROM users WHERE id = $1`, [existingLink[0].user_id]);
+    const { rows } = await pool.query(
+      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password FROM users WHERE id = $1`,
+      [existingLink[0].user_id]
+    );
     if (!rows[0]) throw new Error("User missing for OAuth link");
     return rows[0];
   }
 
-  const { rows: byEmail } = await pool.query(`SELECT id, email FROM users WHERE email = $1`, [e]);
+  const { rows: byEmail } = await pool.query(
+    `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password FROM users WHERE email = $1`,
+    [e]
+  );
   if (byEmail[0]) {
     await pool.query(
       `INSERT INTO oauth_identities (user_id, provider, provider_user_id, email) VALUES ($1, $2, $3, $4)`,
       [byEmail[0].id, provider, providerUserId, e]
     );
-    return { id: byEmail[0].id, email: byEmail[0].email };
+    return {
+      id: byEmail[0].id,
+      email: byEmail[0].email,
+      avatar_url: byEmail[0].avatar_url,
+      has_password: byEmail[0].has_password,
+    };
   }
 
   const { rows } = await pool.query(
-    `INSERT INTO users (email, password_hash) VALUES ($1, NULL) RETURNING id, email`,
+    `INSERT INTO users (email, password_hash) VALUES ($1, NULL) RETURNING id, email, avatar_url`,
     [e]
   );
   const user = rows[0];
@@ -187,5 +198,10 @@ export async function findOrCreateUserFromOAuth(provider, providerUserId, email)
     `INSERT INTO oauth_identities (user_id, provider, provider_user_id, email) VALUES ($1, $2, $3, $4)`,
     [user.id, provider, providerUserId, e]
   );
-  return user;
+  return {
+    id: user.id,
+    email: user.email,
+    avatar_url: user.avatar_url,
+    has_password: false,
+  };
 }

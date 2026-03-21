@@ -53,6 +53,8 @@ services:
         condition: service_started
     expose:
       - "4000"
+    volumes:
+      - api_uploads:/app/uploads
 
   web:
     build:
@@ -66,3 +68,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  api_uploads:

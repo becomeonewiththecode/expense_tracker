@@ -201,7 +201,7 @@ flowchart TB
 
 | Module file | Role | Integrations |
 |--------|------|----------------|
-| `routes/auth.js` | Registration, login, current user endpoint **`me`** | `bcryptjs`, `jsonwebtoken`, `pg`; mounts **`oauth/*`** routes from `oauth/oauthRoutes.js` |
+| `routes/auth.js` | Registration, login, current user **`me`**, **`PATCH /profile`**, **`POST`/`DELETE /avatar`**, static **`/uploads`** | `bcryptjs`, `jsonwebtoken`, `pg`, `multer`; mounts **`oauth/*`** routes from `oauth/oauthRoutes.js` |
 | `oauth/oauthRoutes.js` together with `oauthService.js` and `oauthState.js` | Single sign-on: authorize and callback | `fetch` to identity providers, `pg` for **`oauth_identities`** |
 | `routes/expenses.js` | Expense create, read, update, delete | JSON Web Token middleware, `pg`, `expenseEnums.js` |
 | `routes/imports.js` | Upload, staging, commit | JSON Web Token, `multer`, `visaStatement.js` for CSV and PDF, `pg` |
@@ -226,10 +226,11 @@ flowchart LR
     EP[ExpensesPage]
     YEP[YourExpensesPage]
     RPg[ReportsPage]
+    PP[ProfilePage]
   end
 
   subgraph api [Express paths under /api]
-    A1["/auth: login, register, oauth"]
+    A1["/auth: login, register, oauth, profile, avatar"]
     A2["/expenses"]
     A3["/imports"]
     A4["/reports"]
@@ -237,6 +238,7 @@ flowchart LR
 
   LP --> A1
   RP --> A1
+  PP --> A1
   EP --> A2 & A3
   YEP --> A2
   RPg --> A4
@@ -251,6 +253,7 @@ flowchart LR
 | Errors | `apiError.js` — network and proxy error messages |
 | Labels versus server enums | `expenseOptions.js` |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
+| Profile | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/avatar`** |
 
 ---
 
@@ -271,6 +274,7 @@ erDiagram
     serial id PK
     text email UK
     text password_hash
+    text avatar_url
     timestamptz created_at
   }
 

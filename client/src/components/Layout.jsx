@@ -29,11 +29,25 @@ export default function Layout() {
             <NavLink to="/reports" className={linkClass}>
               Reports
             </NavLink>
+            <NavLink to="/profile" className={linkClass}>
+              Profile
+            </NavLink>
           </nav>
           <div className="flex items-center gap-3 text-sm text-slate-400">
-            <span className="hidden sm:inline truncate max-w-[12rem]">
-              {user?.email}
-            </span>
+            <NavLink
+              to="/profile"
+              className="flex items-center gap-2 min-w-0 rounded-lg hover:bg-slate-800/80 px-1 py-0.5 -mx-1"
+              title="Profile"
+            >
+              <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[10px] text-slate-500">Me</span>
+                )}
+              </span>
+              <span className="hidden sm:inline truncate max-w-[12rem]">{user?.email}</span>
+            </NavLink>
             <button
               type="button"
               onClick={logout}

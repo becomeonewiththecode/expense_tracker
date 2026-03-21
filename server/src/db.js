@@ -15,6 +15,7 @@ export async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
     ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NULL;
     CREATE TABLE IF NOT EXISTS oauth_identities (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

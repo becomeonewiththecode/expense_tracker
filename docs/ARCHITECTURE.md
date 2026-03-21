@@ -78,7 +78,7 @@ The lifecycle is **development first**, **production second**: you run and test 
 ### Stack
 
 - **React 18** with function components.  
-- **React Router version 6** — Public routes include `/login`, `/register`, and **`/oauth/callback`** (where the user returns after single sign-on). Authenticated users use a private shell with routes such as `/`, `/expenses`, `/expenses/list`, and `/reports`. **Post-login navigation:** the app calls `GET /api/expenses?limit=1`. If at least one expense exists, the user is sent to **`/expenses/list`**; otherwise to **`/expenses`**. The same rule applies for the index route `/`, successful login or registration, successful OAuth, and visits to `/login` while already signed in.  
+- **React Router version 6** — Public routes include `/login`, `/register`, and **`/oauth/callback`** (where the user returns after single sign-on). Authenticated users use a private shell with routes such as `/`, `/expenses`, `/expenses/list`, `/reports`, and **`/profile`**. **Post-login navigation:** the app calls `GET /api/expenses?limit=1`. If at least one expense exists, the user is sent to **`/expenses/list`**; otherwise to **`/expenses`**. The same rule applies for the index route `/`, successful login or registration, successful OAuth, and visits to `/login` while already signed in.  
 - **Tailwind CSS** — Utility-first styling with a dark theme.  
 - **Axios** — A single HTTP client instance with `baseURL: "/api"`. **`FormData`** uploads omit the `Content-Type` header so the browser sets the multipart boundary automatically.  
 - **Recharts** — Bar charts on the Reports page.  
@@ -104,6 +104,7 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 - **`LoginPage` and `RegisterPage`** — Email and password forms; **`SsoButtons`** for Google, GitHub, GitLab, and Microsoft when OAuth is configured on the server; error display uses **`apiError.js`** where applicable.  
 - **`OAuthCallbackPage`** at `/oauth/callback` — Reads **`token`** or **`error`** from the query string after the API redirects from **`GET /api/auth/oauth/:provider/callback`**, stores the JSON Web Token, and applies the same post-login navigation as password-based flows.  
+- **`ProfilePage`** at `/profile` — Change **email**, **password** (for password-based accounts), and **profile picture** (`POST /api/auth/avatar`, `DELETE /api/auth/avatar`); **`PATCH /api/auth/profile`** may return a new token when the email changes.  
 - **`ExpensesPage`** — Titled **Import** in navigation; onboarding when there are no saved expenses; later, import plus optional collapsible manual entry; links to the list page. **`YourExpensesPage`** at `/expenses/list` — Table of expenses with modification mode; empty state links to **Import**. Statement import staging lives on **Import**, then commit.  
 - **`ReportsPage`** — Tabbed report types, fetches report endpoints, shows monthly summary list.  
 - **`Layout`** — Navigation and sign-out.
@@ -122,7 +123,7 @@ The lifecycle is **development first**, **production second**: you run and test 
 | Mount | Responsibility |
 |--------|----------------|
 | `GET /health` | Liveness check; no authentication. |
-| `/api/auth` | `POST /register` and `POST /login` use bcrypt for passwords and issue JSON Web Tokens; `GET /me` requires a token; **`GET /oauth/:provider`** and **`GET /oauth/:provider/callback`** implement the OAuth2 authorization code flow for `google`, `github`, `gitlab`, and `microsoft`, find or create users and **`oauth_identities`** rows, then redirect the browser to `CLIENT_ORIGIN/oauth/callback` with a token. |
+| `/api/auth` | `POST /register` and `POST /login` use bcrypt for passwords and issue JSON Web Tokens; `GET /me` requires a token; **`PATCH /profile`** updates email and/or password; **`POST /avatar`** (multipart image) and **`DELETE /avatar`** manage profile pictures (files under **`server/uploads`**, served at **`/api/uploads`**); **`GET /oauth/:provider`** and **`GET /oauth/:provider/callback`** implement the OAuth2 authorization code flow for `google`, `github`, `gitlab`, and `microsoft`, find or create users and **`oauth_identities`** rows, then redirect the browser to `CLIENT_ORIGIN/oauth/callback` with a token. |
 | `/api/expenses` | Create, read, update, delete for expenses; **JSON Web Token required**. |
 | `/api/imports` | Statement upload into **`import_batches`** and **`import_staging_rows`**; per-row **category** and **frequency**; **commit** inserts into **`expenses`** only where **category** is set; **JSON Web Token required**. |
 | `/api/reports` | Aggregated spending endpoints and list of persisted summaries; **JSON Web Token required**. |
@@ -158,7 +159,7 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 ### `users`
 
-Columns include **`id`**, **`email`** (unique), **`password_hash`** (nullable for single-sign-on-only accounts), **`created_at`**.
+Columns include **`id`**, **`email`** (unique), **`password_hash`** (nullable for single-sign-on-only accounts), optional **`avatar_url`** (path to an uploaded profile image), **`created_at`**.
 
 ### `oauth_identities`
 
@@ -208,6 +209,7 @@ Schema changes use **`CREATE TABLE IF NOT EXISTS`** and **`ALTER TABLE … ADD C
 | Monthly job | `server/src/jobs/monthlySummary.js` |
 | Client HTTP client and token storage | `client/src/api.js`, `client/src/authStorage.js` |
 | Single sign-on user interface | `client/src/components/SsoButtons.jsx`, `client/src/pages/OAuthCallbackPage.jsx` |
+| Profile | `client/src/pages/ProfilePage.jsx` |
 | Expense enums and labels | `client/src/expenseOptions.js` |
 
 For day-to-day usage, see [USER_GUIDE.md](./USER_GUIDE.md).

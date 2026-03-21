@@ -6,6 +6,7 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import ExpensesPage from "./pages/ExpensesPage.jsx";
 import YourExpensesPage from "./pages/YourExpensesPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 import PostLoginRedirect from "./components/PostLoginRedirect.jsx";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
 
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="expenses/list" element={<YourExpensesPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

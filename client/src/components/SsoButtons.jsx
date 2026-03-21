@@ -1,5 +1,5 @@
 const PROVIDERS = [
-  { id: "google", label: "Google" },
+  { id: "google", label: "Google (Gmail)" },
   { id: "github", label: "GitHub" },
   { id: "gitlab", label: "GitLab" },
   { id: "microsoft", label: "Microsoft 365" },
@@ -24,8 +24,8 @@ export default function SsoButtons({ className = "" }) {
         ))}
       </div>
       <p className="text-[10px] text-slate-600 text-center leading-relaxed">
-        Google (Gmail), GitHub, GitLab, and Microsoft 365 / Office 365 use OAuth. Configure client IDs in{" "}
-        <code className="text-slate-500">server/.env</code>.
+        OAuth sign-in requires <code className="text-slate-500">OAUTH_*</code> client IDs in{" "}
+        <code className="text-slate-500">server/.env</code>. Unconfigured providers return an error when clicked.
       </p>
     </div>
   );

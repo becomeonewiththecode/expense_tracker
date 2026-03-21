@@ -8,3 +8,6 @@ logs/
 # Local deployment secrets
 deployment/docker-compose/.env
 deployment/kubernetes/secret-api.yaml
+
+# Uploaded profile pictures (local dev)
+server/uploads/

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import api from "./api.js";
 import { TOKEN_KEY, USER_KEY } from "./authStorage.js";
 
 const AuthCtx = createContext(null);
@@ -27,6 +28,22 @@ export function AuthProvider({ children }) {
 
   const logout = () => setToken(null, null);
 
+  const refreshUser = useCallback(async () => {
+    const t = localStorage.getItem(TOKEN_KEY);
+    if (!t) return;
+    try {
+      const { data } = await api.get("/auth/me");
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      setUser(data.user);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (token) refreshUser();
+  }, [token, refreshUser]);
+
   const value = useMemo(
     () => ({
       token,
@@ -34,8 +51,9 @@ export function AuthProvider({ children }) {
       isAuthed: Boolean(token),
       setSession: setToken,
       logout,
+      refreshUser,
     }),
-    [token, user]
+    [token, user, refreshUser]
   );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
