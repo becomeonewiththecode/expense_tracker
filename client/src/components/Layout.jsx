@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 import RenewalReminders from "./RenewalReminders.jsx";
 
@@ -11,18 +11,9 @@ const linkClass = ({ isActive }) =>
       : "text-slate-400 hover:bg-slate-800 hover:text-slate-200",
   ].join(" ");
 
-function showRenewalRemindersPath(pathname) {
-  return pathname === "/expenses" || pathname === "/expenses/list";
-}
-
 export default function Layout() {
   const { user, logout } = useAuth();
-  const { pathname } = useLocation();
   const [renewalChip, setRenewalChip] = useState(null);
-
-  useEffect(() => {
-    if (!showRenewalRemindersPath(pathname)) setRenewalChip(null);
-  }, [pathname]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -85,9 +76,7 @@ export default function Layout() {
         </div>
       </header>
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
-        {showRenewalRemindersPath(pathname) ? (
-          <RenewalReminders onRenewalChipChange={setRenewalChip} />
-        ) : null}
+        <RenewalReminders onRenewalChipChange={setRenewalChip} />
         <Outlet />
       </main>
     </div>

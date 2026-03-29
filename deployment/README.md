@@ -4,7 +4,7 @@ This folder contains **production-oriented** artifacts for Expense Tracker:
 
 | Path | Purpose |
 |------|---------|
-| [docker/](docker/) | **Dockerfiles** for the API and for nginx serving the Vite build (with `/api` proxy). |
+| [docker/](docker/) | **Dockerfiles** for the API and for nginx serving the Vite build (with `/api` proxy). Dev vs production options: [docker/README.md](docker/README.md). |
 | [docker-compose/](docker-compose/) | **Docker Compose** stack: PostgreSQL, Redis, API, web. See [docker-compose/README.md](docker-compose/README.md). |
 | [kubernetes/](kubernetes/) | **Kubernetes** manifests (namespace, Postgres, Redis, API, web, optional Ingress). See [kubernetes/README.md](kubernetes/README.md). |
 
