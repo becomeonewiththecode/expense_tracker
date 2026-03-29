@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 import RenewalReminders from "./RenewalReminders.jsx";
@@ -14,6 +14,11 @@ const linkClass = ({ isActive }) =>
 export default function Layout() {
   const { user, logout } = useAuth();
   const [renewalChip, setRenewalChip] = useState(null);
+  const accountMenuRef = useRef(null);
+
+  function closeAccountMenu() {
+    accountMenuRef.current?.removeAttribute("open");
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -32,46 +37,83 @@ export default function Layout() {
             <NavLink to="/reports" className={linkClass}>
               Reports
             </NavLink>
-            <NavLink to="/profile" className={linkClass}>
-              Profile
-            </NavLink>
           </nav>
-          <div className="flex items-center gap-2 sm:gap-3 text-sm text-slate-400 flex-wrap justify-end">
-            {renewalChip ? (
-              <button
-                type="button"
-                onClick={() => renewalChip.onExpand()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-700/50 bg-amber-950/50 px-2 py-1 text-xs text-amber-100 hover:bg-amber-900/60 focus:outline-none focus:ring-2 focus:ring-amber-600/50 shrink-0"
-                aria-label={`Show ${renewalChip.count} upcoming renewals`}
+          <div className="flex items-center text-sm text-slate-400 justify-end">
+            <details
+              ref={accountMenuRef}
+              className="relative group"
+            >
+              <summary
+                className="list-none cursor-pointer flex items-center rounded-lg hover:bg-slate-800/80 px-1 py-0.5 -mx-1 [&::-webkit-details-marker]:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+                aria-label={
+                  renewalChip
+                    ? `Account menu, ${renewalChip.count} upcoming renewals`
+                    : "Account menu"
+                }
+                aria-haspopup="menu"
               >
-                <span className="tabular-nums font-semibold text-amber-200">{renewalChip.count}</span>
-                <span className="text-amber-200/90 max-w-[10rem] truncate sm:max-w-none">
-                  <span className="sm:hidden">renewals</span>
-                  <span className="hidden sm:inline">upcoming renewals</span>
+                <span className="relative inline-flex">
+                  <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                    {user?.avatar_url ? (
+                      <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-[10px] text-slate-500">Me</span>
+                    )}
+                  </span>
+                  {renewalChip ? (
+                    <span
+                      className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-0.5 rounded-full border border-amber-600/80 bg-amber-950 text-[10px] font-semibold leading-none text-amber-100 flex items-center justify-center tabular-nums shadow-sm"
+                      title={`${renewalChip.count} upcoming renewals`}
+                      aria-hidden
+                    >
+                      {renewalChip.count}
+                    </span>
+                  ) : null}
                 </span>
-              </button>
-            ) : null}
-            <NavLink
-              to="/profile"
-              className="flex items-center gap-2 min-w-0 rounded-lg hover:bg-slate-800/80 px-1 py-0.5 -mx-1"
-              title="Profile"
-            >
-              <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[10px] text-slate-500">Me</span>
-                )}
-              </span>
-              <span className="hidden sm:inline truncate max-w-[12rem]">{user?.email}</span>
-            </NavLink>
-            <button
-              type="button"
-              onClick={logout}
-              className="text-slate-300 hover:text-white underline-offset-2 hover:underline"
-            >
-              Sign out
-            </button>
+              </summary>
+              <div
+                className="absolute right-0 top-full mt-1 py-1 min-w-[12rem] rounded-lg border border-slate-700 bg-slate-900 shadow-xl z-50"
+                role="menu"
+              >
+                <NavLink
+                  to="/profile"
+                  role="menuitem"
+                  className={({ isActive }) =>
+                    [
+                      "block w-full text-left px-3 py-2 text-sm hover:bg-slate-800",
+                      isActive ? "text-emerald-300 bg-slate-800/40" : "text-slate-200",
+                    ].join(" ")
+                  }
+                  onClick={closeAccountMenu}
+                >
+                  Profile
+                </NavLink>
+                {renewalChip ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="w-full text-left px-3 py-2 text-sm text-amber-100 hover:bg-slate-800 border-t border-slate-700"
+                    onClick={() => {
+                      renewalChip.onExpand();
+                      closeAccountMenu();
+                    }}
+                  >
+                    Upcoming renewals
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 border-t border-slate-700"
+                  onClick={() => {
+                    closeAccountMenu();
+                    logout();
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
+            </details>
           </div>
         </div>
       </header>
