@@ -11,7 +11,7 @@ This is a full-stack application. The **client** uses React, Tailwind CSS, Recha
 
 ## Production on one host (Docker Compose)
 
-Full stack (Postgres, Redis, API, nginx + built client): from the repo root run **`npm run compose:prod`**. It runs **`node deployment/docker-compose/ensure-env.mjs`**, which creates **`deployment/docker-compose/.env`** from **`.env.example`** if needed and writes a random **`JWT_SECRET`** when the line is empty or too short (stable on disk, gitignored). Edit **`CLIENT_ORIGIN`** (and optional **`OAUTH_*`**) in that **`.env`** as needed. You can run **`npm run compose:ensure-env`** alone, or follow the manual **`docker compose …`** flow in [deployment/docker-compose/README.md](deployment/docker-compose/README.md). For how the **Dockerfiles** fit into dev (DB-only Compose) vs production (full stack), see [deployment/docker/README.md](deployment/docker/README.md).
+Full stack (Postgres, Redis, API, nginx + built client): from the repo root run **`npm run compose:prod`**. It runs **`node deployment/docker-compose/ensure-env.mjs`**, which creates **`deployment/docker-compose/.env`** from **`.env.example`** if needed and writes a random **`JWT_SECRET`** when the line is empty or too short (stable on disk, gitignored). Edit **`CLIENT_ORIGIN`** (and optional **`OAUTH_*`**) in that **`.env`** as needed. You can run **`npm run compose:ensure-env`** alone, or follow the manual **`docker compose …`** flow in [deployment/docker-compose/README.md](deployment/docker-compose/README.md) (use **`--env-file deployment/docker-compose/.env`** on the host command so **`HTTP_PORT`** and Postgres-related values interpolate). For how the **Dockerfiles** fit into dev (DB-only Compose) vs production (full stack), see [deployment/docker/README.md](deployment/docker/README.md).
 
 ## Database and cache
 
@@ -21,7 +21,7 @@ Run the following command to start containers (from the project root):
 docker compose up -d
 ```
 
-Copy `server/.env.example` to `server/.env` and edit values as needed. The default connection string matches the Docker Compose service names:
+Containers are named **`expense-tracker-dev-postgres`** and **`expense-tracker-dev-redis`** (see [deployment/docker/README.md](deployment/docker/README.md)). Copy `server/.env.example` to `server/.env` and edit values as needed. The default connection string matches the Docker Compose service names:
 
 - `DATABASE_URL=postgresql://expense:expense@localhost:5432/expense_tracker`
 - `REDIS_URL=redis://localhost:6379`

@@ -25,7 +25,7 @@ From the **repository root**:
 docker compose up -d
 ```
 
-This uses the root [`docker-compose.yml`](../../docker-compose.yml): **postgres** (port `5432`) and **redis** (port `6379`). No API or web containers are started.
+This uses the root [`docker-compose.yml`](../../docker-compose.yml): **postgres** (port `5432`) and **redis** (port `6379`). No API or web containers are started. Containers are named **`expense-tracker-dev-postgres`** and **`expense-tracker-dev-redis`** so they do not clash with the production Compose stack on the same host.
 
 Then:
 

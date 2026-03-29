@@ -8,9 +8,9 @@ This folder contains **production-oriented** artifacts for Expense Tracker:
 | [docker-compose/](docker-compose/) | **Docker Compose** stack: PostgreSQL, Redis, API, web. See [docker-compose/README.md](docker-compose/README.md). |
 | [kubernetes/](kubernetes/) | **Kubernetes** manifests (namespace, Postgres, Redis, API, web, optional Ingress). See [kubernetes/README.md](kubernetes/README.md). |
 
-The repository root **`docker-compose.yml`** only starts PostgreSQL and Redis for **local development**. For a **full containerized stack** (Postgres, Redis, API, nginx serving the Vite production build with **`/api`** and **`/health`** proxies, persistent volumes), use **`deployment/docker-compose/docker-compose.yml`**.
+The repository root **`docker-compose.yml`** only starts PostgreSQL and Redis for **local development** (container names **`expense-tracker-dev-*`**). For a **full containerized stack** (Postgres, Redis, API, nginx serving the Vite production build with **`/api`** and **`/health`** proxies, persistent volumes), use **`deployment/docker-compose/docker-compose.yml`** (names **`expense-tracker-*`**). Details: [docker-compose/README.md](docker-compose/README.md), [docker/README.md](docker/README.md).
 
-From the **repository root**, **`npm run compose:prod`** runs **`node deployment/docker-compose/ensure-env.mjs`** (bootstrap **`deployment/docker-compose/.env`** and **`JWT_SECRET`** when needed), then builds and starts the stack. **`npm run compose:ensure-env`** only runs that bootstrap. **`npm run compose:prod:down`**, **`compose:prod:logs`**, and **`compose:prod:ps`** wrap the matching `docker compose` commands.
+From the **repository root**, **`npm run compose:prod`** runs **`node deployment/docker-compose/ensure-env.mjs`** (bootstrap **`deployment/docker-compose/.env`** and **`JWT_SECRET`** when needed), then builds and starts the stack with **`--env-file deployment/docker-compose/.env`**. If you run **`docker compose`** yourself, use the same **`--env-file`** (see [docker-compose/README.md](docker-compose/README.md)). **`npm run compose:ensure-env`** only runs that bootstrap. **`npm run compose:prod:down`**, **`compose:prod:logs`**, and **`compose:prod:ps`** wrap the matching `docker compose` commands.
 
 ## Quick links
 

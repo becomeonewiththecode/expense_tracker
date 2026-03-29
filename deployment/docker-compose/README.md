@@ -60,6 +60,26 @@ Wait until **postgres** is healthy and **api** has started (first boot runs data
 
 Services use **`restart: unless-stopped`** so they come back after a machine reboot (when Docker is enabled on boot).
 
+### Manual `docker compose` (without `npm run compose:prod`)
+
+- **`--env-file deployment/docker-compose/.env`** — Pass this on the **host** `docker compose` command so Compose can substitute **`${HTTP_PORT}`**, **`${POSTGRES_USER}`**, **`${POSTGRES_PASSWORD}`**, and **`${POSTGRES_DB}`** in `docker-compose.yml`. Without it, built-in defaults still apply (for example port **8080**), but values you set **only** in that `.env` file may not affect the published port or interpolated URLs. The **`api`** service’s **`env_file`** loads **`JWT_SECRET`** / **`CLIENT_ORIGIN`** into the container; that is separate from host-side interpolation.
+- **`ensure-env` —** **`npm run compose:prod`** runs **`node deployment/docker-compose/ensure-env.mjs`** first. If you call **`docker compose`** yourself, run that script first (or ensure **`.env`** exists with a valid **`JWT_SECRET`**) so behavior matches the npm workflow.
+- **Compose file path —** Either **`-f deployment/docker-compose/docker-compose.yml`** or **`-f deployment/docker-compose`** (directory; Compose discovers the YAML) is fine.
+- **Redeploy vs full teardown —** For routine image rebuilds or compose edits, **`docker compose … up -d --build`** recreates services whose configuration changed; you do **not** need **`down`** every time. Use **`down`** (or **`npm run compose:prod:down`**) when you want to stop and remove the stack, clear conflicting containers, or after a one-time change such as introducing fixed **`container_name`** values if old containers are still present.
+
+## Container names
+
+Each service sets **`container_name`** with the **`expense-tracker-`** prefix so names are stable in **`docker ps`** and **`docker logs`**:
+
+| Service  | Container name             |
+|----------|----------------------------|
+| postgres | `expense-tracker-postgres` |
+| redis    | `expense-tracker-redis`    |
+| api      | `expense-tracker-api`      |
+| web      | `expense-tracker-web`      |
+
+Example: **`docker logs -f expense-tracker-api`**. Fixed names imply a single instance per service; **`docker compose up --scale`** cannot add extra replicas for a service that uses **`container_name`**.
+
 ## Verify
 
 - **Web:** Open the app URL; you should see the login page.
