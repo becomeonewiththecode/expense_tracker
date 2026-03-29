@@ -249,6 +249,31 @@ flowchart LR
   RPg --> A4
 ```
 
+### Renewal reminders (client)
+
+**Upcoming renewals** are computed entirely in the browser from saved expenses (no dedicated API). **`Layout`** renders **`RenewalReminders`**, which loads expenses and keeps **`renewalSchedule.js`** in sync with the same **frequency** + **`spent_at`** rules as the server’s derived **`payment_day`** / **`payment_month`**. Matching rows are shown in a **table** with **amount**, **financial institution** (labels from **`expenseOptions.js`**), renewal date, per-row **Dismiss**, and a **Total** footer summing amounts (**`formatProjectionCurrency`** in **`projection.js`**).
+
+```mermaid
+flowchart TD
+  L[Layout.jsx]
+  RR[RenewalReminders.jsx]
+  API["GET /api/expenses?limit=500"]
+  RS[renewalSchedule.js]
+  L --> RR
+  RR --> API
+  RR --> RS
+  RS --> N[nextRenewalDate]
+  RS --> D[daysUntilRenewal]
+  RS --> T[renewalReminderTier]
+  T --> B1["Tier 5: 0-14 days until renewal"]
+  T --> B2["Tier 15: 15-24 days"]
+  T --> B3["Tier 30: 25-40 days"]
+  T --> X[No row: 41+ days or non-recurring]
+  RR --> TAB[Table: amount institution renews + total]
+```
+
+**Day bands** (inclusive, whole local-calendar days from “today” to the next renewal date): **0–14**, **15–24**, **25–40**. They are **contiguous** so counts such as **12** days are not skipped between separate “about 15” and “about 5” windows. **`leadTimePhrase`** in **`RenewalReminders.jsx`** shows “in about 30 days” or “in about 15 days” only when the count is near those anchors; otherwise it uses **“in N days”**.
+
 **Cross-cutting client pieces:**
 
 | Concern | Implementation |
@@ -257,7 +282,8 @@ flowchart LR
 | Authentication state | `auth.jsx` — `AuthProvider`, protected routes, registers the session-invalid handler for `api.js` |
 | Expired session prompt | `SessionExpiredModal.jsx` — **Continue session** → **`POST /auth/refresh`** → reload; **Sign out** → **`/login`** |
 | Errors | `apiError.js` — network and proxy error messages |
-| Labels versus server enums | `expenseOptions.js` — categories, frequencies, institutions, **payment day** (1–30), **payment month** (1–12) |
+| Labels versus server enums | `expenseOptions.js` — categories, frequencies, institutions (aligned with server allow-lists). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
+| Upcoming renewals | **`Layout.jsx`** + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** — see [Renewal reminders (client)](#renewal-reminders-client) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`**; `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
 
@@ -341,7 +367,9 @@ erDiagram
   }
 ```
 
-**Import data flow:** `POST /api/imports` replaces any previous `import_batches` for that user and inserts `import_staging_rows` (with `payment_day` / `payment_month` seeded from each line’s date where applicable). `POST /api/imports/batches/:batchId/commit` on a batch moves categorized rows into `expenses` and removes the batch.
+**`expenses.payment_day` / `payment_month`:** Persisted for renewals, imports, and backup JSON; the API always sets them from **`spent_at`** (calendar day of month capped at **30**, month **1–12**). **`POST`/`PATCH /api/expenses`** and **`POST /api/backup/restore`** ignore body values for those columns.
+
+**Import data flow:** `POST /api/imports` replaces any previous `import_batches` for that user and inserts `import_staging_rows` (with `payment_day` / `payment_month` derived from each line’s `spent_at`). `PATCH /api/imports/rows/:id` may change category or frequency and refreshes `payment_day` / `payment_month` from `spent_at`. `POST /api/imports/batches/:batchId/commit` on a batch moves categorized rows into `expenses` and removes the batch.
 
 ---
 

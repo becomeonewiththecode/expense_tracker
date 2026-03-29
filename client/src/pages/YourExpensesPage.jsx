@@ -79,8 +79,6 @@ export default function YourExpensesPage() {
       amount: String(row.amount),
       category: row.category,
       frequency: row.frequency,
-      payment_day: row.payment_day != null ? String(row.payment_day) : "",
-      payment_month: row.payment_month != null ? String(row.payment_month) : "",
       financial_institution: row.financial_institution,
       description: row.description ?? "",
     });
@@ -108,14 +106,6 @@ export default function YourExpensesPage() {
         frequency: expenseEditDraft.frequency,
         financial_institution: expenseEditDraft.financial_institution,
         description: expenseEditDraft.description,
-        payment_day:
-          expenseEditDraft.payment_day === ""
-            ? null
-            : Number(expenseEditDraft.payment_day),
-        payment_month:
-          expenseEditDraft.payment_month === ""
-            ? null
-            : Number(expenseEditDraft.payment_month),
       });
       cancelExpenseEdit();
       setProjectionTarget(null);
@@ -158,8 +148,6 @@ export default function YourExpensesPage() {
         category: addForm.category,
         financial_institution: addForm.financial_institution,
         frequency: addForm.frequency,
-        ...(addForm.payment_day !== "" && { payment_day: Number(addForm.payment_day) }),
-        ...(addForm.payment_month !== "" && { payment_month: Number(addForm.payment_month) }),
         description: addForm.description,
         spent_at: addForm.spent_at,
       });

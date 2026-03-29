@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { formatFrequency, formatPaymentMonth } from "../expenseOptions.js";
+import { formatFrequency } from "../expenseOptions.js";
 import {
   filterItemsForProjectionSlice,
   formatProjectionCurrency,
@@ -219,9 +219,6 @@ export default function ProjectionModal({
                         </span>
                         <span className="text-slate-400">
                           {formatFrequency(row.frequency)}
-                          {row.payment_month != null && row.payment_month !== ""
-                            ? ` · ${formatPaymentMonth(row.payment_month)}`
-                            : ""}
                           {row.description ? ` · ${row.description}` : ""}
                         </span>
                       </li>

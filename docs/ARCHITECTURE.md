@@ -2,7 +2,7 @@
 
 This document describes how the application is structured, how major components interact, and the main design choices.
 
-**Diagrams:** See [**ARCHITECTURE_DIAGRAM.md**](./ARCHITECTURE_DIAGRAM.md) for figures that illustrate: the system context (section 1), the topology from local development through a production deployment (section 1b), running processes with manual `npm` commands or PM2 during development, server modules, how client pages map to API routes, the entity-relationship model, a typical authenticated request sequence, and the OAuth single sign-on redirect sequence. Narrative docs for **Docker Compose production**, **password recovery**, and **backup/restore** are in [USER_GUIDE.md](./USER_GUIDE.md) and [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
+**Diagrams:** See [**ARCHITECTURE_DIAGRAM.md**](./ARCHITECTURE_DIAGRAM.md) for figures that illustrate: the system context (section 1), the topology from local development through a production deployment (section 1b), running processes with manual `npm` commands or PM2 during development, server modules, how client pages map to API routes, **renewal reminder tiers** (client-only math and day bands), the entity-relationship model, a typical authenticated request sequence, and the OAuth single sign-on redirect sequence. Narrative docs for **Docker Compose production**, **password recovery**, and **backup/restore** are in [USER_GUIDE.md](./USER_GUIDE.md) and [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
 
 ## High-level overview
 
@@ -101,9 +101,9 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 ### Domain helpers
 
-- **`expenseOptions.js`** — Canonical option lists and display formatters for **category**, **frequency**, **financial institution**, optional **payment day** (1–30), and optional **payment month** (1–12), aligned with values the server accepts. **Frequency** allow-list: `once`, `weekly`, `monthly`, `bimonthly`, `yearly`.  
-- **`projection.js`** — Derives annual recurring totals from each row’s **amount** and **frequency** for **Projection** modals and pie charts: weekly × 52, monthly × 12, bi-monthly × 6, yearly × 1; **once** contributes to one-time totals only. **`payment_day`** and **`payment_month`** are display metadata only (not used in projection math).  
-- **`renewalSchedule.js`** — Computes the next local-calendar renewal date from **frequency**, **`spent_at`**, **`payment_day`**, and **`payment_month`** (yearly), for in-app **Renewal reminders**.
+- **`expenseOptions.js`** — Canonical option lists and display formatters for **category**, **frequency**, and **financial institution**. **Frequency** allow-list: `once`, `weekly`, `monthly`, `bimonthly`, `yearly`. The server derives **`payment_day`** and **`payment_month`** from **`spent_at`** on create and update.  
+- **`projection.js`** — Derives annual recurring totals from each row’s **amount** and **frequency** for **Projection** modals and pie charts: weekly × 52, monthly × 12, bi-monthly × 6, yearly × 1; **once** contributes to one-time totals only. **`payment_day`** and **`payment_month`** are not used in projection math.  
+- **`renewalSchedule.js`** — Computes the next local-calendar renewal date from **frequency** and **`spent_at`** (day-of-month capped at 30; yearly uses the transaction’s calendar month). **`renewalReminderTier(daysUntil)`** assigns **three contiguous bands** (whole calendar days until renewal): **0–14**, **15–24**, and **25–40**; outside that range no banner line is shown. **`RenewalReminders.jsx`** uses **`nextRenewalDate`**, **`daysUntilRenewal`**, and that tier helper so bands do not leave gaps (for example 12 days still qualifies).
 
 ### Pages
 
@@ -111,9 +111,9 @@ The lifecycle is **development first**, **production second**: you run and test 
 - **`RecoverPasswordPage`** at `/recover` — **`POST /api/auth/recover-password`** with a **recovery code** (created in Profile) and a new password; does not send email.  
 - **`OAuthCallbackPage`** at `/oauth/callback` — Reads **`token`** or **`error`** from the query string after the API redirects from **`GET /api/auth/oauth/:provider/callback`**, stores the JSON Web Token, and applies the same post-login navigation as password-based flows.  
 - **`ProfilePage`** at `/profile` — Change **email** and **password**; single-sign-on-only users can **set an initial password** here; **generate or remove a recovery code** (`POST` / `DELETE /api/auth/recovery-code`); when a code exists, the UI shows a **masked placeholder** (the plaintext is shown **only once**, at creation or replace); **profile picture** (`POST` / `DELETE /api/auth/avatar`); **`GET /api/backup/export`** and **`POST /api/backup/restore`** for JSON expense backup and restore (**append** or **replace**); **`PATCH /api/auth/profile`** may return a new token when the email changes.  
-- **`ExpensesPage`** — Titled **Import** in navigation; onboarding when there are no saved expenses; later, import plus optional collapsible manual entry; links to the list page. **`YourExpensesPage`** at `/expenses/list` — Table of expenses (including **Month** when set) with modification mode; manual add (same fields as Import) when empty or under **Add expense manually**; empty state also links to **Import**. Statement import staging lives on **Import**, then commit.  
+- **`ExpensesPage`** — Titled **Import** in navigation; onboarding when there are no saved expenses; later, import plus optional collapsible manual entry; links to the list page. **`YourExpensesPage`** at `/expenses/list` — Table of expenses with modification mode (transaction date, amount, category, frequency, institution, note); manual add (same fields as Import) when empty or under **Add expense manually**; empty state also links to **Import**. Statement import staging lives on **Import**, then commit.  
 - **`ReportsPage`** — Tabbed report types, fetches report endpoints, shows monthly summary list.  
-- **`Layout`** — Navigation and sign-out; renders **`RenewalReminders`** (fetches **`GET /api/expenses`**, shows tiered upcoming-renewal messages).  
+- **`Layout`** — Navigation and sign-out; renders **`RenewalReminders`** (fetches **`GET /api/expenses?limit=500`**, filters recurring rows by **`renewalReminderTier`**, shows a **table** of amount, institution, and renewal date with a **sum** footer, session **`Dismiss`** keys in **`sessionStorage`**).  
 - **`SessionExpiredModal`** — Global dialog when the API returns **Invalid token**; **Continue session** calls **`POST /api/auth/refresh`** with the stored Bearer token, then **`setSession`** and a full page reload; **Sign out** clears the session and sends the user to **`/login`**.
 
 ---
@@ -131,8 +131,8 @@ The lifecycle is **development first**, **production second**: you run and test 
 |--------|----------------|
 | `GET /health` | Liveness check; no authentication. |
 | `/api/auth` | `POST /register` and `POST /login` use bcrypt for passwords and issue JSON Web Tokens; **`GET /me`** requires a token and returns **`id`**, **`email`**, **`avatar_url`**, **`has_password`**, **`has_recovery_code`**; **`POST /refresh`** re-issues a JWT from an **expired** token if the signature is valid and the user still exists (grace period after **`exp`**); **`PATCH /profile`** updates email and/or password (SSO-only users can set a first password without a current password); **`POST /recovery-code`** and **`DELETE /recovery-code`** (authenticated) create or clear an offline **recovery code**; **`POST /recover-password`** (unauthenticated, rate-limited) resets password from that code—**no email**; **`POST /avatar`** (multipart image) and **`DELETE /avatar`** manage profile pictures (files under **`server/uploads`**, served at **`/api/uploads`**); **`GET /oauth/:provider`** and **`GET /oauth/:provider/callback`** implement the OAuth2 authorization code flow for `google`, `github`, `gitlab`, and `microsoft`, find or create users and **`oauth_identities`** rows, then redirect the browser to `CLIENT_ORIGIN/oauth/callback` with a token. |
-| `/api/expenses` | Create, read, update, delete for expenses; **JSON Web Token required**. |
-| `/api/imports` | Statement upload into **`import_batches`** and **`import_staging_rows`**; per-row **category**, **frequency**, **`payment_day`**, **`payment_month`** (staging seeds day/month from each line’s date where applicable); **commit** inserts into **`expenses`** only where **category** is set; **JSON Web Token required**. |
+| `/api/expenses` | Create, read, update, delete for expenses; **`payment_day`** (1–30) and **`payment_month`** (1–12) are **set from `spent_at`** on create and update (ignored if sent in the body); **JSON Web Token required**. |
+| `/api/imports` | Statement upload into **`import_batches`** and **`import_staging_rows`**; per-row **category** and **frequency**; staging and commit derive **`payment_day`** / **`payment_month`** from each line’s **`spent_at`**; **commit** inserts into **`expenses`** only where **category** is set; **JSON Web Token required**. |
 | `/api/reports` | Aggregated spending endpoints and list of persisted summaries; **JSON Web Token required**. |
 | `/api/backup` | **`GET /export`** — JSON download of all expenses for the signed-in user (`format` **`expense-tracker-backup`**, `version` **1**, metadata + `expenses` array). **`POST /restore`** — body is that backup object plus **`mode`**: **`append`** inserts rows, **`replace`** deletes the user’s expenses first (transaction); validates each row like **`POST /expenses`**; at most **25,000** expenses per request; JSON body limit **15 MB** on this route. **JSON Web Token required** for both (expired or wrong-secret tokens yield **401**). |
 
@@ -148,10 +148,10 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 ### Expenses domain
 
-- **Validation** uses **allow-lists** for category, `financial_institution`, and `frequency` (`once`, `weekly`, `monthly`, `bimonthly`, `yearly`; matching client dropdowns). Optional integers **`payment_day`** (1–30) and **`payment_month`** (1–12) are validated when present.  
+- **Validation** uses **allow-lists** for category, `financial_institution`, and `frequency` (`once`, `weekly`, `monthly`, `bimonthly`, `yearly`; matching client dropdowns). **`payment_day`** (1–30) and **`payment_month`** (1–12) are set by the server from **`spent_at`** (request body values for those fields are ignored on create/update).  
 - Dates are stored as **`DATE`** (`spent_at`); amounts as **`NUMERIC`**.  
 - List endpoints support optional `from` and `to` query filters and pagination limits.  
-- **Statement import:** **`multer`** and **`parseVisaStatement.js`** populate staging tables. The upload form sets **institution**, **frequency**, and optional **`payment_day`** default (or derives per line from each transaction’s date). Each staging row also gets **`payment_month`** from that line’s calendar month. The user assigns **category** (required to import) and may adjust **frequency**, **`payment_day`**, and **`payment_month`** per row; **commit** writes only categorized rows to **`expenses`**, taking **`financial_institution`** from the batch and **`frequency`**, **`payment_day`**, and **`payment_month`** from the row. **`pdf-parse`** is loaded via a subpath import to avoid an ECMAScript module debug harness issue.
+- **Statement import:** **`multer`** and **`parseVisaStatement.js`** populate staging tables. The upload form sets **institution** and **frequency**. Each staging row’s **`payment_day`** and **`payment_month`** are derived from that line’s **`spent_at`**. The user assigns **category** (required to import) and may adjust **frequency** per row; **commit** writes only categorized rows to **`expenses`**, taking **`financial_institution`** from the batch and **`frequency`** from the row, and recomputes **`payment_day`** / **`payment_month`** from **`spent_at`**. **`pdf-parse`** is loaded via a subpath import to avoid an ECMAScript module debug harness issue.
 
 ### Reports
 
@@ -177,7 +177,7 @@ Columns include **`id`**, **`email`** (unique), **`password_hash`** (nullable fo
 
 ### `expenses`
 
-**`user_id`** references **`users`**, plus **`amount`**, **`category`**, **`financial_institution`**, **`frequency`**, optional **`payment_day`** (day of month 1–30), optional **`payment_month`** (calendar month 1–12 for recurring metadata), **`description`**, **`spent_at`**, **`created_at`**.  
+**`user_id`** references **`users`**, plus **`amount`**, **`category`**, **`financial_institution`**, **`frequency`**, **`payment_day`** (day of month 1–30, derived from **`spent_at`**), **`payment_month`** (calendar month 1–12, derived from **`spent_at`**), **`description`**, **`spent_at`**, **`created_at`**.  
 An index on **`(user_id, spent_at)`** supports typical lists and reports.  
 Schema changes use **`CREATE TABLE IF NOT EXISTS`** and **`ALTER TABLE … ADD COLUMN IF NOT EXISTS`** so existing databases upgrade when the API starts.
 
@@ -188,7 +188,7 @@ Schema changes use **`CREATE TABLE IF NOT EXISTS`** and **`ALTER TABLE … ADD C
 ### `import_batches` and `import_staging_rows`
 
 - **`import_batches`:** **`user_id`**, **`source_filename`**, **`default_financial_institution`**, **`default_frequency`**. A new upload **deletes** prior batches for that user (cascade deletes old staging rows).  
-- **`import_staging_rows`:** **`batch_id`**, **`spent_at`**, **`amount`**, **`description`**, **`category`** nullable until required for commit, **`frequency`**, **`payment_day`** (1–30; seeded from posting date), **`payment_month`** (1–12; seeded from posting date). **`PATCH /api/imports/rows/:id`** updates **`category`**, **`frequency`**, **`payment_day`**, and **`payment_month`** as needed.
+- **`import_staging_rows`:** **`batch_id`**, **`spent_at`**, **`amount`**, **`description`**, **`category`** nullable until required for commit, **`frequency`**, **`payment_day`** (1–30; derived from **`spent_at`**), **`payment_month`** (1–12; derived from **`spent_at`**). **`PATCH /api/imports/rows/:id`** updates **`category`** and **`frequency`**; **`payment_day`** / **`payment_month`** are recomputed from **`spent_at`** after each patch.
 
 ---
 
@@ -198,8 +198,9 @@ Schema changes use **`CREATE TABLE IF NOT EXISTS`** and **`ALTER TABLE … ADD C
 2. **Allow-lists on the API** — Prevents arbitrary strings for enum-like fields even if the user interface is bypassed.  
 3. **Additive database migrations in `initDb`** — Simple for a small application; larger teams might adopt explicit migration tools.  
 4. **Frequency as metadata** — Stored for the user’s records; **reporting** uses **`spent_at`**, not projected recurring charges into future periods.  
-5. **Redis optional** — Behavior is correct without Redis; with Redis, repeated report reads cost less.  
-6. **OAuth optional** — Each provider is enabled only when its **`OAUTH_*`** client identifier and secret are set; unconfigured providers return HTTP **503** on `GET /oauth/:provider`. Identity linking uses **`oauth_identities`** and email matching for existing **`users`** rows.
+5. **`payment_day` / `payment_month` from `spent_at`** — Those columns are denormalized from the transaction date (day capped at 30) for renewals, imports, and backup JSON. Create, update, import commit, and restore **recompute** them; request bodies cannot override them independently of **`spent_at`**.  
+6. **Redis optional** — Behavior is correct without Redis; with Redis, repeated report reads cost less.  
+7. **OAuth optional** — Each provider is enabled only when its **`OAUTH_*`** client identifier and secret are set; unconfigured providers return HTTP **503** on `GET /oauth/:provider`. Identity linking uses **`oauth_identities`** and email matching for existing **`users`** rows.
 
 ---
 
@@ -213,7 +214,7 @@ Schema changes use **`CREATE TABLE IF NOT EXISTS`** and **`ALTER TABLE … ADD C
 | OAuth (single sign-on) | `server/src/oauth/oauthRoutes.js`, `oauthService.js`, `oauthState.js` |
 | Expense routes | `server/src/routes/expenses.js` |
 | Import staging and commit | `server/src/routes/imports.js` |
-| Category and institution enums | `server/src/expenseEnums.js` |
+| Category and institution enums; **`spent_at`** → **`payment_day`** / **`payment_month`** | `server/src/expenseEnums.js` |
 | Statement parsing | `server/src/parsers/visaStatement.js` |
 | Report routes and cache | `server/src/routes/reports.js`, `server/src/redis.js` |
 | Backup and restore | `server/src/routes/backup.js` |

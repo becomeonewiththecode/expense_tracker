@@ -25,48 +25,6 @@ export const FINANCIAL_INSTITUTION_OPTIONS = [
   { value: "american_express", label: "American Express" },
 ];
 
-/** Day of month (1–30) when the payment typically posts; optional. */
-export const PAYMENT_DAY_OPTIONS = [
-  { value: "", label: "—" },
-  ...Array.from({ length: 30 }, (_, i) => ({
-    value: String(i + 1),
-    label: String(i + 1),
-  })),
-];
-
-const MONTH_LABELS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-/** Calendar month (1–12) for recurring expenses; optional. */
-export const PAYMENT_MONTH_OPTIONS = [
-  { value: "", label: "—" },
-  ...Array.from({ length: 12 }, (_, i) => ({
-    value: String(i + 1),
-    label: MONTH_LABELS[i],
-  })),
-];
-
-/** Same values as {@link PAYMENT_DAY_OPTIONS}; first option fixes payment day from each statement line date. */
-export const IMPORT_PAYMENT_DAY_OPTIONS = [
-  { value: "", label: "From statement" },
-  ...Array.from({ length: 30 }, (_, i) => ({
-    value: String(i + 1),
-    label: String(i + 1),
-  })),
-];
-
 const catLabels = Object.fromEntries(CATEGORY_OPTIONS.map((o) => [o.value, o.label]));
 const finLabels = Object.fromEntries(FINANCIAL_INSTITUTION_OPTIONS.map((o) => [o.value, o.label]));
 const freqLabels = Object.fromEntries(FREQUENCY_OPTIONS.map((o) => [o.value, o.label]));
@@ -84,18 +42,4 @@ export function formatFinancialInstitution(value) {
 export function formatFrequency(value) {
   if (value == null) return "—";
   return freqLabels[value] || value;
-}
-
-export function formatPaymentDay(value) {
-  if (value == null || value === "") return "—";
-  return String(value);
-}
-
-const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-export function formatPaymentMonth(value) {
-  if (value == null || value === "") return "—";
-  const n = Number(value);
-  if (!Number.isInteger(n) || n < 1 || n > 12) return "—";
-  return MONTH_SHORT[n - 1];
 }

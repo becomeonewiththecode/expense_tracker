@@ -9,8 +9,8 @@ Expense Tracker is a web application for **recording expenses** and **viewing sp
 You can:
 
 - **Register** and **sign in** with **email and password**, or use **Google (Gmail), GitHub, GitLab, or Microsoft 365** when the server administrator has configured **OAuth** for those providers  
-- **Add expenses** with amount, transaction date, category, how often the cost occurs, optional **day of the month (1 through 30)** and optional **calendar month (1 through 12)** for recurring metadata, how you paid, and an optional note  
-- **Import** a **comma-separated values or PDF** statement, **review** each line, set **categories** (and adjust **frequency**, **payment day**, or **month** if needed), then commit the import (see below)  
+- **Add expenses** with amount, **transaction date**, category, how often the cost occurs, how you paid, and an optional note (recurring metadata is derived from the transaction date)  
+- **Import** a **comma-separated values or PDF** statement, **review** each line, set **categories** (and adjust **frequency** if needed), then commit the import (see below)  
 - **Delete** expenses from the list  
 - **View reports** as charts: daily, weekly, monthly, yearly, or a custom date range  
 - See **stored monthly summaries** (totals computed by a background job on a schedule)
@@ -98,15 +98,13 @@ Fill in the form and click **Add expense**:
 | **Amount** | Dollar amount (must be zero or positive). |
 | **Category** | One of: Home, Entertainment, Personal, Business, Education, Rent, Mortgage, Insurance, Subscription. |
 | **Frequency** | How often this cost applies: **Once**, **Weekly**, **Monthly**, **Bi-monthly**, or **Yearly**. For **Yearly**, enter the **annual** amount; for other recurring options, the amount is per week, per month, or per bi-monthly period as labeled. *(This field drives **Projection** run rates and labels; **Reports** bar charts still use each line’s transaction **date**.)* |
-| **Date (1–30)** | Optional. Day of the month when a recurring payment typically posts (metadata). |
-| **Month (1–12)** | Optional. Typical **calendar month** when a **recurring** cost applies (for example which month an annual fee hits). Leave **—** if not needed. |
 | **Financial institution** | Bank, VISA, Mastercard, or American Express. |
-| **Transaction date** | The **spent** date for this line item. |
+| **Transaction date** | The **spent** date for this line item. The server stores **day-of-month** and **calendar-month** metadata derived from this date (for renewals, exports, and imports)—you do not enter them separately. |
 | **Note** | Optional free text. |
 
-On the **Your expenses** page, you can **add an expense manually** (same fields as on **Import**) when the list is empty, or expand **Add expense manually** when you already have rows. The table lists your expenses (newest first).
+On the **Your expenses** page, you can **add an expense manually** (same fields as on **Import**) when the list is empty, or expand **Add expense manually** when you already have rows. The table lists your expenses (newest first). In **modification mode**, row **Edit** lets you change **transaction date**, amount, category, frequency, institution, and note.
 
-**Renewal reminders:** For recurring expenses (**Weekly**, **Monthly**, **Bi-monthly**, **Yearly**), the app estimates the next renewal from **frequency**, optional **Date (1–30)** and **Month (1–12)** (for yearly), and **Transaction date** as the starting anchor. While you are signed in, an **Upcoming renewals** panel may appear under the header on **Import**, **Your expenses**, **Reports**, and **Profile** when the next renewal is about **30**, **15**, or **5** days away (with small day-range windows around each so you still see a reminder if you skip a day). **One-time** rows are ignored. Use **Dismiss** to hide a line for this browser session (or **Dismiss all**). Reminders are **in-app only**—not email or push notifications.
+**Renewal reminders:** For recurring expenses (**Weekly**, **Monthly**, **Bi-monthly**, **Yearly**), the app estimates the next renewal from **frequency** and **transaction date** (day and month of year come from that date). While you are signed in, an **Upcoming renewals** table may appear under the header on **Import**, **Your expenses**, **Reports**, and **Profile** when the next renewal is **25–40**, **15–24**, or **0–14** whole calendar days away (roughly a month, a couple of weeks, or the final two weeks—the wording may say “about 30 days,” “about 15 days,” or an exact count such as “in 12 days”). The table shows each line’s **amount**, **financial institution**, renewal date, and a **Total** row that sums those amounts (the same figures as on your expense list). **One-time** rows are ignored. Use **Dismiss** to hide a line for this browser session (or **Dismiss all**). Reminders are **in-app only**—not email or push notifications.
 
 **Projection** in the table header opens a **combined** report: **daily**, **monthly**, and **yearly** run-rate totals across **all** saved expenses (one-time amounts summed separately), plus a **pie chart** of annualized share by category (and a **One-time** slice when applicable). Click a slice to list the expenses in that segment; click the same slice again to clear. Each row also has **Projection** for **that expense only** (same numbers plus a single-slice or small pie); if you are editing a row, row **Projection** uses your unsaved values in the form. Click **Enter modification mode** to show **Edit** on each row; then **Edit**, **Save**, and **Cancel** work as before. Click **Exit modification mode** to go back to read-only rows (unsaved edits on the active row are cleared). **Delete** is always available. If you have no expenses yet, that page shows the manual form and a link to **Import** for import or additional entry.
 
@@ -114,9 +112,9 @@ On the **Your expenses** page, you can **add an expense manually** (same fields 
 
 Under **Import from statement**:
 
-1. Set **financial institution**, **frequency**, and optionally **Date (1 through 30)** for the import (or **From statement** so each row uses that line’s calendar day, capped at 30). **Institution** applies to every row you commit.  
+1. Set **financial institution** and **frequency** for the import. **Institution** applies to every row you commit.  
 2. Choose a **.csv** or **.pdf** file and click **Upload and parse**.  
-3. In **Review import**, pick a **category** for each row you want to keep. Change **frequency**, **Date (1 through 30)**, or **Month (1 through 12)** on a row if needed. New uploads seed **Month** from each line’s posting date; you can adjust or clear it. Rows left as **— Select category —** are **not** imported.  
+3. In **Review import**, pick a **category** for each row you want to keep. Change **frequency** on a row if needed. Posted **date** on each line comes from the statement; saved expenses derive recurring metadata from that date. Rows left as **— Select category —** are **not** imported.  
 4. Click **Add categorized rows to expenses**. **Discard import** deletes the staged batch without saving expenses.
 
 Parsing uses **date, amount, and description** from the file; **comma-separated values** usually work best. **PDF** support is best-effort.
@@ -147,7 +145,7 @@ The application can show **precomputed monthly totals** from the `monthly_summar
 
 Signed-in users can open **Profile** from the header to update **email**, **password**, and **profile picture**. **Recovery code** (under **Password recovery**): generate a code once, store it safely offline, and use it on **`/recover`** if you forget your password. The **full code is shown only at the moment you create or replace it**; afterward, Profile shows a **masked placeholder** so you can see that a code is on file without seeing the secret. Replacing or removing the code invalidates the previous one.
 
-**Backup and restore:** Download a **JSON** file of all your expenses (`expense-tracker-backup` format). Each expense object includes the same fields as the API (such as **`frequency`**, optional **`payment_day`**, optional **`payment_month`**, and **`spent_at`**). **Restore** accepts that same file: **Append** adds imported rows to existing data; **Replace** deletes all your current expenses first, then imports the file (use with care). Each restore is limited to **25,000** expense rows and a **15 MB** request body. Backups may include your account **email** in metadata—store files securely. If **Download backup** or **Restore** reports **Invalid token**, try **Continue session** if a prompt appears; otherwise **sign out** and **sign in** again (or the server’s signing secret may have changed).
+**Backup and restore:** Download a **JSON** file of all your expenses (`expense-tracker-backup` format). Each expense object includes **`spent_at`**, **`frequency`**, and denormalized **`payment_day`** / **`payment_month`** (derived from **`spent_at`** on save and restore). **Restore** accepts that same file: **Append** adds imported rows to existing data; **Replace** deletes all your current expenses first, then imports the file (use with care). Each restore is limited to **25,000** expense rows and a **15 MB** request body. Backups may include your account **email** in metadata—store files securely. If **Download backup** or **Restore** reports **Invalid token**, try **Continue session** if a prompt appears; otherwise **sign out** and **sign in** again (or the server’s signing secret may have changed).
 
 ---
 

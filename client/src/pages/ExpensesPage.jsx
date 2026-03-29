@@ -6,9 +6,6 @@ import {
   CATEGORY_OPTIONS,
   FINANCIAL_INSTITUTION_OPTIONS,
   FREQUENCY_OPTIONS,
-  IMPORT_PAYMENT_DAY_OPTIONS,
-  PAYMENT_DAY_OPTIONS,
-  PAYMENT_MONTH_OPTIONS,
 } from "../expenseOptions.js";
 import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
 
@@ -22,7 +19,6 @@ export default function ExpensesPage() {
   const [importDefaults, setImportDefaults] = useState({
     financial_institution: "visa",
     frequency: "once",
-    payment_day: "",
   });
   const [importing, setImporting] = useState(false);
   const [importNotice, setImportNotice] = useState("");
@@ -73,8 +69,6 @@ export default function ExpensesPage() {
         category: form.category,
         financial_institution: form.financial_institution,
         frequency: form.frequency,
-        ...(form.payment_day !== "" && { payment_day: Number(form.payment_day) }),
-        ...(form.payment_month !== "" && { payment_month: Number(form.payment_month) }),
         description: form.description,
         spent_at: form.spent_at,
       });
@@ -100,7 +94,6 @@ export default function ExpensesPage() {
       fd.append("file", importFile);
       fd.append("financial_institution", importDefaults.financial_institution);
       fd.append("frequency", importDefaults.frequency);
-      fd.append("payment_day", importDefaults.payment_day);
       const { data } = await api.post("/imports", fd);
       setStaging({
         batch: data.batch,
@@ -108,7 +101,7 @@ export default function ExpensesPage() {
       });
       const w = data.warnings?.filter(Boolean).join(" ") || "";
       setImportNotice(
-        `${data.rows?.length ?? 0} row(s) loaded for review. Assign a category to each row you want to keep; adjust frequency or payment day if needed, then click “Add categorized rows to expenses”.${w ? ` ${w}` : ""}`
+        `${data.rows?.length ?? 0} row(s) loaded for review. Assign a category to each row you want to keep; adjust frequency if needed, then click “Add categorized rows to expenses”.${w ? ` ${w}` : ""}`
       );
       setImportFile(null);
       const input = document.getElementById("statement-file-input");
@@ -235,7 +228,7 @@ export default function ExpensesPage() {
           <h2 className="text-sm font-semibold text-white">Import from statement</h2>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl">
             Upload a <strong className="text-slate-400">CSV</strong> or <strong className="text-slate-400">PDF</strong>. Parsed rows appear in the <strong className="text-slate-400">review table</strong> below.
-            Set defaults for <strong className="text-slate-400">institution</strong>, <strong className="text-slate-400">frequency</strong>, and optionally <strong className="text-slate-400">Date (1–30)</strong> before upload (or choose <strong className="text-slate-400">From statement</strong> to take the day from each line). In <strong className="text-slate-400">Review import</strong>, set <strong className="text-slate-400">category</strong> (required), and adjust per-row <strong className="text-slate-400">frequency</strong>, <strong className="text-slate-400">Date</strong>, or <strong className="text-slate-400">Month</strong> if needed (month is seeded from each line’s date). Only rows with a category are saved when you commit. Credits / payments are skipped during parsing.
+            Set defaults for <strong className="text-slate-400">institution</strong> and <strong className="text-slate-400">frequency</strong> before upload. Each row’s <strong className="text-slate-400">posted date</strong> comes from the statement. In <strong className="text-slate-400">Review import</strong>, set <strong className="text-slate-400">category</strong> (required) and adjust per-row <strong className="text-slate-400">frequency</strong> if needed. Saved expenses derive recurring metadata from each line’s posted date. Only rows with a category are saved when you commit. Credits / payments are skipped during parsing.
           </p>
         </div>
         <form onSubmit={runImportUpload} className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
@@ -278,27 +271,6 @@ export default function ExpensesPage() {
             >
               {FREQUENCY_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-slate-500 block mb-1">
-              Date (for import){" "}
-              <span className="text-slate-600 font-normal normal-case">(1–30)</span>
-            </label>
-            <select
-              value={importDefaults.payment_day}
-              onChange={(e) =>
-                setImportDefaults((d) => ({ ...d, payment_day: e.target.value }))
-              }
-              className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
-              title="Apply this day of month to every imported row, or use each line’s posting date"
-              aria-label="Import default payment day, 1 to 30, or from statement"
-            >
-              {IMPORT_PAYMENT_DAY_OPTIONS.map((o) => (
-                <option key={o.value === "" ? "from-statement" : o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
@@ -353,12 +325,6 @@ export default function ExpensesPage() {
                   <th className="px-3 py-2">Amount</th>
                   <th className="px-3 py-2 min-w-[10rem]">Category</th>
                   <th className="px-3 py-2 min-w-[7rem]">Frequency</th>
-                  <th className="px-3 py-2 min-w-[4.5rem]">
-                    Date <span className="normal-case font-normal text-slate-500">(1–30)</span>
-                  </th>
-                  <th className="px-3 py-2 min-w-[5.5rem]">
-                    Month <span className="normal-case font-normal text-slate-500">(1–12)</span>
-                  </th>
                   <th className="px-3 py-2">Description</th>
                 </tr>
               </thead>
@@ -399,54 +365,6 @@ export default function ExpensesPage() {
                       >
                         {FREQUENCY_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <select
-                        value={
-                          row.payment_day != null && row.payment_day !== ""
-                            ? String(row.payment_day)
-                            : ""
-                        }
-                        onChange={(e) =>
-                          patchImportStagingRow(row.id, {
-                            payment_day:
-                              e.target.value === "" ? null : Number(e.target.value),
-                          })
-                        }
-                        className="w-full max-w-[5rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                        title="Day of month (1–30)"
-                        aria-label="Payment day, 1 to 30"
-                      >
-                        {PAYMENT_DAY_OPTIONS.map((o) => (
-                          <option key={o.value === "" ? "unset" : o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <select
-                        value={
-                          row.payment_month != null && row.payment_month !== ""
-                            ? String(row.payment_month)
-                            : ""
-                        }
-                        onChange={(e) =>
-                          patchImportStagingRow(row.id, {
-                            payment_month:
-                              e.target.value === "" ? null : Number(e.target.value),
-                          })
-                        }
-                        className="w-full max-w-[7rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                        title="Calendar month (1–12)"
-                        aria-label="Payment month"
-                      >
-                        {PAYMENT_MONTH_OPTIONS.map((o) => (
-                          <option key={o.value === "" ? "unset" : o.value} value={o.value}>
                             {o.label}
                           </option>
                         ))}

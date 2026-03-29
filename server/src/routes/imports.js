@@ -8,23 +8,8 @@ import {
   parseFinancialInstitution,
   parseFrequency,
   CATEGORY_ERROR,
-  PAYMENT_DAY_ERROR,
-  PAYMENT_MONTH_ERROR,
-  tryParsePaymentDay,
-  tryParsePaymentMonth,
+  paymentMetaFromSpentAt,
 } from "../expenseEnums.js";
-
-function paymentDayFromSpentAt(isoDate) {
-  const day = Number.parseInt(String(isoDate).slice(8, 10), 10);
-  if (!Number.isFinite(day)) return null;
-  return Math.min(30, Math.max(1, day));
-}
-
-function paymentMonthFromSpentAt(isoDate) {
-  const month = Number.parseInt(String(isoDate).slice(5, 7), 10);
-  if (!Number.isFinite(month) || month < 1 || month > 12) return null;
-  return month;
-}
 
 export const importsRouter = Router();
 importsRouter.use(authRequired);
@@ -57,19 +42,6 @@ importsRouter.post("/", uploadMiddleware, async (req, res) => {
   const financial_institution =
     parseFinancialInstitution(req.body?.financial_institution || "visa") || "visa";
   const frequency = parseFrequency(req.body?.frequency || "once") || "once";
-
-  let importPaymentDay = null;
-  if (
-    req.body?.payment_day !== undefined &&
-    req.body?.payment_day !== null &&
-    String(req.body.payment_day).trim() !== ""
-  ) {
-    const p = tryParsePaymentDay(req.body.payment_day);
-    if (!p.ok) {
-      return res.status(400).json({ error: PAYMENT_DAY_ERROR, warnings: [] });
-    }
-    importPaymentDay = p.value;
-  }
 
   let transactions;
   let warnings;
@@ -110,8 +82,7 @@ importsRouter.post("/", uploadMiddleware, async (req, res) => {
 
     const inserted = [];
     for (const t of transactions) {
-      const payment_day = importPaymentDay ?? paymentDayFromSpentAt(t.spent_at);
-      const payment_month = paymentMonthFromSpentAt(t.spent_at);
+      const { payment_day, payment_month } = paymentMetaFromSpentAt(t.spent_at);
       const { rows } = await client.query(
         `INSERT INTO import_staging_rows (batch_id, user_id, spent_at, amount, description, category, frequency, payment_day, payment_month)
          VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8)
@@ -199,25 +170,16 @@ importsRouter.patch("/rows/:rowId", async (req, res) => {
     params.push(frequency);
   }
 
-  if (Object.prototype.hasOwnProperty.call(req.body, "payment_day")) {
-    const parsed = tryParsePaymentDay(req.body.payment_day);
-    if (!parsed.ok) return res.status(400).json({ error: PAYMENT_DAY_ERROR });
-    sets.push(`payment_day = $${next++}`);
-    params.push(parsed.value);
-  }
-
-  if (Object.prototype.hasOwnProperty.call(req.body, "payment_month")) {
-    const parsed = tryParsePaymentMonth(req.body.payment_month);
-    if (!parsed.ok) return res.status(400).json({ error: PAYMENT_MONTH_ERROR });
-    sets.push(`payment_month = $${next++}`);
-    params.push(parsed.value);
-  }
-
   if (!sets.length) {
     return res.status(400).json({
-      error: "Provide category, frequency, payment_day, and/or payment_month to update",
+      error: "Provide category and/or frequency to update",
     });
   }
+
+  sets.push(
+    `payment_day = LEAST(30, GREATEST(1, EXTRACT(DAY FROM spent_at)::int))`,
+    `payment_month = EXTRACT(MONTH FROM spent_at)::int`
+  );
 
   params.push(rowId, req.userId);
   const { rows } = await pool.query(
@@ -254,8 +216,7 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
 
     const { rows: toInsert } = await client.query(
       `SELECT s.id, s.spent_at, s.amount, s.description, s.category,
-              COALESCE(s.frequency, b.default_frequency) AS frequency,
-              s.payment_day, s.payment_month
+              COALESCE(s.frequency, b.default_frequency) AS frequency
        FROM import_staging_rows s
        JOIN import_batches b ON b.id = s.batch_id
        WHERE s.batch_id = $1 AND s.user_id = $2 AND s.category IS NOT NULL`,
@@ -271,6 +232,7 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
 
     let added = 0;
     for (const t of toInsert) {
+      const { payment_day, payment_month } = paymentMetaFromSpentAt(t.spent_at);
       await client.query(
         `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
@@ -280,8 +242,8 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
           t.category,
           default_financial_institution,
           t.frequency,
-          t.payment_day,
-          t.payment_month,
+          payment_day,
+          payment_month,
           t.description,
           t.spent_at,
         ]

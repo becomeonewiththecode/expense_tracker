@@ -1,9 +1,9 @@
 /**
- * Next renewal / anniversary dates from expense frequency, payment_day, payment_month, and spent_at.
- * Uses the browser's local calendar (start-of-day boundaries).
+ * Next renewal / anniversary dates from expense frequency and transaction date (`spent_at`).
+ * Day-of-month and calendar month for recurring math follow the posted date (same rules as the API).
  */
 
-/** @typedef {{ id?: number, frequency?: string, spent_at?: string, payment_day?: number | null, payment_month?: number | null, category?: string, description?: string }} ExpenseLike */
+/** @typedef {{ id?: number, frequency?: string, spent_at?: string, category?: string, description?: string }} ExpenseLike */
 
 function normalizeFrequency(frequency) {
   const f = String(frequency ?? "monthly")
@@ -65,12 +65,7 @@ export function nextRenewalDate(expense, from = new Date()) {
   if (!spent) return null;
 
   const fromS = startOfLocalDay(from);
-  const rawDay =
-    expense.payment_day != null && expense.payment_day !== ""
-      ? Number(expense.payment_day)
-      : spent.getDate();
-  const day =
-    Number.isFinite(rawDay) && rawDay >= 1 ? Math.min(30, Math.max(1, Math.floor(rawDay))) : spent.getDate();
+  const day = Math.min(30, Math.max(1, spent.getDate()));
 
   if (freq === "weekly") {
     let cur = startOfLocalDay(spent);
@@ -106,12 +101,7 @@ export function nextRenewalDate(expense, from = new Date()) {
   }
 
   if (freq === "yearly") {
-    const rawM =
-      expense.payment_month != null && expense.payment_month !== ""
-        ? Number(expense.payment_month)
-        : spent.getMonth() + 1;
-    const monthIndex =
-      Number.isFinite(rawM) && rawM >= 1 && rawM <= 12 ? rawM - 1 : spent.getMonth();
+    const monthIndex = spent.getMonth();
     let y = fromS.getFullYear();
     let cand = new Date(y, monthIndex, clampDayInMonth(y, monthIndex, day));
     if (cand < fromS) {
@@ -139,14 +129,18 @@ export function daysUntilRenewal(expense, now = new Date()) {
 }
 
 /**
- * Reminder tier: 30 / 15 / 5 days before renewal (with small windows so occasional visits still see them).
+ * Reminder tier: three bands before renewal (with windows so occasional visits still see them).
+ * - Final two weeks (tier 5): exact day count in the UI
+ * - ~2–3 weeks out (tier 15): “about 15 days” or similar
+ * - ~1 month out (tier 30): “about 30 days”
+ * Bands are contiguous so values like 12 days are not dropped between narrow slices.
  * @param {number | null} daysUntil
  * @returns {30 | 15 | 5 | null}
  */
 export function renewalReminderTier(daysUntil) {
   if (daysUntil == null || daysUntil < 0) return null;
-  if (daysUntil <= 6) return 5;
-  if (daysUntil >= 13 && daysUntil <= 17) return 15;
-  if (daysUntil >= 28 && daysUntil <= 31) return 30;
+  if (daysUntil <= 14) return 5;
+  if (daysUntil <= 24) return 15;
+  if (daysUntil <= 40) return 30;
   return null;
 }

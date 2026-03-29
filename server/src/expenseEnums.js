@@ -19,6 +19,32 @@ export const FINANCIAL_INSTITUTIONS = new Set([
 
 export const FREQUENCIES = new Set(["once", "weekly", "monthly", "bimonthly", "yearly"]);
 
+/** Normalize DB or ISO string to `YYYY-MM-DD` for metadata derivation. */
+export function spentAtToIsoDate(v) {
+  if (v == null) return null;
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10);
+}
+
+/**
+ * `payment_day` (1–30, cap 30) and `payment_month` (1–12) derived from transaction date.
+ * Stored denormalized for exports and renewal logic; do not accept separate client values.
+ */
+export function paymentMetaFromSpentAt(spentAt) {
+  const iso = spentAtToIsoDate(spentAt);
+  if (!iso) return { payment_day: null, payment_month: null };
+  const day = Number.parseInt(iso.slice(8, 10), 10);
+  const month = Number.parseInt(iso.slice(5, 7), 10);
+  const payment_day = Number.isFinite(day) ? Math.min(30, Math.max(1, day)) : null;
+  const payment_month =
+    Number.isFinite(month) && month >= 1 && month <= 12 ? month : null;
+  return { payment_day, payment_month };
+}
+
 /** Day of month (1–30) when a recurring payment typically posts; optional metadata beside `spent_at`. */
 export const PAYMENT_DAY_ERROR =
   "Payment day must be a whole number from 1 to 30, or empty for not set";

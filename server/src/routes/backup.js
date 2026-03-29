@@ -7,10 +7,7 @@ import {
   parseFinancialInstitution,
   parseFrequency,
   CATEGORY_ERROR,
-  PAYMENT_DAY_ERROR,
-  PAYMENT_MONTH_ERROR,
-  tryParsePaymentDay,
-  tryParsePaymentMonth,
+  paymentMetaFromSpentAt,
 } from "../expenseEnums.js";
 
 export const BACKUP_FORMAT = "expense-tracker-backup";
@@ -84,23 +81,8 @@ function validateExpenseForRestore(raw, index) {
   if (!frequency) {
     return { ok: false, error: `${label}: invalid frequency` };
   }
-  let payment_day = null;
-  if (Object.prototype.hasOwnProperty.call(raw, "payment_day")) {
-    const parsed = tryParsePaymentDay(raw.payment_day);
-    if (!parsed.ok) {
-      return { ok: false, error: `${label}: ${PAYMENT_DAY_ERROR}` };
-    }
-    payment_day = parsed.value;
-  }
-  let payment_month = null;
-  if (Object.prototype.hasOwnProperty.call(raw, "payment_month")) {
-    const parsed = tryParsePaymentMonth(raw.payment_month);
-    if (!parsed.ok) {
-      return { ok: false, error: `${label}: ${PAYMENT_MONTH_ERROR}` };
-    }
-    payment_month = parsed.value;
-  }
   const spent_at = parseDate(raw.spent_at) || new Date().toISOString().slice(0, 10);
+  const { payment_day, payment_month } = paymentMetaFromSpentAt(spent_at);
   const description = String(raw.description ?? "").slice(0, 500);
   return {
     ok: true,

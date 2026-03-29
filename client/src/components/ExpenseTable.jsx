@@ -2,13 +2,9 @@ import {
   CATEGORY_OPTIONS,
   FREQUENCY_OPTIONS,
   FINANCIAL_INSTITUTION_OPTIONS,
-  PAYMENT_DAY_OPTIONS,
-  PAYMENT_MONTH_OPTIONS,
   formatCategory,
   formatFinancialInstitution,
   formatFrequency,
-  formatPaymentDay,
-  formatPaymentMonth,
 } from "../expenseOptions.js";
 
 /** Normalize API spent_at to YYYY-MM-DD for date inputs. */
@@ -29,8 +25,6 @@ function rowSnapshotForProjection(row, draft) {
       amount: Number.isFinite(amt) ? amt : row.amount,
       category: draft.category,
       frequency: draft.frequency,
-      payment_day: draft.payment_day === "" ? null : Number(draft.payment_day),
-      payment_month: draft.payment_month === "" ? null : Number(draft.payment_month),
       financial_institution: draft.financial_institution,
       description: draft.description,
       spent_at: draft.spent_at,
@@ -89,19 +83,13 @@ export default function ExpenseTable({
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[80rem] text-sm text-left">
+        <table className="w-full min-w-[64rem] text-sm text-left">
           <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
             <tr>
               <th className="px-4 py-3 w-[9.5rem]">Transaction</th>
               <th className="px-4 py-3 w-[5.5rem]">Amount</th>
               <th className="px-4 py-3 w-[7.5rem]">Category</th>
               <th className="px-4 py-3 hidden lg:table-cell w-[6.5rem]">Frequency</th>
-              <th className="px-4 py-3 hidden lg:table-cell w-[5.5rem]">
-                Date <span className="normal-case font-normal text-slate-500">(1–30)</span>
-              </th>
-              <th className="px-4 py-3 hidden xl:table-cell w-[5.5rem]">
-                Month <span className="normal-case font-normal text-slate-500">(1–12)</span>
-              </th>
               <th className="px-4 py-3 hidden md:table-cell w-[7rem]">Institution</th>
               <th className="px-4 py-3 hidden sm:table-cell min-w-[8rem]">Note</th>
               <th className="px-4 py-3 text-right min-w-[15rem]">Actions</th>
@@ -192,54 +180,6 @@ export default function ExpenseTable({
                       </select>
                     ) : (
                       formatFrequency(row.frequency)
-                    )}
-                  </td>
-                  <td
-                    className={`px-4 py-3 text-slate-300 align-middle tabular-nums ${editing ? "" : "hidden lg:table-cell"}`}
-                  >
-                    {editing && d ? (
-                      <select
-                        value={d.payment_day}
-                        onChange={(e) =>
-                          setExpenseEditDraft((prev) =>
-                            prev ? { ...prev, payment_day: e.target.value } : prev
-                          )
-                        }
-                        className="w-full max-w-[4.5rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                        title="Day of month (1–30)"
-                      >
-                        {PAYMENT_DAY_OPTIONS.map((o) => (
-                          <option key={o.value === "" ? "unset" : o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      formatPaymentDay(row.payment_day)
-                    )}
-                  </td>
-                  <td
-                    className={`px-4 py-3 text-slate-300 align-middle ${editing ? "" : "hidden xl:table-cell"}`}
-                  >
-                    {editing && d ? (
-                      <select
-                        value={d.payment_month}
-                        onChange={(e) =>
-                          setExpenseEditDraft((prev) =>
-                            prev ? { ...prev, payment_month: e.target.value } : prev
-                          )
-                        }
-                        className="w-full max-w-[7rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                        title="Typical calendar month for recurring expenses"
-                      >
-                        {PAYMENT_MONTH_OPTIONS.map((o) => (
-                          <option key={o.value === "" ? "unset" : o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      formatPaymentMonth(row.payment_month)
                     )}
                   </td>
                   <td
