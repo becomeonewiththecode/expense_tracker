@@ -172,7 +172,7 @@ export default function YourExpensesPage() {
         <p className="text-sm text-slate-400 mt-1">
           {loading
             ? "Loading…"
-            : "Add expenses here or on Import; review, edit, or delete saved transactions (newest first)."}
+            : "Add expenses here or on Import; review, edit, or delete. Default order is newest first—click a column heading to sort."}
         </p>
       </div>
 

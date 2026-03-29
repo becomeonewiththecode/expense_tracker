@@ -89,6 +89,77 @@ function countsInRenewalSubtotal(r) {
   return r.state !== "cancel";
 }
 
+const RENEWAL_SORT_KEYS = ["title", "spent_at", "amount", "state", "renews"];
+
+function transactionSortValue(spentAt) {
+  const iso = spentAtToIsoDateString(spentAt);
+  return iso || "";
+}
+
+function compareRenewalRows(a, b, key, dir) {
+  const mul = dir === "asc" ? 1 : -1;
+  const tie = String(a.key).localeCompare(String(b.key));
+  let cmp = 0;
+  switch (key) {
+    case "title":
+      cmp = a.title.localeCompare(b.title, undefined, { sensitivity: "base", numeric: true });
+      break;
+    case "spent_at":
+      cmp = transactionSortValue(a.spentAt).localeCompare(transactionSortValue(b.spentAt));
+      break;
+    case "amount":
+      cmp = a.amountNum - b.amountNum;
+      break;
+    case "state":
+      cmp = formatExpenseState(a.state).localeCompare(formatExpenseState(b.state), undefined, {
+        sensitivity: "base",
+      });
+      break;
+    case "renews":
+      cmp = startOfLocalDay(a.next).getTime() - startOfLocalDay(b.next).getTime();
+      break;
+    default:
+      return tie;
+  }
+  if (cmp !== 0) return cmp * mul;
+  return tie;
+}
+
+function sortRenewalRows(rows, key, dir) {
+  if (!key || !RENEWAL_SORT_KEYS.includes(key)) return rows;
+  return [...rows].sort((a, b) => compareRenewalRows(a, b, key, dir));
+}
+
+function RenewalSortableTh({ colKey, label, sort, onSort, className = "", align = "left" }) {
+  const active = sort.key === colKey;
+  const dir = sort.dir;
+  const justify = align === "right" ? "justify-end text-right" : "text-left";
+  return (
+    <th
+      scope="col"
+      className={`px-3 py-2 font-medium ${className}`}
+      aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : undefined}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(colKey)}
+        className={`group inline-flex items-center gap-1 w-full min-w-0 uppercase tracking-wide text-xs ${justify} text-amber-200/90 hover:text-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 rounded px-0.5 -mx-0.5 -my-1 whitespace-nowrap`}
+        title={`Sort by ${label}`}
+      >
+        <span className="truncate">{label}</span>
+        <span
+          className={`shrink-0 text-[10px] leading-none w-3.5 text-center ${
+            active ? "text-amber-300" : "text-amber-600/80 opacity-0 group-hover:opacity-100"
+          }`}
+          aria-hidden
+        >
+          {active ? (dir === "asc" ? "▲" : "▼") : "↕"}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 export default function RenewalReminders({ onRenewalChipChange }) {
   const location = useLocation();
   const renewalHelpTriggerId = useId();
@@ -97,6 +168,16 @@ export default function RenewalReminders({ onRenewalChipChange }) {
   const [dismissed, setDismissed] = useState(() => readDismissed());
   const [loadError, setLoadError] = useState(false);
   const [renewalHelpOpen, setRenewalHelpOpen] = useState(false);
+  const [renewalSort, setRenewalSort] = useState({ key: null, dir: "asc" });
+
+  function handleRenewalSort(colKey) {
+    setRenewalSort((prev) => {
+      if (prev.key === colKey) {
+        return { key: colKey, dir: prev.dir === "asc" ? "desc" : "asc" };
+      }
+      return { key: colKey, dir: "asc" };
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -290,6 +371,7 @@ export default function RenewalReminders({ onRenewalChipChange }) {
       ) : null}
       <div className="space-y-4">
         {remindersByInstitution.map(([institution, rows]) => {
+          const sortedRows = sortRenewalRows(rows, renewalSort.key, renewalSort.dir);
           const sectionTotal = rows
             .filter(countsInRenewalSubtotal)
             .reduce((sum, r) => sum + r.amountNum, 0);
@@ -308,28 +390,50 @@ export default function RenewalReminders({ onRenewalChipChange }) {
                 <table className="min-w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-amber-900/40 text-xs uppercase tracking-wide text-amber-200/80">
-                      <th scope="col" className="px-3 py-2 font-medium">
-                        Expense
-                      </th>
-                      <th scope="col" className="px-3 py-2 font-medium whitespace-nowrap">
-                        Transaction
-                      </th>
-                      <th scope="col" className="px-3 py-2 font-medium text-right whitespace-nowrap">
-                        Amount
-                      </th>
-                      <th scope="col" className="px-3 py-2 font-medium whitespace-nowrap">
-                        State
-                      </th>
-                      <th scope="col" className="px-3 py-2 font-medium whitespace-nowrap min-w-[12rem]">
-                        Renews
-                      </th>
-                      <th scope="col" className="px-3 py-2 font-medium text-right w-[1%] whitespace-nowrap">
+                      <RenewalSortableTh
+                        colKey="title"
+                        label="Expense"
+                        sort={renewalSort}
+                        onSort={handleRenewalSort}
+                        className="max-w-[14rem]"
+                      />
+                      <RenewalSortableTh
+                        colKey="spent_at"
+                        label="Transaction"
+                        sort={renewalSort}
+                        onSort={handleRenewalSort}
+                      />
+                      <RenewalSortableTh
+                        colKey="amount"
+                        label="Amount"
+                        sort={renewalSort}
+                        onSort={handleRenewalSort}
+                        align="right"
+                        className="text-right whitespace-nowrap"
+                      />
+                      <RenewalSortableTh
+                        colKey="state"
+                        label="State"
+                        sort={renewalSort}
+                        onSort={handleRenewalSort}
+                      />
+                      <RenewalSortableTh
+                        colKey="renews"
+                        label="Renews"
+                        sort={renewalSort}
+                        onSort={handleRenewalSort}
+                        className="min-w-[12rem]"
+                      />
+                      <th
+                        scope="col"
+                        className="px-3 py-2 font-medium text-right w-[1%] whitespace-nowrap uppercase tracking-wide text-amber-200/80 text-xs"
+                      >
                         <span className="sr-only">Actions</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-amber-950/60">
-                    {rows.map((r) => {
+                    {sortedRows.map((r) => {
                       const cancelled = r.state === "cancel";
                       return (
                         <tr
