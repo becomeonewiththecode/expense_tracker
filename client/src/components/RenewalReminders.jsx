@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import api from "../api.js";
 import { formatCategory, formatExpenseState, formatFinancialInstitution } from "../expenseOptions.js";
@@ -27,6 +27,21 @@ function readDismissed() {
 
 function writeDismissed(set) {
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
+}
+
+/** Filled info-in-circle (24×24 Material-style path — reliable across browsers). */
+function InfoIcon({ className }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+    </svg>
+  );
 }
 
 function formatRenewalDate(d) {
@@ -76,9 +91,12 @@ function countsInRenewalSubtotal(r) {
 
 export default function RenewalReminders({ onRenewalChipChange }) {
   const location = useLocation();
+  const renewalHelpTriggerId = useId();
+  const renewalHelpPanelId = useId();
   const [items, setItems] = useState([]);
   const [dismissed, setDismissed] = useState(() => readDismissed());
   const [loadError, setLoadError] = useState(false);
+  const [renewalHelpOpen, setRenewalHelpOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,6 +201,15 @@ export default function RenewalReminders({ onRenewalChipChange }) {
   }, []);
 
   useEffect(() => {
+    if (!renewalHelpOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setRenewalHelpOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [renewalHelpOpen]);
+
+  useEffect(() => {
     if (!onRenewalChipChange) return undefined;
     if (loadError) {
       onRenewalChipChange(null);
@@ -212,8 +239,22 @@ export default function RenewalReminders({ onRenewalChipChange }) {
       role="region"
       aria-label="Subscription renewal reminders"
     >
-      <div className="flex flex-wrap items-start justify-between gap-2 gap-y-2">
-        <p className="font-medium text-amber-100">Upcoming renewals</p>
+      <div className="flex flex-wrap items-center justify-between gap-2 gap-y-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <p className="font-medium text-amber-100">Upcoming renewals</p>
+          <button
+            type="button"
+            id={renewalHelpTriggerId}
+            onClick={() => setRenewalHelpOpen((o) => !o)}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-amber-400/70 bg-amber-950/90 text-amber-100 shadow-sm hover:bg-amber-900 hover:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400/80 focus:ring-offset-2 focus:ring-offset-amber-950"
+            aria-expanded={renewalHelpOpen}
+            aria-controls={renewalHelpPanelId}
+            title="How this table works"
+          >
+            <span className="sr-only">How upcoming renewals work</span>
+            <InfoIcon className="h-5 w-5" />
+          </button>
+        </div>
         <button
           type="button"
           onClick={dismissAll}
@@ -222,23 +263,31 @@ export default function RenewalReminders({ onRenewalChipChange }) {
           Dismiss all
         </button>
       </div>
-      <p className="text-xs text-amber-200/70 mt-1 mb-3">
-        Based on each expense&apos;s <strong className="text-amber-200/90">frequency</strong> and{" "}
-        <strong className="text-amber-200/90">transaction date</strong>. We surface renewals roughly a month out, a couple
-        of weeks out, and during the final two weeks (with short windows so you still see a reminder if you skip a day).
-        Amounts are each line&apos;s stored charge. <strong className="text-amber-200/90">Renews</strong> is computed from
-        the <strong className="text-amber-200/90">Transaction</strong> date and frequency (for yearly, the same month and
-        day next time it falls on or after today). After a renewal date passes, a line stays off the list for a short
-        while until the next charge is closer (the far &quot;month out&quot; band does not resume for about two weeks
-        after that date). If Renews looks wrong, fix the transaction date under{" "}
-        <strong className="text-amber-200/90">Your expenses</strong> → Edit. Rows with{" "}
-        <strong className="text-amber-200/90">State</strong> set to <strong className="text-amber-200/90">Cancel</strong>{" "}
-        use a <strong className="text-emerald-300/90">green</strong> highlight (subscription ended or you do not expect another charge).
-        <strong className="text-amber-200/90"> Subtotals</strong> and{" "}
-        <strong className="text-amber-200/90">Total (all institutions)</strong> include only{" "}
-        <strong className="text-amber-200/90">Active</strong> rows—<strong className="text-emerald-300/90">Cancel</strong>{" "}
-        amounts are excluded.
-      </p>
+      {renewalHelpOpen ? (
+        <div
+          id={renewalHelpPanelId}
+          role="region"
+          aria-labelledby={renewalHelpTriggerId}
+          className="mt-2 mb-3 rounded-lg border border-amber-800/50 bg-slate-950/70 px-3 py-2.5 text-xs text-amber-200/80 leading-relaxed"
+        >
+          Based on each expense&apos;s <strong className="text-amber-200/90">frequency</strong> and{" "}
+          <strong className="text-amber-200/90">transaction date</strong>. We surface renewals roughly a month out, a
+          couple of weeks out, and during the final two weeks (with short windows so you still see a reminder if you skip
+          a day). Amounts are each line&apos;s stored charge. <strong className="text-amber-200/90">Renews</strong> is
+          computed from the <strong className="text-amber-200/90">Transaction</strong> date and frequency (for yearly,
+          the same month and day next time it falls on or after today). After a renewal date passes, a line stays off the
+          list for a short while until the next charge is closer (the far &quot;month out&quot; band does not resume for
+          about two weeks after that date). If Renews looks wrong, fix the transaction date under{" "}
+          <strong className="text-amber-200/90">Expenses</strong> → Edit. Rows with{" "}
+          <strong className="text-amber-200/90">State</strong> set to{" "}
+          <strong className="text-amber-200/90">Cancel</strong> use a{" "}
+          <strong className="text-emerald-300/90">green</strong> highlight (subscription ended or you do not expect
+          another charge). <strong className="text-amber-200/90">Subtotals</strong> and{" "}
+          <strong className="text-amber-200/90">Total (all institutions)</strong> include only{" "}
+          <strong className="text-amber-200/90">Active</strong> rows—
+          <strong className="text-emerald-300/90">Cancel</strong> amounts are excluded.
+        </div>
+      ) : null}
       <div className="space-y-4">
         {remindersByInstitution.map(([institution, rows]) => {
           const sectionTotal = rows

@@ -173,7 +173,7 @@ export default function ProfilePage() {
     }
     if (restoreMode === "replace") {
       const ok = window.confirm(
-        "Replace mode deletes all your current expenses, then imports the file. This cannot be undone. Continue?"
+        "Replace mode deletes all current expenses, then imports the file. This cannot be undone. Continue?"
       );
       if (!ok) return;
     }
@@ -476,9 +476,9 @@ export default function ProfilePage() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
         <h2 className="text-sm font-medium text-slate-300">Backup and restore</h2>
         <p className="text-xs text-slate-500 leading-relaxed">
-          Download a JSON file with all your expenses. Restore from a file created by this app.{" "}
+          Download a JSON file with all expenses. Restore from a file created by this app.{" "}
           <span className="text-slate-400">Append</span> adds rows to what you already have;{" "}
-          <span className="text-slate-400">Replace</span> removes all your expenses first, then imports the file.
+          <span className="text-slate-400">Replace</span> removes all expenses first, then imports the file.
           Keep backups private—they contain your spending data.
         </p>
         {backupError && (

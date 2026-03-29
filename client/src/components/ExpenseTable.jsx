@@ -54,7 +54,7 @@ export default function ExpenseTable({
   return (
     <div className="rounded-xl border border-slate-800 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-900/80 border-b border-slate-800">
-        <h2 className="text-sm font-medium text-slate-200">Your expenses</h2>
+        <h2 className="text-sm font-medium text-slate-200">Expenses</h2>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"

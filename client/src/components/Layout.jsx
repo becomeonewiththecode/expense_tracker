@@ -32,7 +32,7 @@ export default function Layout() {
               Import
             </NavLink>
             <NavLink to="/expenses/list" className={linkClass}>
-              Your expenses
+              Expenses
             </NavLink>
             <NavLink to="/reports" className={linkClass}>
               Reports

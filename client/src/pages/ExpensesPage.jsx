@@ -194,7 +194,7 @@ export default function ExpensesPage() {
               ? "Loading…"
               : showOnboarding
                 ? "Add an expense manually, or import a statement to get started."
-                : "Import from a statement, or open Your expenses to review saved transactions."}
+                : "Import from a statement, or open Expenses to review saved transactions."}
           </p>
         </div>
         {!loading && hasSavedExpenses && (
@@ -202,7 +202,7 @@ export default function ExpensesPage() {
             to="/expenses/list"
             className="shrink-0 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium px-3 py-2"
           >
-            Your expenses
+            Expenses
           </NavLink>
         )}
       </div>

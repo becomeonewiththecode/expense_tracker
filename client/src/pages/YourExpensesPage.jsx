@@ -168,7 +168,7 @@ export default function YourExpensesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-white">Your expenses</h1>
+        <h1 className="text-xl font-semibold text-white">Expenses</h1>
         <p className="text-sm text-slate-400 mt-1">
           {loading
             ? "Loading…"
