@@ -46,7 +46,7 @@ If **port 4000** is already used by another program, the user interface may fail
 For a **built** client, API, PostgreSQL, and Redis in containers (nginx serves **`dist/`** and proxies **`/api`** and **`/health`** to the API):
 
 1. Copy **`deployment/docker-compose/.env.example`** to **`deployment/docker-compose/.env`**.  
-2. Set **`JWT_SECRET`** (for example `openssl rand -base64 32`) and **`CLIENT_ORIGIN`** to the URL users will open (for example `http://localhost:8080` if you publish **`HTTP_PORT=8080`**).  
+2. Set **`JWT_SECRET`** (for example `openssl rand -base64 32`) and **`CLIENT_ORIGIN`** to the URL users will open (for example `http://localhost:8080` if you publish **`HTTP_PORT=8080`**). The API **requires** a strong **`JWT_SECRET`** in this file for production containers; use the **same** value across rebuilds so existing sessions can refresh.  
 3. From the **repository root**, run **`npm run compose:prod`** (or the full `docker compose -f deployment/docker-compose/docker-compose.yml …` command in [deployment/docker-compose/README.md](../deployment/docker-compose/README.md)).
 
 Verify with **`curl -sS http://localhost:8080/health`** (adjust the port if you changed **`HTTP_PORT`**). OAuth redirect URIs must use the same origin as **`CLIENT_ORIGIN`**, for example `http://localhost:8080/api/auth/oauth/google/callback`.
@@ -151,7 +151,7 @@ Signed-in users can open **Profile** from the header to update **email**, **pass
 
 ## Session and security
 
-- After **email and password** login or **single sign-on** completion, the application stores a **JSON Web Token** in the browser (`localStorage`) and sends it on API requests. The session model is the same for both login types. Tokens **expire** after a period configured on the server; when an API call fails because the token is no longer valid, you may see a prompt asking whether to **continue the session**. Choosing **Continue session** requests a **new token** without leaving the page (if your old token is still within the allowed refresh window); otherwise **sign out** and sign in again.  
+- After **email and password** login or **single sign-on** completion, the application stores a **JSON Web Token** in the browser (`localStorage`) and sends it on API requests. The session model is the same for both login types. Tokens **expire** after a period configured on the server; when an API call fails because the token is no longer valid, you may see a prompt asking whether to **continue the session**. Choosing **Continue session** requests a **new token** without leaving the page (if your old token is still within the allowed refresh window **and** the server still uses the same **`JWT_SECRET`** that signed it). After **Docker Compose** rebuilds, keep **`JWT_SECRET`** fixed in **`deployment/docker-compose/.env`**; if the signing secret changed or **Continue session** returns **Invalid token**, **sign out** and sign in again.  
 - **Password accounts:** do not share your password; choose a strong password for your account.  
 - **Single sign-on accounts:** sign-in is delegated to Google, GitHub, GitLab, or Microsoft; use that provider’s account security settings (two-factor authentication, and so on) as appropriate.  
 - On a shared computer, **sign out** when finished (this clears the token from this browser).  

@@ -21,7 +21,16 @@ export default function SessionExpiredModal({ open, onClose }) {
       onClose();
       window.location.reload();
     } catch (err) {
-      setError(getApiErrorMessage(err, "Could not refresh your session"));
+      const msg = getApiErrorMessage(err, "Could not refresh your session");
+      const isInvalid =
+        err?.response?.status === 401 &&
+        typeof err?.response?.data?.error === "string" &&
+        /invalid token/i.test(err.response.data.error);
+      setError(
+        isInvalid
+          ? `${msg} After a server or container rebuild, set a stable JWT_SECRET (see deployment docs) and sign in again.`
+          : msg
+      );
     } finally {
       setLoading(false);
     }

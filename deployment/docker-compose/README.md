@@ -28,7 +28,7 @@ The root `docker-compose.yml` (repository root) only starts PostgreSQL and Redis
    openssl rand -base64 32
    ```
 
-   Paste the result on the `JWT_SECRET=` line. If **`JWT_SECRET`** is empty, the API may generate one inside the container, but **a new container after `docker compose down` loses that file**, which invalidates existing sessions.
+   Paste the result on the `JWT_SECRET=` line. **Required for production:** if **`JWT_SECRET`** is empty or too short, the API **exits on startup** so you are not left with a secret that changes on every new container (which would make **Continue session** / `POST /api/auth/refresh` return **Invalid token** after `up --build`). Keep the same value in **`deployment/docker-compose/.env`** across rebuilds.
 
 3. Edit the rest of **`deployment/docker-compose/.env`** as needed:
 
@@ -83,7 +83,8 @@ Compose publishes HTTP on **`HTTP_PORT`**. For HTTPS, put a reverse proxy (Traef
 
 ## Troubleshooting
 
-- **API exits or restarts:** Check `docker compose ... logs api`. Common causes: invalid **`DATABASE_URL`** (wait for postgres healthy), or missing **`JWT_SECRET`**.
+- **API exits or restarts:** Check `docker compose ... logs api`. Common causes: invalid **`DATABASE_URL`** (wait for postgres healthy), or **missing / weak `JWT_SECRET`** (the API now refuses to start in production without it).
+- **“Invalid token” when choosing Continue session** after rebuilding containers: the browser still has an old JWT signed with a **previous** secret. Set a **fixed** `JWT_SECRET` in `deployment/docker-compose/.env`, redeploy, then **sign out and sign in again** (or clear the site’s storage). Refresh only works if the token signature matches the server’s current secret.
 - **502 on `/api`:** Ensure the **api** service is running and nginx can resolve the hostname **`api`** on the Compose network (default service name).
 
 More context: [deployment/README.md](../README.md) and the root [README.md](../../README.md).

@@ -37,10 +37,25 @@ function upsertJwtSecretLine(content, secret) {
 /**
  * If JWT_SECRET is missing or weak, generate one and persist to server/.env
  * so it stays stable across restarts (same idea as committing .env manually).
+ *
+ * In **production** (e.g. Docker), we do **not** auto-generate: the API image has no
+ * persistent `/app/.env`, so a new container would get a new secret and every
+ * existing browser token (and `/api/auth/refresh`) would fail with "Invalid token".
  */
 export function ensureJwtSecret() {
   const current = process.env.JWT_SECRET;
   if (!needsNewSecret(current)) return;
+
+  if (process.env.NODE_ENV === "production") {
+    console.error(
+      "[FATAL] JWT_SECRET is missing or shorter than " +
+        MIN_LEN +
+        " characters (or still a placeholder). Set JWT_SECRET in your environment — " +
+        "for Docker Compose, edit deployment/docker-compose/.env (e.g. openssl rand -base64 32). " +
+        "Without a stable secret across container rebuilds, sign-in tokens cannot be verified or refreshed."
+    );
+    process.exit(1);
+  }
 
   const secret = crypto.randomBytes(32).toString("base64url");
   let body = "";
