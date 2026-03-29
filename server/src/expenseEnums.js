@@ -19,6 +19,10 @@ export const FINANCIAL_INSTITUTIONS = new Set([
 
 export const FREQUENCIES = new Set(["once", "weekly", "monthly", "bimonthly", "yearly"]);
 
+export const EXPENSE_STATES = new Set(["active", "cancel"]);
+
+export const STATE_ERROR = "Invalid state (use active, cancel)";
+
 /** Normalize DB or ISO string to `YYYY-MM-DD` for metadata derivation. */
 export function spentAtToIsoDate(v) {
   if (v == null) return null;
@@ -107,4 +111,13 @@ export function parseFrequency(value) {
     .replace(/\s+/g, "_");
   const norm = s === "bi-monthly" || s === "bi_monthly" ? "bimonthly" : s;
   return FREQUENCIES.has(norm) ? norm : null;
+}
+
+/** @param {unknown} value */
+export function parseExpenseState(value) {
+  const s = String(value ?? "")
+    .toLowerCase()
+    .trim();
+  if (!s) return null;
+  return EXPENSE_STATES.has(s) ? s : null;
 }

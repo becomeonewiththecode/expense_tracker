@@ -3,9 +3,11 @@ import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
 import {
   parseCategory,
+  parseExpenseState,
   parseFinancialInstitution,
   parseFrequency,
   CATEGORY_ERROR,
+  STATE_ERROR,
   paymentMetaFromSpentAt,
   spentAtToIsoDate,
 } from "../expenseEnums.js";
@@ -27,7 +29,7 @@ function parseDate(d) {
 expensesRouter.get("/", async (req, res) => {
   const { from, to, limit = "100", offset = "0" } = req.query;
   const params = [req.userId];
-  let sql = `SELECT id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at, created_at
+  let sql = `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at, created_at
     FROM expenses WHERE user_id = $1`;
   let i = 2;
   if (from && parseDate(from)) {
@@ -48,7 +50,7 @@ expensesRouter.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
   const { rows } = await pool.query(
-    `SELECT id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at, created_at FROM expenses
+    `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at, created_at FROM expenses
      WHERE id = $1 AND user_id = $2`,
     [id, req.userId]
   );
@@ -79,12 +81,20 @@ expensesRouter.post("/", async (req, res) => {
       error: "Invalid frequency (use once, weekly, monthly, bimonthly, yearly)",
     });
   }
+  let state = "active";
+  if (req.body?.state !== undefined && req.body?.state !== null && String(req.body.state).trim() !== "") {
+    const parsed = parseExpenseState(req.body.state);
+    if (!parsed) {
+      return res.status(400).json({ error: STATE_ERROR });
+    }
+    state = parsed;
+  }
   const { payment_day, payment_month } = paymentMetaFromSpentAt(spent_at);
   const { rows } = await pool.query(
-    `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     RETURNING id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at, created_at`,
-    [req.userId, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at]
+    `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at, created_at`,
+    [req.userId, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at]
   );
   res.status(201).json(normalizeExpense(rows[0]));
 });
@@ -143,6 +153,14 @@ expensesRouter.patch("/:id", async (req, res) => {
     updates.push(`description = $${i++}`);
     params.push(String(req.body.description).slice(0, 500));
   }
+  if (req.body.state !== undefined) {
+    const parsed = parseExpenseState(req.body.state);
+    if (!parsed) {
+      return res.status(400).json({ error: STATE_ERROR });
+    }
+    updates.push(`state = $${i++}`);
+    params.push(parsed);
+  }
   if (req.body.spent_at !== undefined) {
     const d = parseDate(req.body.spent_at);
     if (!d) return res.status(400).json({ error: "Invalid spent_at" });
@@ -164,7 +182,7 @@ expensesRouter.patch("/:id", async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE expenses SET ${updates.join(", ")}
      WHERE id = $${i++} AND user_id = $${i++}
-     RETURNING id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at, created_at`,
+     RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at, created_at`,
     params
   );
   if (!rows[0]) return res.status(404).json({ error: "Not found" });

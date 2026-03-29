@@ -1,8 +1,10 @@
 import {
   CATEGORY_OPTIONS,
+  EXPENSE_STATE_OPTIONS,
   FREQUENCY_OPTIONS,
   FINANCIAL_INSTITUTION_OPTIONS,
   formatCategory,
+  formatExpenseState,
   formatFinancialInstitution,
   formatFrequency,
 } from "../expenseOptions.js";
@@ -26,6 +28,7 @@ function rowSnapshotForProjection(row, draft) {
       category: draft.category,
       frequency: draft.frequency,
       financial_institution: draft.financial_institution,
+      state: draft.state,
       description: draft.description,
       spent_at: draft.spent_at,
     };
@@ -83,7 +86,7 @@ export default function ExpenseTable({
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[64rem] text-sm text-left">
+        <table className="w-full min-w-[70rem] text-sm text-left">
           <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
             <tr>
               <th className="px-4 py-3 w-[9.5rem]">Transaction</th>
@@ -91,6 +94,7 @@ export default function ExpenseTable({
               <th className="px-4 py-3 w-[7.5rem]">Category</th>
               <th className="px-4 py-3 hidden lg:table-cell w-[6.5rem]">Frequency</th>
               <th className="px-4 py-3 hidden md:table-cell w-[7rem]">Institution</th>
+              <th className="px-4 py-3 hidden md:table-cell w-[5.5rem]">State</th>
               <th className="px-4 py-3 hidden sm:table-cell min-w-[8rem]">Note</th>
               <th className="px-4 py-3 text-right min-w-[15rem]">Actions</th>
             </tr>
@@ -203,6 +207,29 @@ export default function ExpenseTable({
                       </select>
                     ) : (
                       formatFinancialInstitution(row.financial_institution)
+                    )}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-slate-300 align-middle ${editing ? "" : "hidden md:table-cell"}`}
+                  >
+                    {editing && d ? (
+                      <select
+                        value={d.state}
+                        onChange={(e) =>
+                          setExpenseEditDraft((prev) =>
+                            prev ? { ...prev, state: e.target.value } : prev
+                          )
+                        }
+                        className="w-full max-w-[8rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                      >
+                        {EXPENSE_STATE_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      formatExpenseState(row.state)
                     )}
                   </td>
                   <td

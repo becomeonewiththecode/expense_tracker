@@ -52,6 +52,10 @@ export async function initDb() {
     ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_payment_month_range;
     ALTER TABLE expenses ADD CONSTRAINT expenses_payment_month_range
       CHECK (payment_month IS NULL OR (payment_month >= 1 AND payment_month <= 12));
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS state TEXT NOT NULL DEFAULT 'active';
+    ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_state_check;
+    ALTER TABLE expenses ADD CONSTRAINT expenses_state_check
+      CHECK (state IN ('active', 'cancel'));
     CREATE TABLE IF NOT EXISTS import_batches (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -4,9 +4,11 @@ import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
 import {
   parseCategory,
+  parseExpenseState,
   parseFinancialInstitution,
   parseFrequency,
   CATEGORY_ERROR,
+  STATE_ERROR,
   paymentMetaFromSpentAt,
 } from "../expenseEnums.js";
 
@@ -45,6 +47,7 @@ function normalizeExpenseRow(row) {
     category: row.category,
     financial_institution: row.financial_institution,
     frequency: row.frequency,
+    state: row.state === "cancel" ? "cancel" : "active",
     payment_day: row.payment_day != null ? Number(row.payment_day) : null,
     payment_month: row.payment_month != null ? Number(row.payment_month) : null,
     description: row.description ?? "",
@@ -84,6 +87,14 @@ function validateExpenseForRestore(raw, index) {
   const spent_at = parseDate(raw.spent_at) || new Date().toISOString().slice(0, 10);
   const { payment_day, payment_month } = paymentMetaFromSpentAt(spent_at);
   const description = String(raw.description ?? "").slice(0, 500);
+  let state = "active";
+  if (raw.state !== undefined && raw.state !== null && String(raw.state).trim() !== "") {
+    const parsed = parseExpenseState(raw.state);
+    if (!parsed) {
+      return { ok: false, error: `${label}: ${STATE_ERROR}` };
+    }
+    state = parsed;
+  }
   return {
     ok: true,
     values: {
@@ -91,6 +102,7 @@ function validateExpenseForRestore(raw, index) {
       category,
       financial_institution,
       frequency,
+      state,
       payment_day,
       payment_month,
       description,
@@ -104,7 +116,7 @@ backupRouter.get("/export", authRequired, async (req, res) => {
     const { rows: userRows } = await pool.query(`SELECT email FROM users WHERE id = $1`, [req.userId]);
     const email = userRows[0]?.email ?? null;
     const { rows } = await pool.query(
-      `SELECT amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at
+      `SELECT amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at
        FROM expenses WHERE user_id = $1
        ORDER BY spent_at ASC, id ASC`,
       [req.userId]
@@ -170,14 +182,15 @@ backupRouter.post(
       }
       for (const v of validated) {
         await client.query(
-          `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [
             req.userId,
             v.amount,
             v.category,
             v.financial_institution,
             v.frequency,
+            v.state,
             v.payment_day,
             v.payment_month,
             v.description,

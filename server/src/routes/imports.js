@@ -234,8 +234,8 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
     for (const t of toInsert) {
       const { payment_day, payment_month } = paymentMetaFromSpentAt(t.spent_at);
       await client.query(
-        `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at)
+         VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8, $9)`,
         [
           req.userId,
           t.amount,

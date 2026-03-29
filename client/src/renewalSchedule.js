@@ -157,3 +157,57 @@ export function renewalReminderTier(daysUntil) {
   if (daysUntil <= 40) return 30;
   return null;
 }
+
+/** Tier 30 starts at this many days until renewal (see `renewalReminderTier`). */
+const EARLY_REMINDER_TIER_MIN_DAYS = 25;
+
+/**
+ * After a renewal calendar day, the next computed `nextRenewalDate` can land in the 25–40 day "month out"
+ * band immediately. Hide that band until this many days after the *previous* occurrence so the row stays
+ * off the list until the next renewal is closer (tiers 15 and 5 still apply when nearer).
+ */
+const DAYS_AFTER_RENEWAL_TO_SUPPRESS_EARLY_TIER = 14;
+
+function stepRenewalBackOnePeriod(expense, anchorStartOfDay) {
+  const freq = normalizeFrequency(expense.frequency);
+  const s = startOfLocalDay(anchorStartOfDay);
+  if (freq === "weekly") {
+    return startOfLocalDay(new Date(s.getFullYear(), s.getMonth(), s.getDate() - 7));
+  }
+  if (freq === "monthly") return addMonthsClamped(s, -1);
+  if (freq === "bimonthly") return addMonthsClamped(s, -2);
+  if (freq === "yearly") return addMonthsClamped(s, -12);
+  return null;
+}
+
+/**
+ * The renewal occurrence immediately before `nextRenewalDate(expense, now)` (same cycle rules).
+ * @param {ExpenseLike} expense
+ * @param {Date} [now]
+ * @returns {Date | null}
+ */
+export function previousRenewalBeforeDisplayedNext(expense, now = new Date()) {
+  const next = nextRenewalDate(expense, now);
+  if (!next) return null;
+  return stepRenewalBackOnePeriod(expense, next);
+}
+
+/**
+ * True when the ~25–40 day reminder band should not show yet because a renewal just passed
+ * (row stays hidden until closer to the next charge).
+ * @param {ExpenseLike} expense
+ * @param {Date} now
+ * @param {number} daysUntil from `daysUntilRenewal`
+ */
+export function isEarlyRenewalTierSuppressedAfterRecentOccurrence(expense, now, daysUntil) {
+  if (daysUntil == null || daysUntil < EARLY_REMINDER_TIER_MIN_DAYS) return false;
+  const prior = previousRenewalBeforeDisplayedNext(expense, now);
+  if (!prior) return false;
+  const fromS = startOfLocalDay(now);
+  const priorS = startOfLocalDay(prior);
+  const daysSincePrior = Math.round((fromS.getTime() - priorS.getTime()) / 86400000);
+  return (
+    daysSincePrior >= 1 &&
+    daysSincePrior <= DAYS_AFTER_RENEWAL_TO_SUPPRESS_EARLY_TIER
+  );
+}

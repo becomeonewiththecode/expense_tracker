@@ -1,5 +1,6 @@
 import {
   CATEGORY_OPTIONS,
+  EXPENSE_STATE_OPTIONS,
   FREQUENCY_OPTIONS,
   FINANCIAL_INSTITUTION_OPTIONS,
 } from "../expenseOptions.js";
@@ -14,6 +15,7 @@ export function createEmptyManualExpenseForm() {
     category: "personal",
     financial_institution: "bank",
     frequency: "monthly",
+    state: "active",
     description: "",
     spent_at: todayISODate(),
   };
@@ -29,7 +31,7 @@ export default function ManualExpenseForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 items-end bg-slate-900/50 border border-slate-800 rounded-xl p-4"
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-8 items-end bg-slate-900/50 border border-slate-800 rounded-xl p-4"
     >
       <div>
         <label className="text-xs text-slate-500 block mb-1">Amount</label>
@@ -89,6 +91,20 @@ export default function ManualExpenseForm({
         </select>
       </div>
       <div>
+        <label className="text-xs text-slate-500 block mb-1">State</label>
+        <select
+          value={form.state}
+          onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
+          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+        >
+          {EXPENSE_STATE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
         <label className="text-xs text-slate-500 block mb-1">Transaction date</label>
         <input
           type="date"
@@ -110,7 +126,7 @@ export default function ManualExpenseForm({
       <button
         type="submit"
         disabled={disabled}
-        className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium py-2 px-4 justify-self-start sm:col-span-2 xl:col-span-7"
+        className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium py-2 px-4 justify-self-start sm:col-span-2 xl:col-span-8"
       >
         {submitLabel}
       </button>

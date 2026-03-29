@@ -25,9 +25,15 @@ export const FINANCIAL_INSTITUTION_OPTIONS = [
   { value: "american_express", label: "American Express" },
 ];
 
+export const EXPENSE_STATE_OPTIONS = [
+  { value: "active", label: "Active" },
+  { value: "cancel", label: "Cancel" },
+];
+
 const catLabels = Object.fromEntries(CATEGORY_OPTIONS.map((o) => [o.value, o.label]));
 const finLabels = Object.fromEntries(FINANCIAL_INSTITUTION_OPTIONS.map((o) => [o.value, o.label]));
 const freqLabels = Object.fromEntries(FREQUENCY_OPTIONS.map((o) => [o.value, o.label]));
+const stateLabels = Object.fromEntries(EXPENSE_STATE_OPTIONS.map((o) => [o.value, o.label]));
 
 export function formatCategory(value) {
   if (value == null) return "—";
@@ -42,4 +48,9 @@ export function formatFinancialInstitution(value) {
 export function formatFrequency(value) {
   if (value == null) return "—";
   return freqLabels[value] || value;
+}
+
+export function formatExpenseState(value) {
+  if (value == null || value === "") return "Active";
+  return stateLabels[value] || (value === "cancel" ? "Cancel" : "Active");
 }

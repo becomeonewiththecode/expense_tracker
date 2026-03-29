@@ -69,6 +69,7 @@ export default function ExpensesPage() {
         category: form.category,
         financial_institution: form.financial_institution,
         frequency: form.frequency,
+        state: form.state,
         description: form.description,
         spent_at: form.spent_at,
       });

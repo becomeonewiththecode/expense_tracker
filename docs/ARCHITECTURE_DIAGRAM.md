@@ -251,15 +251,17 @@ flowchart LR
 
 ### Renewal reminders (client)
 
-**Upcoming renewals** are computed entirely in the browser from saved expenses (no dedicated API). **`Layout`** renders **`RenewalReminders`**, which loads expenses and keeps **`renewalSchedule.js`** in sync with the same **frequency** + **`spent_at`** rules as the server’s derived **`payment_day`** / **`payment_month`**. Matching rows are shown in a **table** with **amount**, **financial institution** (labels from **`expenseOptions.js`**), renewal date, per-row **Dismiss**, and a **Total** footer summing amounts (**`formatProjectionCurrency`** in **`projection.js`**).
+**Upcoming renewals** are computed entirely in the browser from saved expenses (no dedicated API). **`Layout`** renders **`RenewalReminders`** only on **`/expenses`** and **`/expenses/list`** (Import and Your expenses). It loads expenses and keeps **`renewalSchedule.js`** in sync with the same **frequency** + **`spent_at`** rules as the server’s derived **`payment_day`** / **`payment_month`**. Matching rows are **grouped by financial institution** (display labels from **`expenseOptions.js`**): each group is a **section** with its own **table** (expense, transaction date, amount, **state** (`active` / `cancel`), renews, **Dismiss**), a **Subtotal** footer, then a **Total (all institutions)** bar (**`formatProjectionCurrency`** in **`projection.js`**); both totals sum **active** rows only—**cancel** lines are excluded from amounts. Rows with **`state === cancel`** use **emerald** (green) styling. For about **two weeks** after a renewal date, the **25–40 day** reminder band is suppressed so the row stays off the list until the next charge is closer (**`isEarlyRenewalTierSuppressedAfterRecentOccurrence`** in **`renewalSchedule.js`**). **`RenewalReminders`** passes **`onRenewalChipChange`** to **`Layout`** when all rows are dismissed in **`sessionStorage`** but eligible renewals still exist; **`Layout`** shows a **header chip** (count + “upcoming renewals”) next to the profile link; the chip’s handler clears **`sessionStorage`** dismiss keys and resets local state so the panel reappears.
 
 ```mermaid
 flowchart TD
   L[Layout.jsx]
+  R{pathname /expenses or /expenses/list?}
   RR[RenewalReminders.jsx]
   API["GET /api/expenses?limit=500"]
   RS[renewalSchedule.js]
-  L --> RR
+  L --> R
+  R -->|yes| RR
   RR --> API
   RR --> RS
   RS --> N[nextRenewalDate]
@@ -269,7 +271,8 @@ flowchart TD
   T --> B2["Tier 15: 15-24 days"]
   T --> B3["Tier 30: 25-40 days"]
   T --> X[No row: 41+ days or non-recurring]
-  RR --> TAB[Table: amount institution renews + total]
+  RR --> TAB["Sections per institution: tables + subtotals + grand total"]
+  RR -.->|"onRenewalChipChange when all rows dismissed"| L
 ```
 
 **Day bands** (inclusive, whole local-calendar days from “today” to the next renewal date): **0–14**, **15–24**, **25–40**. They are **contiguous** so counts such as **12** days are not skipped between separate “about 15” and “about 5” windows. **`leadTimePhrase`** in **`RenewalReminders.jsx`** shows “in about 30 days” or “in about 15 days” only when the count is near those anchors; otherwise it uses **“in N days”**.
@@ -282,8 +285,8 @@ flowchart TD
 | Authentication state | `auth.jsx` — `AuthProvider`, protected routes, registers the session-invalid handler for `api.js` |
 | Expired session prompt | `SessionExpiredModal.jsx` — **Continue session** → **`POST /auth/refresh`** → reload; **Sign out** → **`/login`** |
 | Errors | `apiError.js` — network and proxy error messages |
-| Labels versus server enums | `expenseOptions.js` — categories, frequencies, institutions (aligned with server allow-lists). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
-| Upcoming renewals | **`Layout.jsx`** + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** — see [Renewal reminders (client)](#renewal-reminders-client) |
+| Labels versus server enums | `expenseOptions.js` — categories, frequencies, institutions, **expense state** (**Active** / **Cancel**; API `active` / `cancel`). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
+| Upcoming renewals | **`Layout.jsx`** (route gate, profile **chip**) + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** — **`/expenses`**, **`/expenses/list`** only; see [Renewal reminders (client)](#renewal-reminders-client) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`**; `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
 
@@ -327,6 +330,7 @@ erDiagram
     text category
     text financial_institution
     text frequency
+    text state
     smallint payment_day
     smallint payment_month
     text description
@@ -369,7 +373,9 @@ erDiagram
 
 **`expenses.payment_day` / `payment_month`:** Persisted for renewals, imports, and backup JSON; the API always sets them from **`spent_at`** (calendar day of month capped at **30**, month **1–12**). **`POST`/`PATCH /api/expenses`** and **`POST /api/backup/restore`** ignore body values for those columns.
 
-**Import data flow:** `POST /api/imports` replaces any previous `import_batches` for that user and inserts `import_staging_rows` (with `payment_day` / `payment_month` derived from each line’s `spent_at`). `PATCH /api/imports/rows/:id` may change category or frequency and refreshes `payment_day` / `payment_month` from `spent_at`. `POST /api/imports/batches/:batchId/commit` on a batch moves categorized rows into `expenses` and removes the batch.
+**`expenses.state`:** **`active`** (default) or **`cancel`**, constrained in PostgreSQL. Set on create and update via **`POST`/`PATCH /api/expenses`**; **import commit** inserts **`active`**; **backup** export and restore round-trip **`state`** (restore treats a missing **`state`** as **`active`**).
+
+**Import data flow:** `POST /api/imports` replaces any previous `import_batches` for that user and inserts `import_staging_rows` (with `payment_day` / `payment_month` derived from each line’s `spent_at`). `PATCH /api/imports/rows/:id` may change category or frequency and refreshes `payment_day` / `payment_month` from `spent_at`. `POST /api/imports/batches/:batchId/commit` on a batch moves categorized rows into `expenses` (each new row **`state = active`**) and removes the batch.
 
 ---
 

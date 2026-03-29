@@ -80,6 +80,7 @@ export default function YourExpensesPage() {
       category: row.category,
       frequency: row.frequency,
       financial_institution: row.financial_institution,
+      state: row.state === "cancel" ? "cancel" : "active",
       description: row.description ?? "",
     });
   }
@@ -105,6 +106,7 @@ export default function YourExpensesPage() {
         category: expenseEditDraft.category,
         frequency: expenseEditDraft.frequency,
         financial_institution: expenseEditDraft.financial_institution,
+        state: expenseEditDraft.state,
         description: expenseEditDraft.description,
       });
       cancelExpenseEdit();
@@ -148,6 +150,7 @@ export default function YourExpensesPage() {
         category: addForm.category,
         financial_institution: addForm.financial_institution,
         frequency: addForm.frequency,
+        state: addForm.state,
         description: addForm.description,
         spent_at: addForm.spent_at,
       });

@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 import RenewalReminders from "./RenewalReminders.jsx";
 
@@ -10,8 +11,18 @@ const linkClass = ({ isActive }) =>
       : "text-slate-400 hover:bg-slate-800 hover:text-slate-200",
   ].join(" ");
 
+function showRenewalRemindersPath(pathname) {
+  return pathname === "/expenses" || pathname === "/expenses/list";
+}
+
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { pathname } = useLocation();
+  const [renewalChip, setRenewalChip] = useState(null);
+
+  useEffect(() => {
+    if (!showRenewalRemindersPath(pathname)) setRenewalChip(null);
+  }, [pathname]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,7 +45,21 @@ export default function Layout() {
               Profile
             </NavLink>
           </nav>
-          <div className="flex items-center gap-3 text-sm text-slate-400">
+          <div className="flex items-center gap-2 sm:gap-3 text-sm text-slate-400 flex-wrap justify-end">
+            {renewalChip ? (
+              <button
+                type="button"
+                onClick={() => renewalChip.onExpand()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-700/50 bg-amber-950/50 px-2 py-1 text-xs text-amber-100 hover:bg-amber-900/60 focus:outline-none focus:ring-2 focus:ring-amber-600/50 shrink-0"
+                aria-label={`Show ${renewalChip.count} upcoming renewals`}
+              >
+                <span className="tabular-nums font-semibold text-amber-200">{renewalChip.count}</span>
+                <span className="text-amber-200/90 max-w-[10rem] truncate sm:max-w-none">
+                  <span className="sm:hidden">renewals</span>
+                  <span className="hidden sm:inline">upcoming renewals</span>
+                </span>
+              </button>
+            ) : null}
             <NavLink
               to="/profile"
               className="flex items-center gap-2 min-w-0 rounded-lg hover:bg-slate-800/80 px-1 py-0.5 -mx-1"
@@ -60,7 +85,9 @@ export default function Layout() {
         </div>
       </header>
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
-        <RenewalReminders />
+        {showRenewalRemindersPath(pathname) ? (
+          <RenewalReminders onRenewalChipChange={setRenewalChip} />
+        ) : null}
         <Outlet />
       </main>
     </div>
