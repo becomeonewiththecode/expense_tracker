@@ -90,6 +90,13 @@ export default function LoginPage() {
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
+            <p className="text-center text-xs text-slate-500">
+              <Link to="/recover" className="text-emerald-400/90 hover:underline">
+                Forgot password? Reset with a saved recovery code
+              </Link>
+              <span className="text-slate-600"> · </span>
+              <span className="text-slate-600">No email is sent.</span>
+            </p>
           </form>
           <SsoButtons className="pt-2 border-t border-slate-800" />
         </div>

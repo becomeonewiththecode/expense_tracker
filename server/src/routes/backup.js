@@ -1,0 +1,216 @@
+import { Router } from "express";
+import express from "express";
+import { pool } from "../db.js";
+import { authRequired } from "../middleware/auth.js";
+import {
+  parseCategory,
+  parseFinancialInstitution,
+  parseFrequency,
+  CATEGORY_ERROR,
+  PAYMENT_DAY_ERROR,
+  PAYMENT_MONTH_ERROR,
+  tryParsePaymentDay,
+  tryParsePaymentMonth,
+} from "../expenseEnums.js";
+
+export const BACKUP_FORMAT = "expense-tracker-backup";
+export const BACKUP_VERSION = 1;
+const MAX_RESTORE_ROWS = 25_000;
+
+export const backupRouter = Router();
+
+function parseDate(d) {
+  if (!d) return null;
+  const s = String(d);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})[T\s]/);
+  if (m) return m[1];
+  return null;
+}
+
+function normalizeExpenseRow(row) {
+  let spent_at = row.spent_at;
+  if (spent_at != null) {
+    const s = String(spent_at);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      spent_at = s;
+    } else if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      spent_at = s.slice(0, 10);
+    } else {
+      const t = Date.parse(s);
+      if (!Number.isNaN(t)) {
+        spent_at = new Date(t).toISOString().slice(0, 10);
+      }
+    }
+  }
+  return {
+    amount: row.amount != null ? Number(row.amount) : row.amount,
+    category: row.category,
+    financial_institution: row.financial_institution,
+    frequency: row.frequency,
+    payment_day: row.payment_day != null ? Number(row.payment_day) : null,
+    payment_month: row.payment_month != null ? Number(row.payment_month) : null,
+    description: row.description ?? "",
+    spent_at,
+  };
+}
+
+/**
+ * @param {unknown} raw
+ * @param {number} index
+ * @returns {{ ok: true, values: object } | { ok: false, error: string }}
+ */
+function validateExpenseForRestore(raw, index) {
+  const label = `Expense ${index + 1}`;
+  if (!raw || typeof raw !== "object") {
+    return { ok: false, error: `${label}: invalid object` };
+  }
+  const amount = Number(raw.amount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return { ok: false, error: `${label}: invalid amount` };
+  }
+  const category = parseCategory(raw.category);
+  if (!category) {
+    return { ok: false, error: `${label}: ${CATEGORY_ERROR}` };
+  }
+  const financial_institution = parseFinancialInstitution(raw.financial_institution);
+  if (!financial_institution) {
+    return {
+      ok: false,
+      error: `${label}: invalid financial institution`,
+    };
+  }
+  const frequency = parseFrequency(raw.frequency);
+  if (!frequency) {
+    return { ok: false, error: `${label}: invalid frequency` };
+  }
+  let payment_day = null;
+  if (Object.prototype.hasOwnProperty.call(raw, "payment_day")) {
+    const parsed = tryParsePaymentDay(raw.payment_day);
+    if (!parsed.ok) {
+      return { ok: false, error: `${label}: ${PAYMENT_DAY_ERROR}` };
+    }
+    payment_day = parsed.value;
+  }
+  let payment_month = null;
+  if (Object.prototype.hasOwnProperty.call(raw, "payment_month")) {
+    const parsed = tryParsePaymentMonth(raw.payment_month);
+    if (!parsed.ok) {
+      return { ok: false, error: `${label}: ${PAYMENT_MONTH_ERROR}` };
+    }
+    payment_month = parsed.value;
+  }
+  const spent_at = parseDate(raw.spent_at) || new Date().toISOString().slice(0, 10);
+  const description = String(raw.description ?? "").slice(0, 500);
+  return {
+    ok: true,
+    values: {
+      amount,
+      category,
+      financial_institution,
+      frequency,
+      payment_day,
+      payment_month,
+      description,
+      spent_at,
+    },
+  };
+}
+
+backupRouter.get("/export", authRequired, async (req, res) => {
+  try {
+    const { rows: userRows } = await pool.query(`SELECT email FROM users WHERE id = $1`, [req.userId]);
+    const email = userRows[0]?.email ?? null;
+    const { rows } = await pool.query(
+      `SELECT amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at
+       FROM expenses WHERE user_id = $1
+       ORDER BY spent_at ASC, id ASC`,
+      [req.userId]
+    );
+    const expenses = rows.map(normalizeExpenseRow);
+    const payload = {
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      email,
+      expenseCount: expenses.length,
+      expenses,
+    };
+    const filename = `expense-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.json(payload);
+  } catch (e) {
+    console.error("backup/export:", e);
+    res.status(500).json({ error: "Export failed" });
+  }
+});
+
+backupRouter.post(
+  "/restore",
+  express.json({ limit: "15mb" }),
+  authRequired,
+  async (req, res) => {
+    const mode = String(req.body?.mode || "").toLowerCase();
+    if (mode !== "append" && mode !== "replace") {
+      return res.status(400).json({ error: 'mode must be "append" or "replace"' });
+    }
+    const body = req.body;
+    if (body?.format !== BACKUP_FORMAT || Number(body?.version) !== BACKUP_VERSION) {
+      return res.status(400).json({
+        error: `Invalid backup file. Expected format "${BACKUP_FORMAT}" and version ${BACKUP_VERSION}.`,
+      });
+    }
+    const expenses = body?.expenses;
+    if (!Array.isArray(expenses)) {
+      return res.status(400).json({ error: "Backup must contain an expenses array" });
+    }
+    if (expenses.length > MAX_RESTORE_ROWS) {
+      return res.status(400).json({
+        error: `Too many expenses in file (max ${MAX_RESTORE_ROWS})`,
+      });
+    }
+
+    const validated = [];
+    for (let i = 0; i < expenses.length; i++) {
+      const result = validateExpenseForRestore(expenses[i], i);
+      if (!result.ok) {
+        return res.status(400).json({ error: result.error });
+      }
+      validated.push(result.values);
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      if (mode === "replace") {
+        await client.query(`DELETE FROM expenses WHERE user_id = $1`, [req.userId]);
+      }
+      for (const v of validated) {
+        await client.query(
+          `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            req.userId,
+            v.amount,
+            v.category,
+            v.financial_institution,
+            v.frequency,
+            v.payment_day,
+            v.payment_month,
+            v.description,
+            v.spent_at,
+          ]
+        );
+      }
+      await client.query("COMMIT");
+      res.json({ ok: true, mode, restored: validated.length });
+    } catch (e) {
+      await client.query("ROLLBACK");
+      console.error("backup/restore:", e);
+      res.status(500).json({ error: "Restore failed" });
+    } finally {
+      client.release();
+    }
+  }
+);

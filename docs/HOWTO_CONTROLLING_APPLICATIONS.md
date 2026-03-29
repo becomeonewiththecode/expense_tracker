@@ -147,9 +147,16 @@ Follow the one-line command PM2 prints (often requires administrator privileges)
 
 ---
 
+## Production stack with Docker Compose (not PM2)
+
+PM2 is for **development-style** Vite + API on the host. For a **containerized** production stack (nginx, built client, API, Postgres, Redis), use **`npm run compose:prod`** from the repository root and **`deployment/docker-compose/.env`**. See [deployment/docker-compose/README.md](../deployment/docker-compose/README.md) and [USER_GUIDE.md](./USER_GUIDE.md) (section *Production on one machine*).
+
+---
+
 ## Related documentation
 
-- [User guide](./USER_GUIDE.md) — Product behavior, account types, and local setup overview  
-- [Architecture](./ARCHITECTURE.md) — System design, including OAuth routes  
+- [User guide](./USER_GUIDE.md) — Product behavior, account types, local setup, production Compose, recovery codes, backup/restore  
+- [Architecture](./ARCHITECTURE.md) — System design, including OAuth and auth routes  
 - [Architecture diagrams](./ARCHITECTURE_DIAGRAM.md) — Single sign-on sequence and data model  
 - Root [README.md](../README.md) — API overview and OAuth troubleshooting  
+- [deployment/README.md](../deployment/README.md) — Docker Compose and Kubernetes index  

@@ -9,6 +9,7 @@ import ReportsPage from "./pages/ReportsPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import PostLoginRedirect from "./components/PostLoginRedirect.jsx";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
+import RecoverPasswordPage from "./pages/RecoverPasswordPage.jsx";
 
 function Private({ children }) {
   const { isAuthed } = useAuth();
@@ -21,6 +22,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/recover" element={<RecoverPasswordPage />} />
       <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
       <Route
         path="/"

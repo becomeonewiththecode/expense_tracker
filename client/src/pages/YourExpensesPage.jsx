@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api";
+import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
 import ExpenseTable from "../components/ExpenseTable.jsx";
 import ProjectionModal from "../components/ProjectionModal.jsx";
 import { computeProjectionPieData, computeSpendingProjection } from "../projection.js";
@@ -32,6 +33,8 @@ export default function YourExpensesPage() {
   const [expensesModifyMode, setExpensesModifyMode] = useState(false);
   /** `all` = combined projection for every saved expense; `row` = single expense snapshot. */
   const [projectionTarget, setProjectionTarget] = useState(null);
+  const [addForm, setAddForm] = useState(() => createEmptyManualExpenseForm());
+  const [addSaving, setAddSaving] = useState(false);
 
   async function load() {
     setError("");
@@ -77,6 +80,7 @@ export default function YourExpensesPage() {
       category: row.category,
       frequency: row.frequency,
       payment_day: row.payment_day != null ? String(row.payment_day) : "",
+      payment_month: row.payment_month != null ? String(row.payment_month) : "",
       financial_institution: row.financial_institution,
       description: row.description ?? "",
     });
@@ -108,6 +112,10 @@ export default function YourExpensesPage() {
           expenseEditDraft.payment_day === ""
             ? null
             : Number(expenseEditDraft.payment_day),
+        payment_month:
+          expenseEditDraft.payment_month === ""
+            ? null
+            : Number(expenseEditDraft.payment_month),
       });
       cancelExpenseEdit();
       setProjectionTarget(null);
@@ -135,6 +143,37 @@ export default function YourExpensesPage() {
     setExpensesModifyMode(v);
   }
 
+  async function addExpense(e) {
+    e.preventDefault();
+    const amount = Number(addForm.amount);
+    if (!Number.isFinite(amount) || amount < 0) {
+      setError("Enter a valid amount");
+      return;
+    }
+    setAddSaving(true);
+    setError("");
+    try {
+      await api.post("/expenses", {
+        amount,
+        category: addForm.category,
+        financial_institution: addForm.financial_institution,
+        frequency: addForm.frequency,
+        ...(addForm.payment_day !== "" && { payment_day: Number(addForm.payment_day) }),
+        ...(addForm.payment_month !== "" && { payment_month: Number(addForm.payment_month) }),
+        description: addForm.description,
+        spent_at: addForm.spent_at,
+      });
+      setAddForm(createEmptyManualExpenseForm());
+      setProjectionTarget(null);
+      if (expenseEditId) cancelExpenseEdit();
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not save expense");
+    } finally {
+      setAddSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -142,7 +181,7 @@ export default function YourExpensesPage() {
         <p className="text-sm text-slate-400 mt-1">
           {loading
             ? "Loading…"
-            : "Review, edit, or delete saved transactions (newest first)."}
+            : "Add expenses here or on Import; review, edit, or delete saved transactions (newest first)."}
         </p>
       </div>
 
@@ -153,15 +192,44 @@ export default function YourExpensesPage() {
       )}
 
       {!loading && items.length === 0 && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-8 text-center space-y-3">
-          <p className="text-slate-400 text-sm">You don&apos;t have any saved expenses yet.</p>
-          <Link
-            to="/expenses"
-            className="inline-block rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium py-2 px-4"
-          >
-            Go to Import
-          </Link>
+        <div className="space-y-4">
+          <ManualExpenseForm
+            form={addForm}
+            setForm={setAddForm}
+            onSubmit={addExpense}
+            submitLabel={addSaving ? "Saving…" : "Add expense"}
+            disabled={addSaving}
+          />
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-center space-y-3">
+            <p className="text-slate-400 text-sm">
+              No saved expenses yet. Use the form above or import a statement.
+            </p>
+            <Link
+              to="/expenses"
+              className="inline-block rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2 px-4"
+            >
+              Go to Import
+            </Link>
+          </div>
         </div>
+      )}
+
+      {!loading && items.length > 0 && (
+        <details className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 group">
+          <summary className="cursor-pointer text-sm font-medium text-slate-200 list-none [&::-webkit-details-marker]:hidden flex items-center gap-2">
+            <span className="text-slate-500 group-open:rotate-90 transition-transform inline-block">▸</span>
+            Add expense manually
+          </summary>
+          <div className="mt-4 pt-4 border-t border-slate-800">
+            <ManualExpenseForm
+              form={addForm}
+              setForm={setAddForm}
+              onSubmit={addExpense}
+              submitLabel={addSaving ? "Saving…" : "Add expense"}
+              disabled={addSaving}
+            />
+          </div>
+        </details>
       )}
 
       {!loading && items.length > 0 && (

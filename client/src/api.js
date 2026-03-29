@@ -6,6 +6,13 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+/** Called when a protected request returns 401 Invalid token (e.g. expired JWT). */
+let sessionInvalidHandler = null;
+
+export function setSessionInvalidHandler(fn) {
+  sessionInvalidHandler = fn;
+}
+
 api.interceptors.request.use((config) => {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
   if (token) {
@@ -18,5 +25,25 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const errMsg = error.response?.data?.error;
+    const reqUrl = String(error.config?.url || "");
+    if (
+      status === 401 &&
+      errMsg === "Invalid token" &&
+      !reqUrl.includes("/auth/refresh") &&
+      !reqUrl.includes("/auth/login") &&
+      !reqUrl.includes("/auth/register") &&
+      !reqUrl.includes("/auth/recover-password")
+    ) {
+      sessionInvalidHandler?.();
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

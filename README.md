@@ -1,6 +1,6 @@
 # Expense Tracker
 
-**Documentation index:** [User guide](./docs/USER_GUIDE.md). [Architecture](./docs/ARCHITECTURE.md), including how development work leads to a production deployment. [Architecture diagrams](./docs/ARCHITECTURE_DIAGRAM.md), including OAuth single sign-on sequences and the development-then-production topology. [PM2 and controlling applications](./docs/HOWTO_CONTROLLING_APPLICATIONS.md). **[Deployment](./deployment/README.md)** (Docker Compose and Kubernetes).
+**Documentation index:** [User guide](./docs/USER_GUIDE.md) (accounts, import, reports, **recovery codes**, **backup/restore**, **expired-session refresh**, **production Compose**). [Architecture](./docs/ARCHITECTURE.md) and [Architecture diagrams](./docs/ARCHITECTURE_DIAGRAM.md) (OAuth, topology, data model, **`POST /auth/refresh`**, backup routes). [PM2 and controlling applications](./docs/HOWTO_CONTROLLING_APPLICATIONS.md). **[Deployment](./deployment/README.md)** (Docker Compose **`npm run compose:prod`**, Kubernetes).
 
 This is a full-stack application. The **client** uses React, Tailwind CSS, Recharts, React Router, and Axios. The **server** uses Express, PostgreSQL, JSON Web Tokens for authentication, and optional Redis caching. Optional **OAuth**-based single sign-on is supported for Google, GitHub, GitLab, and Microsoft 365. A scheduled **cron** job writes **monthly summary** rows to the database.
 
@@ -8,6 +8,10 @@ This is a full-stack application. The **client** uses React, Tailwind CSS, Recha
 
 - Node.js version 20 or newer
 - Docker (optional, for running PostgreSQL and Redis locally)
+
+## Production on one host (Docker Compose)
+
+Full stack (Postgres, Redis, API, nginx + built client): copy **`deployment/docker-compose/.env.example`** to **`deployment/docker-compose/.env`**, set **`JWT_SECRET`** and **`CLIENT_ORIGIN`**, then from the repo root run **`npm run compose:prod`** (or the `docker compose -f deployment/docker-compose/...` command in [deployment/docker-compose/README.md](deployment/docker-compose/README.md)).
 
 ## Database and cache
 
@@ -65,10 +69,11 @@ npm run dev
 
 Database tables are created when the server starts. The HTTP API exposes the following behaviors (paths are all under the `/api` prefix; your front end usually calls them through the Vite proxy during development):
 
-- **Registration and password login:** `POST /api/auth/register` creates an account. `POST /api/auth/login` returns a JSON Web Token. `GET /api/auth/me` returns the current user when a valid token is sent in the `Authorization` header.
+- **Registration and password login:** `POST /api/auth/register` creates an account. `POST /api/auth/login` returns a JSON Web Token. `GET /api/auth/me` returns the current user (including **`has_password`**, **`has_recovery_code`**, **`avatar_url`**) when a valid token is sent in the `Authorization` header. **`POST /api/auth/refresh`** (no body) accepts an **expired** token with a valid signature and returns a new token and user object (within a grace window after expiry); the client uses this when the user chooses **Continue session** after their JWT expires.
+- **Profile and recovery (authenticated):** `PATCH /api/auth/profile`, `POST`/`DELETE /api/auth/avatar`, `POST`/`DELETE /api/auth/recovery-code`. **`POST /api/auth/recover-password`** (no auth) resets password from a saved recovery code. **`GET /api/backup/export`** and **`POST /api/backup/restore`** export or import expenses as JSON (`append` or `replace` mode; restore body limit 15 MB, up to 25,000 rows; expense objects include optional `payment_day` and `payment_month` when set). See [docs/USER_GUIDE.md](./docs/USER_GUIDE.md).
 - **Single sign-on:** `GET /api/auth/oauth/:provider` starts the OAuth flow. Replace `:provider` with one of `google`, `github`, `gitlab`, or `microsoft`. The browser is redirected to that identity provider. After authorization, the provider calls back `GET /api/auth/oauth/:provider/callback`. You must register that callback URL in each provider’s developer console; it must match `{CLIENT_ORIGIN}/api/auth/oauth/<provider>/callback` where `<provider>` is the same name. Set the `OAUTH_*` variables in `server/.env` as documented in `server/.env.example`.
-- **Expenses:** List and create with `GET` and `POST /api/expenses`. Read, update, or delete one row with `GET`, `PATCH`, or `DELETE /api/expenses/:id` where `:id` is the expense identifier.
-- **Imports:** Upload with `POST /api/imports` using multipart form field `file`, plus `financial_institution`, `frequency`, and optional `payment_day` (1 through 30, or omit or leave empty to take the day from each statement line). List the latest batch with `GET /api/imports/latest`. Update a staging row with `PATCH /api/imports/rows/:rowId` (fields such as `category`, `frequency`, `payment_day`). Commit with `POST /api/imports/batches/:batchId/commit`. Delete a batch with `DELETE /api/imports/batches/:batchId`.
+- **Expenses:** List and create with `GET` and `POST /api/expenses`. Read, update, or delete one row with `GET`, `PATCH`, or `DELETE /api/expenses/:id` where `:id` is the expense identifier. The `frequency` field must be one of `once`, `weekly`, `monthly`, `bimonthly`, or `yearly` (same values as the app’s dropdowns). Optional metadata: `payment_day` (1–30) and `payment_month` (1–12).
+- **Imports:** Upload with `POST /api/imports` using multipart form field `file`, plus `financial_institution`, `frequency` (same allow-list as expenses), and optional `payment_day` (1 through 30, or omit or leave empty to take the day from each statement line). List the latest batch with `GET /api/imports/latest`. Update a staging row with `PATCH /api/imports/rows/:rowId` (fields such as `category`, `frequency`, `payment_day`, `payment_month`). Commit with `POST /api/imports/batches/:batchId/commit`. Delete a batch with `DELETE /api/imports/batches/:batchId`.
 - **Reports:** Daily, weekly, monthly, yearly, and range endpoints under `/api/reports/`, plus `GET /api/reports/summaries` for persisted monthly totals from the background job.
 
 Report responses may be cached in Redis for approximately two minutes when `REDIS_URL` is set.

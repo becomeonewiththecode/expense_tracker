@@ -4,140 +4,20 @@ import api from "../api";
 import { getApiErrorMessage } from "../apiError.js";
 import {
   CATEGORY_OPTIONS,
-  FREQUENCY_OPTIONS,
   FINANCIAL_INSTITUTION_OPTIONS,
-  PAYMENT_DAY_OPTIONS,
+  FREQUENCY_OPTIONS,
   IMPORT_PAYMENT_DAY_OPTIONS,
+  PAYMENT_DAY_OPTIONS,
+  PAYMENT_MONTH_OPTIONS,
 } from "../expenseOptions.js";
-
-function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function ManualExpenseForm({ form, setForm, onSubmit }) {
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-8 items-end bg-slate-900/50 border border-slate-800 rounded-xl p-4"
-    >
-      <div>
-        <label className="text-xs text-slate-500 block mb-1">Amount</label>
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          value={form.amount}
-          onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-          placeholder="0.00"
-          required
-        />
-      </div>
-      <div>
-        <label className="text-xs text-slate-500 block mb-1">Category</label>
-        <select
-          value={form.category}
-          onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-        >
-          {CATEGORY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="text-xs text-slate-500 block mb-1">Frequency</label>
-        <select
-          value={form.frequency}
-          onChange={(e) => setForm((f) => ({ ...f, frequency: e.target.value }))}
-          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-        >
-          {FREQUENCY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="text-xs text-slate-500 block mb-1">
-          Date <span className="text-slate-600 font-normal normal-case">(1–30)</span>
-        </label>
-        <select
-          value={form.payment_day}
-          onChange={(e) => setForm((f) => ({ ...f, payment_day: e.target.value }))}
-          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-          title="Day of the month the payment is typically made"
-          aria-label="Date as day of month, 1 to 30"
-        >
-          {PAYMENT_DAY_OPTIONS.map((o) => (
-            <option key={o.value === "" ? "unset" : o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
-        <label className="text-xs text-slate-500 block mb-1">Financial institution</label>
-        <select
-          value={form.financial_institution}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, financial_institution: e.target.value }))
-          }
-          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-        >
-          {FINANCIAL_INSTITUTION_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="text-xs text-slate-500 block mb-1">Transaction date</label>
-        <input
-          type="date"
-          value={form.spent_at}
-          onChange={(e) => setForm((f) => ({ ...f, spent_at: e.target.value }))}
-          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-          required
-        />
-      </div>
-      <div className="sm:col-span-2 xl:col-span-2">
-        <label className="text-xs text-slate-500 block mb-1">Note</label>
-        <input
-          value={form.description}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
-          placeholder="Optional"
-        />
-      </div>
-      <button
-        type="submit"
-        className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-4 justify-self-start sm:col-span-2 xl:col-span-8"
-      >
-        Add expense
-      </button>
-    </form>
-  );
-}
+import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
 
 export default function ExpensesPage() {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({
-    amount: "",
-    category: "personal",
-    financial_institution: "bank",
-    frequency: "monthly",
-    payment_day: "",
-    description: "",
-    spent_at: todayISODate(),
-  });
+  const [form, setForm] = useState(() => createEmptyManualExpenseForm());
   const [importFile, setImportFile] = useState(null);
   const [importDefaults, setImportDefaults] = useState({
     financial_institution: "visa",
@@ -194,18 +74,11 @@ export default function ExpensesPage() {
         financial_institution: form.financial_institution,
         frequency: form.frequency,
         ...(form.payment_day !== "" && { payment_day: Number(form.payment_day) }),
+        ...(form.payment_month !== "" && { payment_month: Number(form.payment_month) }),
         description: form.description,
         spent_at: form.spent_at,
       });
-      setForm({
-        amount: "",
-        category: "personal",
-        financial_institution: "bank",
-        frequency: "monthly",
-        payment_day: "",
-        description: "",
-        spent_at: todayISODate(),
-      });
+      setForm(createEmptyManualExpenseForm());
       await load();
       if (wasEmpty) navigate("/expenses/list", { replace: true });
     } catch (err) {
@@ -362,7 +235,7 @@ export default function ExpensesPage() {
           <h2 className="text-sm font-semibold text-white">Import from statement</h2>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl">
             Upload a <strong className="text-slate-400">CSV</strong> or <strong className="text-slate-400">PDF</strong>. Parsed rows appear in the <strong className="text-slate-400">review table</strong> below.
-            Set defaults for <strong className="text-slate-400">institution</strong>, <strong className="text-slate-400">frequency</strong>, and optionally <strong className="text-slate-400">Date (1–30)</strong> before upload (or choose <strong className="text-slate-400">From statement</strong> to take the day from each line). In <strong className="text-slate-400">Review import</strong>, set <strong className="text-slate-400">category</strong> (required), and adjust per-row <strong className="text-slate-400">frequency</strong> / <strong className="text-slate-400">Date</strong> if needed. Only rows with a category are saved when you commit. Credits / payments are skipped during parsing.
+            Set defaults for <strong className="text-slate-400">institution</strong>, <strong className="text-slate-400">frequency</strong>, and optionally <strong className="text-slate-400">Date (1–30)</strong> before upload (or choose <strong className="text-slate-400">From statement</strong> to take the day from each line). In <strong className="text-slate-400">Review import</strong>, set <strong className="text-slate-400">category</strong> (required), and adjust per-row <strong className="text-slate-400">frequency</strong>, <strong className="text-slate-400">Date</strong>, or <strong className="text-slate-400">Month</strong> if needed (month is seeded from each line’s date). Only rows with a category are saved when you commit. Credits / payments are skipped during parsing.
           </p>
         </div>
         <form onSubmit={runImportUpload} className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
@@ -483,6 +356,9 @@ export default function ExpensesPage() {
                   <th className="px-3 py-2 min-w-[4.5rem]">
                     Date <span className="normal-case font-normal text-slate-500">(1–30)</span>
                   </th>
+                  <th className="px-3 py-2 min-w-[5.5rem]">
+                    Month <span className="normal-case font-normal text-slate-500">(1–12)</span>
+                  </th>
                   <th className="px-3 py-2">Description</th>
                 </tr>
               </thead>
@@ -546,6 +422,30 @@ export default function ExpensesPage() {
                         aria-label="Payment day, 1 to 30"
                       >
                         {PAYMENT_DAY_OPTIONS.map((o) => (
+                          <option key={o.value === "" ? "unset" : o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <select
+                        value={
+                          row.payment_month != null && row.payment_month !== ""
+                            ? String(row.payment_month)
+                            : ""
+                        }
+                        onChange={(e) =>
+                          patchImportStagingRow(row.id, {
+                            payment_month:
+                              e.target.value === "" ? null : Number(e.target.value),
+                          })
+                        }
+                        className="w-full max-w-[7rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        title="Calendar month (1–12)"
+                        aria-label="Payment month"
+                      >
+                        {PAYMENT_MONTH_OPTIONS.map((o) => (
                           <option key={o.value === "" ? "unset" : o.value} value={o.value}>
                             {o.label}
                           </option>

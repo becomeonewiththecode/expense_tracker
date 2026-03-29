@@ -9,6 +9,7 @@ import { authRouter } from "./routes/auth.js";
 import { expensesRouter } from "./routes/expenses.js";
 import { importsRouter } from "./routes/imports.js";
 import { reportsRouter } from "./routes/reports.js";
+import { backupRouter } from "./routes/backup.js";
 import { startMonthlySummaryJob } from "./jobs/monthlySummary.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,6 +34,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/expenses", expensesRouter);
 app.use("/api/imports", importsRouter);
 app.use("/api/reports", reportsRouter);
+app.use("/api/backup", backupRouter);
 
 app.use((err, _req, res, _next) => {
   console.error("unhandled:", err);

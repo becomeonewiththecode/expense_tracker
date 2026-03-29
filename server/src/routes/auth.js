@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { Router } from "express";
 import bcrypt from "bcryptjs";
@@ -37,6 +38,29 @@ const uploadAvatar = multer({
 
 export const authRouter = Router();
 
+const RECOVER_WINDOW_MS = 15 * 60 * 1000;
+const RECOVER_MAX_PER_WINDOW = 10;
+const recoverRateByIp = new Map();
+
+function recoveryLookupFromCode(plain) {
+  return crypto.createHash("sha256").update(plain, "utf8").digest("hex").slice(0, 12);
+}
+
+function checkRecoverRateLimit(ip) {
+  const key = ip || "unknown";
+  const now = Date.now();
+  let e = recoverRateByIp.get(key);
+  if (!e || now > e.resetAt) {
+    e = { count: 0, resetAt: now + RECOVER_WINDOW_MS };
+    recoverRateByIp.set(key, e);
+  }
+  e.count += 1;
+  if (e.count > RECOVER_MAX_PER_WINDOW) {
+    return false;
+  }
+  return true;
+}
+
 function signUserToken(user) {
   const secret = process.env.JWT_SECRET;
   return jwt.sign({ sub: user.id, email: user.email }, secret, { expiresIn: "7d" });
@@ -44,10 +68,97 @@ function signUserToken(user) {
 
 registerOAuthRoutes(authRouter);
 
+/** One-time random code; store hash + derived lookup. User must save the code—no email is sent. */
+authRouter.post("/recovery-code", authRequired, async (req, res) => {
+  try {
+    const plain = crypto.randomBytes(24).toString("base64url");
+    const lookup = recoveryLookupFromCode(plain);
+    const hash = await bcrypt.hash(plain, 10);
+    await pool.query(
+      `UPDATE users SET recovery_lookup = $1, recovery_token_hash = $2 WHERE id = $3`,
+      [lookup, hash, req.userId]
+    );
+    res.status(201).json({ recoveryCode: plain });
+  } catch (e) {
+    if (e.code === "23505") {
+      return res.status(409).json({ error: "Could not generate a unique code. Try again." });
+    }
+    console.error("auth/recovery-code:", e);
+    res.status(500).json({ error: "Failed to create recovery code" });
+  }
+});
+
+authRouter.delete("/recovery-code", authRequired, async (req, res) => {
+  try {
+    await pool.query(
+      `UPDATE users SET recovery_lookup = NULL, recovery_token_hash = NULL WHERE id = $1`,
+      [req.userId]
+    );
+    const { rows } = await pool.query(
+      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
+        (recovery_lookup IS NOT NULL) AS has_recovery_code
+      FROM users WHERE id = $1`,
+      [req.userId]
+    );
+    res.json({ user: rows[0] });
+  } catch (e) {
+    console.error("auth/recovery-code delete:", e);
+    res.status(500).json({ error: "Failed to remove recovery code" });
+  }
+});
+
+/**
+ * Reset password using a recovery code saved from Profile. Does not send email.
+ * After success, the code is invalidated; user signs in with email + new password.
+ */
+authRouter.post("/recover-password", async (req, res) => {
+  const ip = req.ip || req.socket?.remoteAddress || "";
+  if (!checkRecoverRateLimit(ip)) {
+    return res.status(429).json({ error: "Too many attempts. Try again later." });
+  }
+
+  const recoveryCode = String(req.body?.recoveryCode || "").trim();
+  const newPassword = String(req.body?.newPassword || "");
+  if (!recoveryCode || !newPassword) {
+    return res.status(400).json({ error: "Recovery code and new password are required" });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters" });
+  }
+
+  const lookup = recoveryLookupFromCode(recoveryCode);
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, email, recovery_token_hash FROM users WHERE recovery_lookup = $1`,
+      [lookup]
+    );
+    const user = rows[0];
+    const generic = { error: "Invalid recovery code or password could not be reset" };
+    if (!user?.recovery_token_hash) {
+      return res.status(400).json(generic);
+    }
+    const ok = await bcrypt.compare(recoveryCode, user.recovery_token_hash);
+    if (!ok) {
+      return res.status(400).json(generic);
+    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      `UPDATE users SET password_hash = $1, recovery_lookup = NULL, recovery_token_hash = NULL WHERE id = $2`,
+      [hash, user.id]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("auth/recover-password:", e);
+    res.status(500).json({ error: "Password reset failed" });
+  }
+});
+
 authRouter.get("/me", authRequired, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password FROM users WHERE id = $1`,
+      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
+        (recovery_lookup IS NOT NULL) AS has_recovery_code
+      FROM users WHERE id = $1`,
       [req.userId]
     );
     if (!rows[0]) return res.status(404).json({ error: "Not found" });
@@ -116,7 +227,9 @@ authRouter.patch("/profile", authRequired, async (req, res) => {
     }
 
     const { rows: updated } = await pool.query(
-      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password FROM users WHERE id = $1`,
+      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
+        (recovery_lookup IS NOT NULL) AS has_recovery_code
+      FROM users WHERE id = $1`,
       [req.userId]
     );
     const u = updated[0];
@@ -160,7 +273,9 @@ authRouter.post(
     try {
       await pool.query(`UPDATE users SET avatar_url = $1 WHERE id = $2`, [avatar_url, req.userId]);
       const { rows } = await pool.query(
-        `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password FROM users WHERE id = $1`,
+        `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
+          (recovery_lookup IS NOT NULL) AS has_recovery_code
+        FROM users WHERE id = $1`,
         [req.userId]
       );
       res.json({ user: rows[0] });
@@ -176,7 +291,9 @@ authRouter.delete("/avatar", authRequired, async (req, res) => {
     removeAvatarFiles(req.userId);
     await pool.query(`UPDATE users SET avatar_url = NULL WHERE id = $1`, [req.userId]);
     const { rows } = await pool.query(
-      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password FROM users WHERE id = $1`,
+      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
+        (recovery_lookup IS NOT NULL) AS has_recovery_code
+      FROM users WHERE id = $1`,
       [req.userId]
     );
     res.json({ user: rows[0] });
@@ -294,4 +411,65 @@ authRouter.post("/login", async (req, res) => {
     },
     token,
   });
+});
+
+/**
+ * Issue a new JWT using an existing one, even if expired (signature must verify).
+ * Rejects tokens whose expiry is too far in the past (grace window after expiration).
+ */
+authRouter.post("/refresh", async (req, res) => {
+  const header = req.headers.authorization;
+  const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) {
+    return res.status(401).json({ error: "Missing token" });
+  }
+  const secret = process.env.JWT_SECRET;
+  if (!secret || String(secret).length < 8) {
+    return res.status(500).json({
+      error: "Server misconfigured: set JWT_SECRET (8+ characters) in server/.env",
+    });
+  }
+  let payload;
+  try {
+    payload = jwt.verify(token, secret, { ignoreExpiration: true });
+  } catch {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+  const raw = payload.sub;
+  const userId = typeof raw === "string" ? parseInt(raw, 10) : Number(raw);
+  if (!Number.isInteger(userId) || userId < 1) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+  /** Max time after `exp` (when present) that refresh is still allowed — limits stale stolen tokens. */
+  const REFRESH_GRACE_SEC = 60 * 60 * 24 * 30;
+  if (payload.exp != null && typeof payload.exp === "number") {
+    const nowSec = Date.now() / 1000;
+    if (nowSec - payload.exp > REFRESH_GRACE_SEC) {
+      return res.status(401).json({ error: "Session expired; sign in again" });
+    }
+  }
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
+        (recovery_lookup IS NOT NULL) AS has_recovery_code
+      FROM users WHERE id = $1`,
+      [userId]
+    );
+    if (!rows[0]) return res.status(401).json({ error: "Invalid token" });
+    const u = rows[0];
+    const newToken = signUserToken(u);
+    res.json({
+      token: newToken,
+      user: {
+        id: u.id,
+        email: u.email,
+        avatar_url: u.avatar_url,
+        has_password: u.has_password,
+        has_recovery_code: u.has_recovery_code,
+      },
+    });
+  } catch (e) {
+    console.error("auth/refresh:", e);
+    res.status(500).json({ error: "Could not refresh session" });
+  }
 });

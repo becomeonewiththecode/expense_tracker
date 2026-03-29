@@ -9,13 +9,21 @@ import {
   parseFrequency,
   CATEGORY_ERROR,
   PAYMENT_DAY_ERROR,
+  PAYMENT_MONTH_ERROR,
   tryParsePaymentDay,
+  tryParsePaymentMonth,
 } from "../expenseEnums.js";
 
 function paymentDayFromSpentAt(isoDate) {
   const day = Number.parseInt(String(isoDate).slice(8, 10), 10);
   if (!Number.isFinite(day)) return null;
   return Math.min(30, Math.max(1, day));
+}
+
+function paymentMonthFromSpentAt(isoDate) {
+  const month = Number.parseInt(String(isoDate).slice(5, 7), 10);
+  if (!Number.isFinite(month) || month < 1 || month > 12) return null;
+  return month;
 }
 
 export const importsRouter = Router();
@@ -103,11 +111,12 @@ importsRouter.post("/", uploadMiddleware, async (req, res) => {
     const inserted = [];
     for (const t of transactions) {
       const payment_day = importPaymentDay ?? paymentDayFromSpentAt(t.spent_at);
+      const payment_month = paymentMonthFromSpentAt(t.spent_at);
       const { rows } = await client.query(
-        `INSERT INTO import_staging_rows (batch_id, user_id, spent_at, amount, description, category, frequency, payment_day)
-         VALUES ($1, $2, $3, $4, $5, NULL, $6, $7)
-         RETURNING id, spent_at, amount, description, category, frequency, payment_day`,
-        [batch.id, req.userId, t.spent_at, t.amount, t.description, frequency, payment_day]
+        `INSERT INTO import_staging_rows (batch_id, user_id, spent_at, amount, description, category, frequency, payment_day, payment_month)
+         VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8)
+         RETURNING id, spent_at, amount, description, category, frequency, payment_day, payment_month`,
+        [batch.id, req.userId, t.spent_at, t.amount, t.description, frequency, payment_day, payment_month]
       );
       inserted.push(normalizeStagingRow(rows[0]));
     }
@@ -144,7 +153,7 @@ importsRouter.get("/latest", async (req, res) => {
   }
   const batch = batches[0];
   const { rows } = await pool.query(
-    `SELECT id, spent_at, amount, description, category, frequency, payment_day
+    `SELECT id, spent_at, amount, description, category, frequency, payment_day, payment_month
      FROM import_staging_rows WHERE batch_id = $1 AND user_id = $2 ORDER BY id`,
     [batch.id, req.userId]
   );
@@ -183,7 +192,7 @@ importsRouter.patch("/rows/:rowId", async (req, res) => {
     const frequency = parseFrequency(req.body.frequency);
     if (!frequency) {
       return res.status(400).json({
-        error: "Invalid frequency (use once, weekly, monthly, bimonthly)",
+        error: "Invalid frequency (use once, weekly, monthly, bimonthly, yearly)",
       });
     }
     sets.push(`frequency = $${next++}`);
@@ -197,9 +206,16 @@ importsRouter.patch("/rows/:rowId", async (req, res) => {
     params.push(parsed.value);
   }
 
+  if (Object.prototype.hasOwnProperty.call(req.body, "payment_month")) {
+    const parsed = tryParsePaymentMonth(req.body.payment_month);
+    if (!parsed.ok) return res.status(400).json({ error: PAYMENT_MONTH_ERROR });
+    sets.push(`payment_month = $${next++}`);
+    params.push(parsed.value);
+  }
+
   if (!sets.length) {
     return res.status(400).json({
-      error: "Provide category, frequency, and/or payment_day to update",
+      error: "Provide category, frequency, payment_day, and/or payment_month to update",
     });
   }
 
@@ -207,7 +223,7 @@ importsRouter.patch("/rows/:rowId", async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE import_staging_rows SET ${sets.join(", ")}
      WHERE id = $${next++} AND user_id = $${next}
-     RETURNING id, spent_at, amount, description, category, frequency, payment_day`,
+     RETURNING id, spent_at, amount, description, category, frequency, payment_day, payment_month`,
     params
   );
   if (!rows[0]) {
@@ -239,7 +255,7 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
     const { rows: toInsert } = await client.query(
       `SELECT s.id, s.spent_at, s.amount, s.description, s.category,
               COALESCE(s.frequency, b.default_frequency) AS frequency,
-              s.payment_day
+              s.payment_day, s.payment_month
        FROM import_staging_rows s
        JOIN import_batches b ON b.id = s.batch_id
        WHERE s.batch_id = $1 AND s.user_id = $2 AND s.category IS NOT NULL`,
@@ -256,8 +272,8 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
     let added = 0;
     for (const t of toInsert) {
       await client.query(
-        `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, payment_day, description, spent_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           req.userId,
           t.amount,
@@ -265,6 +281,7 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
           default_financial_institution,
           t.frequency,
           t.payment_day,
+          t.payment_month,
           t.description,
           t.spent_at,
         ]
@@ -310,5 +327,6 @@ function normalizeStagingRow(row) {
     category: row.category ?? null,
     frequency: row.frequency ?? null,
     payment_day: row.payment_day != null ? Number(row.payment_day) : null,
+    payment_month: row.payment_month != null ? Number(row.payment_month) : null,
   };
 }

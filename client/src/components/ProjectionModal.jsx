@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { formatFrequency } from "../expenseOptions.js";
+import { formatFrequency, formatPaymentMonth } from "../expenseOptions.js";
 import {
   filterItemsForProjectionSlice,
   formatProjectionCurrency,
@@ -107,14 +107,14 @@ export default function ProjectionModal({
             <>
               This row&apos;s <strong className="text-slate-400">amount</strong> and{" "}
               <strong className="text-slate-400">frequency</strong> are annualized: weekly × 52, monthly × 12,
-              bi-monthly × 6 per year. <strong className="text-slate-400">Once</strong> is not included in the
+              bi-monthly × 6, yearly × 1 per year. <strong className="text-slate-400">Once</strong> is not included in the
               daily / monthly / yearly run rate; it appears as a one-time total below.
             </>
           ) : (
             <>
               Estimates use each expense&apos;s <strong className="text-slate-400">amount</strong> and{" "}
-              <strong className="text-slate-400">frequency</strong>: weekly × 52, monthly × 12, bi-monthly × 6
-              per year. <strong className="text-slate-400">Once</strong> is not included in the daily / monthly /
+              <strong className="text-slate-400">frequency</strong>: weekly × 52, monthly × 12, bi-monthly × 6,
+              yearly × 1 per year. <strong className="text-slate-400">Once</strong> is not included in the daily / monthly /
               yearly run rate; it appears as a one-time total below.
             </>
           )}
@@ -219,6 +219,9 @@ export default function ProjectionModal({
                         </span>
                         <span className="text-slate-400">
                           {formatFrequency(row.frequency)}
+                          {row.payment_month != null && row.payment_month !== ""
+                            ? ` · ${formatPaymentMonth(row.payment_month)}`
+                            : ""}
                           {row.description ? ` · ${row.description}` : ""}
                         </span>
                       </li>

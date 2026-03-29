@@ -3,6 +3,10 @@
   "private": true,
   "description": "Root helpers: PM2 process manager for API + Vite client",
   "scripts": {
+    "compose:prod": "docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build",
+    "compose:prod:down": "docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env down",
+    "compose:prod:logs": "docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env logs -f",
+    "compose:prod:ps": "docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env ps",
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:stop": "pm2 stop ecosystem.config.cjs",
     "pm2:restart": "pm2 restart ecosystem.config.cjs",

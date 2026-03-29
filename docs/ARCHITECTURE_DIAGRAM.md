@@ -1,6 +1,6 @@
 # Expense Tracker — Architecture diagrams
 
-This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For **Docker Compose production** commands and **`JWT_SECRET`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
 
 ---
 
@@ -110,7 +110,7 @@ flowchart TB
 | Stage | What runs |
 |-------|-------------|
 | **Step 1 — Development** | The Vite development server with Hot Module Replacement; the browser uses the same origin for `/api`, which Vite forwards to Express; often plain HTTP on `localhost`. Typical commands: `npm run dev` in the `client` directory and `npm run dev` in the `server` directory. |
-| **Step 2 — Production** | Run `npm run build` in the `client` directory, then serve the **`client/dist/`** directory (the Vite development process does not run in production). Express runs behind Transport Layer Security; `/api` is reached through the edge or via Cross-Origin Resource Sharing if the static site and API use different origins. Set `NODE_ENV=production` (or your host’s equivalent) for the API process. |
+| **Step 2 — Production** | Run `npm run build` in the `client` directory, then serve the **`client/dist/`** directory (the Vite development process does not run in production). Express runs behind Transport Layer Security; `/api` is reached through the edge or via Cross-Origin Resource Sharing if the static site and API use different origins. Set `NODE_ENV=production` (or your host’s equivalent) for the API process. **Concrete bundle:** **`deployment/docker-compose/`** builds **`dist/`** inside the **web** image, runs **nginx** plus the **api** container, and exposes one HTTP port (see **`npm run compose:prod`** at the repository root). |
 
 More detail: [ARCHITECTURE.md — From development to production](./ARCHITECTURE.md#from-development-to-production).
 
@@ -201,11 +201,12 @@ flowchart TB
 
 | Module file | Role | Integrations |
 |--------|------|----------------|
-| `routes/auth.js` | Registration, login, current user **`me`**, **`PATCH /profile`**, **`POST`/`DELETE /avatar`**, static **`/uploads`** | `bcryptjs`, `jsonwebtoken`, `pg`, `multer`; mounts **`oauth/*`** routes from `oauth/oauthRoutes.js` |
+| `routes/auth.js` | Registration, login, **`me`**, **`POST /refresh`** (new JWT from expired-but-signed token within grace), **`PATCH /profile`**, recovery **`POST`/`DELETE /recovery-code`**, **`POST /recover-password`**, **`POST`/`DELETE /avatar`**, static **`/uploads`** | `bcryptjs`, `jsonwebtoken`, `pg`, `multer`, `crypto`; mounts **`oauth/*`** from `oauth/oauthRoutes.js` |
 | `oauth/oauthRoutes.js` together with `oauthService.js` and `oauthState.js` | Single sign-on: authorize and callback | `fetch` to identity providers, `pg` for **`oauth_identities`** |
 | `routes/expenses.js` | Expense create, read, update, delete | JSON Web Token middleware, `pg`, `expenseEnums.js` |
 | `routes/imports.js` | Upload, staging, commit | JSON Web Token, `multer`, `visaStatement.js` for CSV and PDF, `pg` |
 | `routes/reports.js` | Aggregates and chart data | JSON Web Token, `pg`, optional `redis.js` |
+| `routes/backup.js` | **`GET /export`**, **`POST /restore`** (append or replace expenses) | JSON Web Token, `pg`, `expenseEnums.js` |
 | `parsers/visaStatement.js` | Parse uploaded statements | `csv-parse/sync`, `pdf-parse` |
 | `jobs/monthlySummary.js` | Monthly rollup job | `node-cron`, `pg` writing **`monthly_summaries`** |
 | `db.js` | Connection pool and **`initDb()`** | `pg` |
@@ -223,6 +224,7 @@ flowchart LR
   subgraph pages [client/src/pages]
     LP[LoginPage]
     RP[RegisterPage]
+    Rcv[RecoverPasswordPage]
     EP[ExpensesPage]
     YEP[YourExpensesPage]
     RPg[ReportsPage]
@@ -230,15 +232,18 @@ flowchart LR
   end
 
   subgraph api [Express paths under /api]
-    A1["/auth: login, register, oauth, profile, avatar"]
+    A1["/auth: login, register, refresh, oauth, profile, avatar, recovery"]
     A2["/expenses"]
     A3["/imports"]
     A4["/reports"]
+    A5["/backup: export, restore"]
   end
 
   LP --> A1
   RP --> A1
+  Rcv --> A1
   PP --> A1
+  PP --> A5
   EP --> A2 & A3
   YEP --> A2
   RPg --> A4
@@ -248,12 +253,13 @@ flowchart LR
 
 | Concern | Implementation |
 |---------|------------------|
-| HTTP client | `api.js` — Axios with `/api` base URL; `Authorization` header from `localStorage` |
-| Authentication state | `auth.jsx` — `AuthProvider` and protected routes |
+| HTTP client | `api.js` — Axios with `/api` base URL; `Authorization` from `localStorage`; **401 Invalid token** triggers session-expired flow (except auth endpoints such as **`/auth/refresh`**) |
+| Authentication state | `auth.jsx` — `AuthProvider`, protected routes, registers the session-invalid handler for `api.js` |
+| Expired session prompt | `SessionExpiredModal.jsx` — **Continue session** → **`POST /auth/refresh`** → reload; **Sign out** → **`/login`** |
 | Errors | `apiError.js` — network and proxy error messages |
-| Labels versus server enums | `expenseOptions.js` |
+| Labels versus server enums | `expenseOptions.js` — categories, frequencies, institutions, **payment day** (1–30), **payment month** (1–12) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
-| Profile | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/avatar`** |
+| Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`**; `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
 
 ---
 
@@ -275,6 +281,8 @@ erDiagram
     text email UK
     text password_hash
     text avatar_url
+    text recovery_lookup
+    text recovery_token_hash
     timestamptz created_at
   }
 
@@ -294,6 +302,7 @@ erDiagram
     text financial_institution
     text frequency
     smallint payment_day
+    smallint payment_month
     text description
     date spent_at
     timestamptz created_at
@@ -318,6 +327,7 @@ erDiagram
     text category
     text frequency
     smallint payment_day
+    smallint payment_month
     timestamptz created_at
   }
 
@@ -331,7 +341,7 @@ erDiagram
   }
 ```
 
-**Import data flow:** `POST /api/imports` replaces any previous `import_batches` for that user and inserts `import_staging_rows`. `POST /api/imports/batches/:batchId/commit` on a batch moves categorized rows into `expenses` and removes the batch.
+**Import data flow:** `POST /api/imports` replaces any previous `import_batches` for that user and inserts `import_staging_rows` (with `payment_day` / `payment_month` seeded from each line’s date where applicable). `POST /api/imports/batches/:batchId/commit` on a batch moves categorized rows into `expenses` and removes the batch.
 
 ---
 
@@ -355,13 +365,13 @@ sequenceDiagram
   Vite-->>Browser: 200 JSON
 ```
 
-**After you deploy to production**, the first network hop is not Vite: the browser talks to your **edge** server (for example nginx). Requests whose path begins with `/api` (for example `GET /api/expenses`) are forwarded to Express. The single-page application still issues `/api` requests when the static site and API share **one origin** behind that edge.
+**After you deploy to production**, the first network hop is not Vite: the browser talks to your **edge** server (for example nginx). Requests whose path begins with `/api` (for example `GET /api/expenses`) are forwarded to Express; **`GET /health`** can be proxied the same way (see **`deployment/docker/nginx.conf`**). The single-page application still issues `/api` requests when the static site and API share **one origin** behind that edge.
 
 ---
 
 ## 7. OAuth single sign-on (redirect flow)
 
-When the user clicks a provider on **Login** or **Register**, this is the high-level flow. The **redirect URI** you register at the identity provider must be `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback`. During development, the browser first contacts Vite; Vite proxies to Express.
+When the user clicks a provider on **Login** or **Register**, this is the high-level flow. The **redirect URI** you register at the identity provider must be `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback`. During development, the browser first contacts Vite; Vite proxies to Express. With **deployment Docker Compose**, the browser contacts **nginx** on the published **`HTTP_PORT`**; nginx proxies `/api` to the **api** service (replace **Vite** with **nginx** in the sequence mentally for that topology).
 
 ```mermaid
 sequenceDiagram

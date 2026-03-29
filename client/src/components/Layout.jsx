@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
+import RenewalReminders from "./RenewalReminders.jsx";
 
 const linkClass = ({ isActive }) =>
   [
@@ -59,6 +60,7 @@ export default function Layout() {
         </div>
       </header>
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+        <RenewalReminders />
         <Outlet />
       </main>
     </div>

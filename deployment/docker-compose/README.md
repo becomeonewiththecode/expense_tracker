@@ -22,10 +22,17 @@ The root `docker-compose.yml` (repository root) only starts PostgreSQL and Redis
    cp deployment/docker-compose/.env.example deployment/docker-compose/.env
    ```
 
-2. Edit **`deployment/docker-compose/.env`**:
+2. Set **`JWT_SECRET`** in **`deployment/docker-compose/.env`** before the first `up` (strongly recommended). Use at least 16 characters, for example:
+
+   ```bash
+   openssl rand -base64 32
+   ```
+
+   Paste the result on the `JWT_SECRET=` line. If **`JWT_SECRET`** is empty, the API may generate one inside the container, but **a new container after `docker compose down` loses that file**, which invalidates existing sessions.
+
+3. Edit the rest of **`deployment/docker-compose/.env`** as needed:
 
    - **`CLIENT_ORIGIN`** — Must equal the URL users use to open the app. If you map nginx to port 8080 on your machine, use `http://localhost:8080` (or your hostname and HTTPS URL in production).
-   - **`JWT_SECRET`** — Required in production. Use a long random string (at least 16 characters), for example from `openssl rand -base64 32`. If this is unset or weak, the API may try to write a generated secret to `server/.env` inside the container; setting a strong **`JWT_SECRET`** avoids that and is required for stable tokens across container restarts.
    - **`POSTGRES_PASSWORD`** — Change from the example for any non-local deployment.
    - **OAuth variables** — Optional; set the `OAUTH_*` pairs for each provider you enable. Register redirect URLs with each provider as:
 
@@ -41,7 +48,15 @@ From the **repository root**:
 docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build
 ```
 
+Equivalent **npm** helper (same command):
+
+```bash
+npm run compose:prod
+```
+
 Wait until **postgres** is healthy and **api** has started (first boot runs database migrations). Then open **`CLIENT_ORIGIN`** in a browser (for example `http://localhost:8080` if `HTTP_PORT=8080`).
+
+Services use **`restart: unless-stopped`** so they come back after a machine reboot (when Docker is enabled on boot).
 
 ## Verify
 
@@ -53,6 +68,7 @@ Wait until **postgres** is healthy and **api** has started (first boot runs data
 ```bash
 docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env logs -f api
 docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env down
+# or: npm run compose:prod:down
 ```
 
 `down` keeps volumes (`pgdata`, `redisdata`). To remove volumes as well:

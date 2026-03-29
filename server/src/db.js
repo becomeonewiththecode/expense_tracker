@@ -16,6 +16,10 @@ export async function initDb() {
     );
     ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NULL;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_lookup TEXT NULL;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_token_hash TEXT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_recovery_lookup ON users(recovery_lookup)
+      WHERE recovery_lookup IS NOT NULL;
     CREATE TABLE IF NOT EXISTS oauth_identities (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -44,6 +48,10 @@ export async function initDb() {
     ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_payment_day_range;
     ALTER TABLE expenses ADD CONSTRAINT expenses_payment_day_range
       CHECK (payment_day IS NULL OR (payment_day >= 1 AND payment_day <= 30));
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS payment_month SMALLINT NULL;
+    ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_payment_month_range;
+    ALTER TABLE expenses ADD CONSTRAINT expenses_payment_month_range
+      CHECK (payment_month IS NULL OR (payment_month >= 1 AND payment_month <= 12));
     CREATE TABLE IF NOT EXISTS import_batches (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -68,6 +76,10 @@ export async function initDb() {
     ALTER TABLE import_staging_rows DROP CONSTRAINT IF EXISTS import_staging_rows_payment_day_range;
     ALTER TABLE import_staging_rows ADD CONSTRAINT import_staging_rows_payment_day_range
       CHECK (payment_day IS NULL OR (payment_day >= 1 AND payment_day <= 30));
+    ALTER TABLE import_staging_rows ADD COLUMN IF NOT EXISTS payment_month SMALLINT NULL;
+    ALTER TABLE import_staging_rows DROP CONSTRAINT IF EXISTS import_staging_rows_payment_month_range;
+    ALTER TABLE import_staging_rows ADD CONSTRAINT import_staging_rows_payment_month_range
+      CHECK (payment_month IS NULL OR (payment_month >= 1 AND payment_month <= 12));
     CREATE INDEX IF NOT EXISTS idx_import_staging_batch ON import_staging_rows(batch_id);
     CREATE INDEX IF NOT EXISTS idx_import_batches_user ON import_batches(user_id);
     CREATE TABLE IF NOT EXISTS monthly_summaries (

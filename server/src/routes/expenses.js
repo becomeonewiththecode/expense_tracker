@@ -7,7 +7,9 @@ import {
   parseFrequency,
   CATEGORY_ERROR,
   PAYMENT_DAY_ERROR,
+  PAYMENT_MONTH_ERROR,
   tryParsePaymentDay,
+  tryParsePaymentMonth,
 } from "../expenseEnums.js";
 
 const badId = "Invalid id";
@@ -27,7 +29,7 @@ function parseDate(d) {
 expensesRouter.get("/", async (req, res) => {
   const { from, to, limit = "100", offset = "0" } = req.query;
   const params = [req.userId];
-  let sql = `SELECT id, amount, category, financial_institution, frequency, payment_day, description, spent_at, created_at
+  let sql = `SELECT id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at, created_at
     FROM expenses WHERE user_id = $1`;
   let i = 2;
   if (from && parseDate(from)) {
@@ -48,7 +50,7 @@ expensesRouter.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
   const { rows } = await pool.query(
-    `SELECT id, amount, category, financial_institution, frequency, payment_day, description, spent_at, created_at FROM expenses
+    `SELECT id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at, created_at FROM expenses
      WHERE id = $1 AND user_id = $2`,
     [id, req.userId]
   );
@@ -76,7 +78,7 @@ expensesRouter.post("/", async (req, res) => {
   }
   if (!frequency) {
     return res.status(400).json({
-      error: "Invalid frequency (use once, weekly, monthly, bimonthly)",
+      error: "Invalid frequency (use once, weekly, monthly, bimonthly, yearly)",
     });
   }
   let payment_day = null;
@@ -85,11 +87,17 @@ expensesRouter.post("/", async (req, res) => {
     if (!parsed.ok) return res.status(400).json({ error: PAYMENT_DAY_ERROR });
     payment_day = parsed.value;
   }
+  let payment_month = null;
+  if (Object.prototype.hasOwnProperty.call(req.body, "payment_month")) {
+    const parsed = tryParsePaymentMonth(req.body.payment_month);
+    if (!parsed.ok) return res.status(400).json({ error: PAYMENT_MONTH_ERROR });
+    payment_month = parsed.value;
+  }
   const { rows } = await pool.query(
-    `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, payment_day, description, spent_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     RETURNING id, amount, category, financial_institution, frequency, payment_day, description, spent_at, created_at`,
-    [req.userId, amount, category, financial_institution, frequency, payment_day, description, spent_at]
+    `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at, created_at`,
+    [req.userId, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at]
   );
   res.status(201).json(normalizeExpense(rows[0]));
 });
@@ -131,7 +139,7 @@ expensesRouter.patch("/:id", async (req, res) => {
     const frequency = parseFrequency(req.body.frequency);
     if (!frequency) {
       return res.status(400).json({
-        error: "Invalid frequency (use once, weekly, monthly, bimonthly)",
+        error: "Invalid frequency (use once, weekly, monthly, bimonthly, yearly)",
       });
     }
     updates.push(`frequency = $${i++}`);
@@ -153,12 +161,18 @@ expensesRouter.patch("/:id", async (req, res) => {
     updates.push(`payment_day = $${i++}`);
     params.push(parsed.value);
   }
+  if (Object.prototype.hasOwnProperty.call(req.body, "payment_month")) {
+    const parsed = tryParsePaymentMonth(req.body.payment_month);
+    if (!parsed.ok) return res.status(400).json({ error: PAYMENT_MONTH_ERROR });
+    updates.push(`payment_month = $${i++}`);
+    params.push(parsed.value);
+  }
   if (!updates.length) return res.status(400).json({ error: "No fields to update" });
   params.push(id, req.userId);
   const { rows } = await pool.query(
     `UPDATE expenses SET ${updates.join(", ")}
      WHERE id = $${i++} AND user_id = $${i++}
-     RETURNING id, amount, category, financial_institution, frequency, payment_day, description, spent_at, created_at`,
+     RETURNING id, amount, category, financial_institution, frequency, payment_day, payment_month, description, spent_at, created_at`,
     params
   );
   if (!rows[0]) return res.status(404).json({ error: "Not found" });
@@ -196,5 +210,6 @@ function normalizeExpense(row) {
     spent_at,
     amount: row.amount != null ? Number(row.amount) : row.amount,
     payment_day: row.payment_day != null ? Number(row.payment_day) : null,
+    payment_month: row.payment_month != null ? Number(row.payment_month) : null,
   };
 }

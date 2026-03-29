@@ -8,9 +8,9 @@ Expense Tracker is a web application for **recording expenses** and **viewing sp
 
 You can:
 
-- **Register** and **sign in** with email and password, or **sign in with Google, GitHub, GitLab, or Microsoft** when the server administrator has configured **OAuth** (open authorization) for those providers  
-- **Add expenses** with amount, transaction date, category, how often the cost occurs, an optional **day of the month (1 through 30)** for when the payment is made, how you paid, and an optional note  
-- **Import** a **comma-separated values or PDF** statement, **review** each line, set **categories** (and frequency or payment day if needed), then commit the import (see below)  
+- **Register** and **sign in** with **email and password**, or use **Google (Gmail), GitHub, GitLab, or Microsoft 365** when the server administrator has configured **OAuth** for those providers  
+- **Add expenses** with amount, transaction date, category, how often the cost occurs, optional **day of the month (1 through 30)** and optional **calendar month (1 through 12)** for recurring metadata, how you paid, and an optional note  
+- **Import** a **comma-separated values or PDF** statement, **review** each line, set **categories** (and adjust **frequency**, **payment day**, or **month** if needed), then commit the import (see below)  
 - **Delete** expenses from the list  
 - **View reports** as charts: daily, weekly, monthly, yearly, or a custom date range  
 - See **stored monthly summaries** (totals computed by a background job on a schedule)
@@ -41,6 +41,16 @@ Quick local setup:
 
 If **port 4000** is already used by another program, the user interface may fail to reach the API. Set `PORT` in `server/.env` (for example `4001`) and set `API_PROXY_TARGET` in `client/.env` to the same host and port. See the root **README.md** for details.
 
+### Production on one machine (Docker Compose)
+
+For a **built** client, API, PostgreSQL, and Redis in containers (nginx serves **`dist/`** and proxies **`/api`** and **`/health`** to the API):
+
+1. Copy **`deployment/docker-compose/.env.example`** to **`deployment/docker-compose/.env`**.  
+2. Set **`JWT_SECRET`** (for example `openssl rand -base64 32`) and **`CLIENT_ORIGIN`** to the URL users will open (for example `http://localhost:8080` if you publish **`HTTP_PORT=8080`**).  
+3. From the **repository root**, run **`npm run compose:prod`** (or the full `docker compose -f deployment/docker-compose/docker-compose.yml …` command in [deployment/docker-compose/README.md](../deployment/docker-compose/README.md)).
+
+Verify with **`curl -sS http://localhost:8080/health`** (adjust the port if you changed **`HTTP_PORT`**). OAuth redirect URIs must use the same origin as **`CLIENT_ORIGIN`**, for example `http://localhost:8080/api/auth/oauth/google/callback`.
+
 ---
 
 ## Account: register and sign in
@@ -52,6 +62,8 @@ If **port 4000** is already used by another program, the user interface may fail
 
 To sign in later, use **Sign in** and open the `/login` route with the same email and password.
 
+**Forgot your password?** If you previously generated a **recovery code** under **Profile**, use **Forgot password?** on the sign-in page (`/recover`). Paste the full code and choose a new password. **No email is sent.** Afterward, sign in with your **email** and the **new** password. If you use **single sign-on only** and have not set a password, sign in with your provider first, then open **Profile** to add a password and optionally create a recovery code.
+
 ### Sign in with Google, GitHub, GitLab, or Microsoft
 
 If your deployment has **OAuth** configured on the API, the **Sign in** and **Create account** screens show buttons for those providers. Choosing one sends you to that company’s site to approve access; you are then redirected back to the application at the `/oauth/callback` route and signed in with a normal session.
@@ -62,11 +74,11 @@ If your deployment has **OAuth** configured on the API, the **Sign in** and **Cr
 
 Replace `{provider}` with `google`, `github`, `gitlab`, or `microsoft` depending on which console you are editing.
 
-For example, with `CLIENT_ORIGIN=http://localhost:5173` and Google, the redirect URL is `http://localhost:5173/api/auth/oauth/google/callback`. The Vite development server proxies `/api` to the Node API, so this URL still reaches the backend. Set the `OAUTH_*` variables in `server/.env` as described in `server/.env.example`.
+For example, with `CLIENT_ORIGIN=http://localhost:5173` and Google, the redirect URL is `http://localhost:5173/api/auth/oauth/google/callback`. The Vite development server proxies `/api` to the Node API, so this URL still reaches the backend. With **Docker Compose** production and `CLIENT_ORIGIN=http://localhost:8080`, the same pattern applies on port **8080** (nginx proxies `/api` to the API container). Set the `OAUTH_*` variables in `server/.env` (development) or in **`deployment/docker-compose/.env`** (Compose) as described in the example env files.
 
 If you already registered with **email and password**, signing in with single sign-on using the **same email** links to the same account when the provider returns that email address.
 
-**Sign out** clears your session in the browser (you will need to sign in again to use **Import** and **Reports**).
+**Sign out** clears your session in the browser (you will need to sign in again to use **Import** and **Reports**). If your **JSON Web Token** has expired but is still within the server’s refresh window, you may be offered **Continue session** instead of only seeing errors—see [Session and security](#session-and-security).
 
 ---
 
@@ -84,13 +96,19 @@ Fill in the form and click **Add expense**:
 | Field | Description |
 |--------|-------------|
 | **Amount** | Dollar amount (must be zero or positive). |
-| **Category** | One of: Home, Entertainment, Personal, Business, Education, Rent, Mortgage, Subscription. |
-| **Frequency** | How often this cost applies: Once, Weekly, Monthly, or Bi-monthly. *(Metadata for your records; reports still use the transaction **date**.)* |
+| **Category** | One of: Home, Entertainment, Personal, Business, Education, Rent, Mortgage, Insurance, Subscription. |
+| **Frequency** | How often this cost applies: **Once**, **Weekly**, **Monthly**, **Bi-monthly**, or **Yearly**. For **Yearly**, enter the **annual** amount; for other recurring options, the amount is per week, per month, or per bi-monthly period as labeled. *(This field drives **Projection** run rates and labels; **Reports** bar charts still use each line’s transaction **date**.)* |
+| **Date (1–30)** | Optional. Day of the month when a recurring payment typically posts (metadata). |
+| **Month (1–12)** | Optional. Typical **calendar month** when a **recurring** cost applies (for example which month an annual fee hits). Leave **—** if not needed. |
 | **Financial institution** | Bank, VISA, Mastercard, or American Express. |
-| **Date** | The **spent** date for this line item. |
+| **Transaction date** | The **spent** date for this line item. |
 | **Note** | Optional free text. |
 
-On the **Your expenses** page, the table lists your expenses (newest first). **Projection** in the table header opens a **combined** report: **daily**, **monthly**, and **yearly** run-rate totals across **all** saved expenses (one-time amounts summed separately), plus a **pie chart** of annualized share by category (and a **One-time** slice when applicable). Click a slice to list the expenses in that segment; click the same slice again to clear. Each row also has **Projection** for **that expense only** (same numbers plus a single-slice or small pie); if you are editing a row, row **Projection** uses your unsaved values in the form. Click **Enter modification mode** to show **Edit** on each row; then **Edit**, **Save**, and **Cancel** work as before. Click **Exit modification mode** to go back to read-only rows (unsaved edits on the active row are cleared). **Delete** is always available. If you have no expenses yet, that page offers a link back to **Import** to add or import.
+On the **Your expenses** page, you can **add an expense manually** (same fields as on **Import**) when the list is empty, or expand **Add expense manually** when you already have rows. The table lists your expenses (newest first).
+
+**Renewal reminders:** For recurring expenses (**Weekly**, **Monthly**, **Bi-monthly**, **Yearly**), the app estimates the next renewal from **frequency**, optional **Date (1–30)** and **Month (1–12)** (for yearly), and **Transaction date** as the starting anchor. While you are signed in, an **Upcoming renewals** panel may appear under the header on **Import**, **Your expenses**, **Reports**, and **Profile** when the next renewal is about **30**, **15**, or **5** days away (with small day-range windows around each so you still see a reminder if you skip a day). **One-time** rows are ignored. Use **Dismiss** to hide a line for this browser session (or **Dismiss all**). Reminders are **in-app only**—not email or push notifications.
+
+**Projection** in the table header opens a **combined** report: **daily**, **monthly**, and **yearly** run-rate totals across **all** saved expenses (one-time amounts summed separately), plus a **pie chart** of annualized share by category (and a **One-time** slice when applicable). Click a slice to list the expenses in that segment; click the same slice again to clear. Each row also has **Projection** for **that expense only** (same numbers plus a single-slice or small pie); if you are editing a row, row **Projection** uses your unsaved values in the form. Click **Enter modification mode** to show **Edit** on each row; then **Edit**, **Save**, and **Cancel** work as before. Click **Exit modification mode** to go back to read-only rows (unsaved edits on the active row are cleared). **Delete** is always available. If you have no expenses yet, that page shows the manual form and a link to **Import** for import or additional entry.
 
 ### Import from a statement (comma-separated values or PDF)
 
@@ -98,7 +116,7 @@ Under **Import from statement**:
 
 1. Set **financial institution**, **frequency**, and optionally **Date (1 through 30)** for the import (or **From statement** so each row uses that line’s calendar day, capped at 30). **Institution** applies to every row you commit.  
 2. Choose a **.csv** or **.pdf** file and click **Upload and parse**.  
-3. In **Review import**, pick a **category** for each row you want to keep. Change **frequency** or **Date (1 through 30)** on a row if needed. Rows left as **— Select category —** are **not** imported.  
+3. In **Review import**, pick a **category** for each row you want to keep. Change **frequency**, **Date (1 through 30)**, or **Month (1 through 12)** on a row if needed. New uploads seed **Month** from each line’s posting date; you can adjust or clear it. Rows left as **— Select category —** are **not** imported.  
 4. Click **Add categorized rows to expenses**. **Discard import** deletes the staged batch without saving expenses.
 
 Parsing uses **date, amount, and description** from the file; **comma-separated values** usually work best. **PDF** support is best-effort.
@@ -117,7 +135,7 @@ Use the tabs:
 - **Yearly** — totals by month for a year.  
 - **Custom range** — start and end dates.  
 
-Each view shows a **bar chart** (Recharts library) and a **total** for the period. **Click the trend chart** (or focus it and press Enter or Space) to open the same **Projection** modal as on **Your expenses** — combined daily, monthly, and yearly run rates, pie chart, and slice drill-down — using your **saved expenses** (up to 500 rows). The bar chart reflects the **selected report period**; the projection is always **all saved expenses**, not filtered to that period.
+Each view shows a **bar chart** (Recharts library) and a **total** for the period. **Click the trend chart** (or focus it and press Enter or Space) to open the same **Projection** modal as on **Your expenses** — combined daily, monthly, and yearly run rates, pie chart, and slice drill-down — using your **saved expenses** (up to 500 rows). **Projection** annualizes recurring amounts from **frequency** (for example weekly × 52, monthly × 12, bi-monthly × 6, yearly × 1; **Once** counts only toward one-time totals). The bar chart reflects the **selected report period**; the projection is always **all saved expenses**, not filtered to that period.
 
 ### Stored monthly summaries
 
@@ -125,17 +143,27 @@ The application can show **precomputed monthly totals** from the `monthly_summar
 
 ---
 
+## Profile
+
+Signed-in users can open **Profile** from the header to update **email**, **password**, and **profile picture**. **Recovery code** (under **Password recovery**): generate a code once, store it safely offline, and use it on **`/recover`** if you forget your password. The **full code is shown only at the moment you create or replace it**; afterward, Profile shows a **masked placeholder** so you can see that a code is on file without seeing the secret. Replacing or removing the code invalidates the previous one.
+
+**Backup and restore:** Download a **JSON** file of all your expenses (`expense-tracker-backup` format). Each expense object includes the same fields as the API (such as **`frequency`**, optional **`payment_day`**, optional **`payment_month`**, and **`spent_at`**). **Restore** accepts that same file: **Append** adds imported rows to existing data; **Replace** deletes all your current expenses first, then imports the file (use with care). Each restore is limited to **25,000** expense rows and a **15 MB** request body. Backups may include your account **email** in metadata—store files securely. If **Download backup** or **Restore** reports **Invalid token**, try **Continue session** if a prompt appears; otherwise **sign out** and **sign in** again (or the server’s signing secret may have changed).
+
+---
+
 ## Session and security
 
-- After **email and password** login or **single sign-on** completion, the application stores a **JSON Web Token** in the browser (`localStorage`) and sends it on API requests. The session model is the same for both login types.  
+- After **email and password** login or **single sign-on** completion, the application stores a **JSON Web Token** in the browser (`localStorage`) and sends it on API requests. The session model is the same for both login types. Tokens **expire** after a period configured on the server; when an API call fails because the token is no longer valid, you may see a prompt asking whether to **continue the session**. Choosing **Continue session** requests a **new token** without leaving the page (if your old token is still within the allowed refresh window); otherwise **sign out** and sign in again.  
 - **Password accounts:** do not share your password; choose a strong password for your account.  
 - **Single sign-on accounts:** sign-in is delegated to Google, GitHub, GitLab, or Microsoft; use that provider’s account security settings (two-factor authentication, and so on) as appropriate.  
 - On a shared computer, **sign out** when finished (this clears the token from this browser).  
+- **Recovery codes** are as sensitive as passwords; anyone with the code can reset your password on **`/recover`** until the code is used or removed.
 
 ---
 
 ## Where to go next
 
-- **Installation, ports, and OAuth environment variables:** root `README.md`  
-- **How the system is built (including single sign-on):** [ARCHITECTURE.md](./ARCHITECTURE.md)  
-- **PM2 process manager:** [HOWTO_CONTROLLING_APPLICATIONS.md](./HOWTO_CONTROLLING_APPLICATIONS.md)
+- **Installation, ports, OAuth, and production Compose:** root `README.md` and [deployment/docker-compose/README.md](../deployment/docker-compose/README.md)  
+- **How the system is built (including single sign-on and recovery):** [ARCHITECTURE.md](./ARCHITECTURE.md)  
+- **PM2 process manager:** [HOWTO_CONTROLLING_APPLICATIONS.md](./HOWTO_CONTROLLING_APPLICATIONS.md)  
+- **Deployment index (Compose and Kubernetes):** [deployment/README.md](../deployment/README.md)
