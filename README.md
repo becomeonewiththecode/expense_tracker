@@ -1,6 +1,6 @@
 # Expense Tracker
 
-**Documentation index:** [User guide](./docs/USER_GUIDE.md) (accounts, import, reports, **recovery codes**, **backup/restore**, **expired-session refresh**, **production Compose**, **renewal reminder day bands**). [Architecture](./docs/ARCHITECTURE.md) and [Architecture diagrams](./docs/ARCHITECTURE_DIAGRAM.md) (OAuth, topology, data model, **`POST /auth/refresh`**, backup routes, **recurring metadata derived from transaction date**, **client renewal reminder flow**). [PM2 and controlling applications](./docs/HOWTO_CONTROLLING_APPLICATIONS.md). **[Deployment](./deployment/README.md)** (Docker Compose **`npm run compose:prod`**, Kubernetes).
+**Documentation index:** [User guide](./docs/USER_GUIDE.md) (accounts, import, reports, **recovery codes**, **backup/restore**, **expired-session refresh**, **production Compose** / **`ensure-env` JWT bootstrap**, **renewal reminder day bands**). [Architecture](./docs/ARCHITECTURE.md) and [Architecture diagrams](./docs/ARCHITECTURE_DIAGRAM.md) (OAuth, topology, data model, **`POST /auth/refresh`**, backup routes, **recurring metadata derived from transaction date**, **client renewal reminder flow**). [PM2 and controlling applications](./docs/HOWTO_CONTROLLING_APPLICATIONS.md). **[Deployment](./deployment/README.md)** (Docker Compose **`npm run compose:prod`**, Kubernetes).
 
 This is a full-stack application. The **client** uses React, Tailwind CSS, Recharts, React Router, and Axios. The **server** uses Express, PostgreSQL, JSON Web Tokens for authentication, and optional Redis caching. Optional **OAuth**-based single sign-on is supported for Google, GitHub, GitLab, and Microsoft 365. A scheduled **cron** job writes **monthly summary** rows to the database.
 
@@ -11,7 +11,7 @@ This is a full-stack application. The **client** uses React, Tailwind CSS, Recha
 
 ## Production on one host (Docker Compose)
 
-Full stack (Postgres, Redis, API, nginx + built client): copy **`deployment/docker-compose/.env.example`** to **`deployment/docker-compose/.env`**, set **`JWT_SECRET`** and **`CLIENT_ORIGIN`**, then from the repo root run **`npm run compose:prod`** (or the `docker compose -f deployment/docker-compose/...` command in [deployment/docker-compose/README.md](deployment/docker-compose/README.md)).
+Full stack (Postgres, Redis, API, nginx + built client): from the repo root run **`npm run compose:prod`**. It runs **`node deployment/docker-compose/ensure-env.mjs`**, which creates **`deployment/docker-compose/.env`** from **`.env.example`** if needed and writes a random **`JWT_SECRET`** when the line is empty or too short (stable on disk, gitignored). Edit **`CLIENT_ORIGIN`** (and optional **`OAUTH_*`**) in that **`.env`** as needed. You can run **`npm run compose:ensure-env`** alone, or follow the manual **`docker compose …`** flow in [deployment/docker-compose/README.md](deployment/docker-compose/README.md).
 
 ## Database and cache
 
@@ -25,7 +25,7 @@ Copy `server/.env.example` to `server/.env` and edit values as needed. The defau
 
 - `DATABASE_URL=postgresql://expense:expense@localhost:5432/expense_tracker`
 - `REDIS_URL=redis://localhost:6379`
-- **`JWT_SECRET`** — On first startup, if the secret is missing, shorter than 16 characters, or still the `change-me…` placeholder from the example file, the server **generates a random secret and writes it** to `server/.env` so the value stays stable across restarts. You can also set it yourself, for example by running `openssl rand -base64 32` and pasting the result into `server/.env`.
+- **`JWT_SECRET`** — **Local API** (`server/`, not `NODE_ENV=production`): if the secret is missing, shorter than 16 characters, or still a `change-me…` placeholder, **`ensureJwtSecret()`** generates one and writes **`server/.env`**. **Production Docker Compose** does not auto-generate inside the container; use **`deployment/docker-compose/.env`** on the host. **`npm run compose:prod`** runs **`deployment/docker-compose/ensure-env.mjs`** so **`JWT_SECRET`** is filled there automatically when unset. You can also set secrets manually with `openssl rand -base64 32`.
 - **`CLIENT_ORIGIN`** — Must match the URL users type in the browser to open the single-page application, for example `http://localhost:5173`. This value is required for OAuth redirect URLs after single sign-on and for Cross-Origin Resource Sharing in setups that behave like production.
 - **OAuth (optional):** Set environment variables `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET`, and the same pattern for GitHub, GitLab, and Microsoft as needed. Optional variables include `OAUTH_GITLAB_BASE_URL` (defaults to GitLab.com if unset) and `OAUTH_MICROSOFT_TENANT` (defaults to `common` if unset). See the comments in `server/.env.example` for the full list.
 

@@ -58,7 +58,7 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 **Summary:** During **development**, you run Vite, Express, PostgreSQL, and optionally Redis. **After that**, in **production**, you serve the static bundle produced by **`npm run build`**, run Express with PostgreSQL and optional Redis, terminate **HTTPS** at the edge, and route paths for `/` versus `/api` accordingly.
 
-**Container deployment:** The repository includes **`deployment/docker-compose/`** for a full stack on one host (Postgres, Redis, API, nginx serving **`dist/`** with **`/api`** and **`/health`** proxies; persistent volumes for data, Redis append-only file, and API uploads). From the repo root, **`npm run compose:prod`** runs **`docker compose … up -d --build`** with **`deployment/docker-compose/.env`**. See [deployment/docker-compose/README.md](../deployment/docker-compose/README.md). **`deployment/kubernetes/`** targets a cluster; see [deployment/README.md](../deployment/README.md).
+**Container deployment:** The repository includes **`deployment/docker-compose/`** for a full stack on one host (Postgres, Redis, API, nginx serving **`dist/`** with **`/api`** and **`/health`** proxies; persistent volumes for data, Redis append-only file, and API uploads). From the repo root, **`npm run compose:prod`** runs **`node deployment/docker-compose/ensure-env.mjs`** (creates **`.env`** and a random **`JWT_SECRET`** when needed), then **`docker compose … up -d --build`** with **`--env-file deployment/docker-compose/.env`**. The **api** service uses **`env_file: .env`** beside the Compose file so **`JWT_SECRET`** and **`CLIENT_ORIGIN`** reach the container without being overridden by empty **`${VAR}`** substitution. See [deployment/docker-compose/README.md](../deployment/docker-compose/README.md). **`deployment/kubernetes/`** targets a cluster; see [deployment/README.md](../deployment/README.md).
 
 ---
 
@@ -71,7 +71,7 @@ The lifecycle is **development first**, **production second**: you run and test 
 | `docker-compose.yml` | PostgreSQL and Redis for local development. |
 | `docs/` | User-facing and architecture documentation. |
 | `deployment/` | Dockerfiles, production Docker Compose stack, and Kubernetes manifests. |
-| Root `package.json` | Optional scripts: **`npm run compose:prod`** (and **`compose:prod:down`**, **`compose:prod:logs`**, **`compose:prod:ps`**) for the full Compose stack. |
+| Root `package.json` | Optional scripts: **`npm run compose:prod`** (runs **`ensure-env.mjs`** then Compose **up**), **`npm run compose:ensure-env`**, **`compose:prod:down`**, **`compose:prod:logs`**, **`compose:prod:ps`**. |
 
 ---
 
@@ -122,7 +122,7 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 ### Entry and lifecycle
 
-- **`index.js`** loads environment variables (`dotenv`), runs **`ensureJwtSecret()`** (if `JWT_SECRET` is weak or missing, generate one and persist it to `server/.env`), runs **`initDb()`** (data definition language and additive migrations), starts the **monthly summary** scheduled job, then calls **`listen`** on `PORT`.  
+- **`index.js`** loads environment variables (`dotenv`), runs **`ensureJwtSecret()`** (in **non-production**, generate and persist weak/missing `JWT_SECRET` to **`server/.env`**; in **`NODE_ENV=production`**, exit if unset/weak so Docker relies on host **`.env`**—see **`deployment/docker-compose/ensure-env.mjs`**), runs **`initDb()`** (data definition language and additive migrations), starts the **monthly summary** scheduled job, then calls **`listen`** on `PORT`.  
 - **Cross-Origin Resource Sharing** allows `CLIENT_ORIGIN` or reflects an open configuration in development.
 
 ### Routing
@@ -209,7 +209,7 @@ Schema changes use **`CREATE TABLE IF NOT EXISTS`** and **`ALTER TABLE … ADD C
 | Concern | Location |
 |---------|-----------|
 | Database bootstrap | `server/src/db.js` |
-| JSON Web Token secret bootstrap | `server/src/ensureJwtSecret.js` |
+| JSON Web Token secret bootstrap | `server/src/ensureJwtSecret.js` (dev **`server/.env`**); Compose host bootstrap **`deployment/docker-compose/ensure-env.mjs`** |
 | Authentication routes | `server/src/routes/auth.js` |
 | OAuth (single sign-on) | `server/src/oauth/oauthRoutes.js`, `oauthService.js`, `oauthState.js` |
 | Expense routes | `server/src/routes/expenses.js` |

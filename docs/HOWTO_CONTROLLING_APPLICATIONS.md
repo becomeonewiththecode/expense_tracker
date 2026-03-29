@@ -149,7 +149,7 @@ Follow the one-line command PM2 prints (often requires administrator privileges)
 
 ## Production stack with Docker Compose (not PM2)
 
-PM2 is for **development-style** Vite + API on the host. For a **containerized** production stack (nginx, built client, API, Postgres, Redis), use **`npm run compose:prod`** from the repository root and **`deployment/docker-compose/.env`**. See [deployment/docker-compose/README.md](../deployment/docker-compose/README.md) and [USER_GUIDE.md](./USER_GUIDE.md) (section *Production on one machine*).
+PM2 is for **development-style** Vite + API on the host. For a **containerized** production stack (nginx, built client, API, Postgres, Redis), use **`npm run compose:prod`** from the repository root (it runs **`ensure-env.mjs`** so **`JWT_SECRET`** is set in **`deployment/docker-compose/.env`** when missing). See [deployment/docker-compose/README.md](../deployment/docker-compose/README.md) and [USER_GUIDE.md](./USER_GUIDE.md) (section *Production on one machine*).
 
 ---
 

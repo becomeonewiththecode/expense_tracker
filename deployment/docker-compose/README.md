@@ -16,19 +16,18 @@ The root `docker-compose.yml` (repository root) only starts PostgreSQL and Redis
 
 ## Configure environment
 
-1. Copy the example environment file:
+1. **Easiest:** from the repository root run **`npm run compose:prod`**. It runs **`node deployment/docker-compose/ensure-env.mjs`**, which creates **`deployment/docker-compose/.env`** from **`.env.example`** if needed and **generates a random `JWT_SECRET`** when the line is empty or too short. That value is written on your machine (gitignored), so it **stays stable across container rebuilds**.
+
+2. **Manual:** copy the example file and set secrets yourself:
 
    ```bash
    cp deployment/docker-compose/.env.example deployment/docker-compose/.env
+   openssl rand -base64 32   # paste on JWT_SECRET= line (16+ characters)
    ```
 
-2. Set **`JWT_SECRET`** in **`deployment/docker-compose/.env`** before the first `up` (strongly recommended). Use at least 16 characters, for example:
+   If **`JWT_SECRET`** is empty or too short, the API **exits on startup** (`NODE_ENV=production`).
 
-   ```bash
-   openssl rand -base64 32
-   ```
-
-   Paste the result on the `JWT_SECRET=` line. **Required for production:** if **`JWT_SECRET`** is empty or too short, the API **exits on startup** so you are not left with a secret that changes on every new container (which would make **Continue session** / `POST /api/auth/refresh` return **Invalid token** after `up --build`). Keep the same value in **`deployment/docker-compose/.env`** across rebuilds.
+   The **`api`** service loads this directory’s **`.env`** via **`env_file`** in `docker-compose.yml`, so **`JWT_SECRET`**, **`CLIENT_ORIGIN`**, and optional **`OAUTH_*`** reach the container reliably. Still use **`--env-file deployment/docker-compose/.env`** (or **`npm run compose:prod`**) so **`HTTP_PORT`** and Postgres-related defaults interpolate for the whole project.
 
 3. Edit the rest of **`deployment/docker-compose/.env`** as needed:
 
@@ -42,16 +41,19 @@ The root `docker-compose.yml` (repository root) only starts PostgreSQL and Redis
 
 ## Build and start
 
-From the **repository root**:
-
-```bash
-docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build
-```
-
-Equivalent **npm** helper (same command):
+From the **repository root**, recommended:
 
 ```bash
 npm run compose:prod
+```
+
+That ensures **`JWT_SECRET`** is set, then builds and starts the stack.
+
+If you invoke **docker compose** directly, run **`node deployment/docker-compose/ensure-env.mjs`** first (or create **`.env`** and set **`JWT_SECRET`** yourself):
+
+```bash
+node deployment/docker-compose/ensure-env.mjs
+docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build
 ```
 
 Wait until **postgres** is healthy and **api** has started (first boot runs database migrations). Then open **`CLIENT_ORIGIN`** in a browser (for example `http://localhost:8080` if `HTTP_PORT=8080`).
@@ -83,7 +85,7 @@ Compose publishes HTTP on **`HTTP_PORT`**. For HTTPS, put a reverse proxy (Traef
 
 ## Troubleshooting
 
-- **API exits or restarts:** Check `docker compose ... logs api`. Common causes: invalid **`DATABASE_URL`** (wait for postgres healthy), or **missing / weak `JWT_SECRET`** (the API now refuses to start in production without it).
+- **API exits or restarts:** Check `docker compose ... logs api`. Common causes: invalid **`DATABASE_URL`** (wait for postgres healthy), or **missing / weak `JWT_SECRET`** (the API refuses to start in production without it). Run **`npm run compose:ensure-env`** or **`npm run compose:prod`** to regenerate **`JWT_SECRET`** in **`deployment/docker-compose/.env`** when the line is empty.
 - **“Invalid token” when choosing Continue session** after rebuilding containers: the browser still has an old JWT signed with a **previous** secret. Set a **fixed** `JWT_SECRET` in `deployment/docker-compose/.env`, redeploy, then **sign out and sign in again** (or clear the site’s storage). Refresh only works if the token signature matches the server’s current secret.
 - **502 on `/api`:** Ensure the **api** service is running and nginx can resolve the hostname **`api`** on the Compose network (default service name).
 

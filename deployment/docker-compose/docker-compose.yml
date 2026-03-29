@@ -1,8 +1,17 @@
 # Full stack: PostgreSQL, Redis, API, nginx + static client.
-# Run from repository root:
+#
+# Copy deployment/docker-compose/.env.example to .env in this directory and set
+# JWT_SECRET (16+ chars) and CLIENT_ORIGIN. The api service loads that file via
+# env_file so JWT_SECRET reaches the container even when Compose variable
+# substitution would otherwise pass an empty value.
+#
+# From repo root (recommended):
+#   npm run compose:prod
+#   # or:
 #   docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build
 #
-# Or from this directory with paths adjusted (see README).
+# Use --env-file (or npm script) so ${HTTP_PORT} and postgres defaults interpolate;
+# JWT_SECRET / CLIENT_ORIGIN still come from this folder’s .env inside the api container.
 
 services:
   postgres:
@@ -32,23 +41,13 @@ services:
     build:
       context: ../..
       dockerfile: deployment/docker/Dockerfile.api
+    env_file:
+      - .env
     environment:
       PORT: "4000"
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-expense}:${POSTGRES_PASSWORD:-expense}@postgres:5432/${POSTGRES_DB:-expense_tracker}
       REDIS_URL: redis://redis:6379
-      CLIENT_ORIGIN: ${CLIENT_ORIGIN}
-      JWT_SECRET: ${JWT_SECRET}
-      OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID:-}
-      OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET:-}
-      OAUTH_GITHUB_CLIENT_ID: ${OAUTH_GITHUB_CLIENT_ID:-}
-      OAUTH_GITHUB_CLIENT_SECRET: ${OAUTH_GITHUB_CLIENT_SECRET:-}
-      OAUTH_GITLAB_CLIENT_ID: ${OAUTH_GITLAB_CLIENT_ID:-}
-      OAUTH_GITLAB_CLIENT_SECRET: ${OAUTH_GITLAB_CLIENT_SECRET:-}
-      OAUTH_GITLAB_BASE_URL: ${OAUTH_GITLAB_BASE_URL:-}
-      OAUTH_MICROSOFT_CLIENT_ID: ${OAUTH_MICROSOFT_CLIENT_ID:-}
-      OAUTH_MICROSOFT_CLIENT_SECRET: ${OAUTH_MICROSOFT_CLIENT_SECRET:-}
-      OAUTH_MICROSOFT_TENANT: ${OAUTH_MICROSOFT_TENANT:-}
     depends_on:
       postgres:
         condition: service_healthy

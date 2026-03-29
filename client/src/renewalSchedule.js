@@ -5,6 +5,20 @@
 
 /** @typedef {{ id?: number, frequency?: string, spent_at?: string, category?: string, description?: string }} ExpenseLike */
 
+/**
+ * Calendar `YYYY-MM-DD` from API `spent_at` (matches server `spentAtToIsoDate`).
+ * Used so renewal math does not depend on how dates were serialized.
+ */
+export function spentAtToIsoDateString(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10);
+}
+
 function normalizeFrequency(frequency) {
   const f = String(frequency ?? "monthly")
     .toLowerCase()
@@ -13,13 +27,12 @@ function normalizeFrequency(frequency) {
   return f === "bi-monthly" || f === "bi_monthly" ? "bimonthly" : f;
 }
 
-function parseLocalDate(iso) {
-  const s = String(iso ?? "").slice(0, 10);
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]) - 1;
-  const d = Number(m[3]);
+function parseLocalDate(raw) {
+  const iso = spentAtToIsoDateString(raw);
+  if (!iso) return null;
+  const y = Number(iso.slice(0, 4));
+  const mo = Number(iso.slice(5, 7), 10) - 1;
+  const d = Number(iso.slice(8, 10), 10);
   if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
   return new Date(y, mo, d);
 }

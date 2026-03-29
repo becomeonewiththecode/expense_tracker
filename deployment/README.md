@@ -10,7 +10,7 @@ This folder contains **production-oriented** artifacts for Expense Tracker:
 
 The repository root **`docker-compose.yml`** only starts PostgreSQL and Redis for **local development**. For a **full containerized stack** (Postgres, Redis, API, nginx serving the Vite production build with **`/api`** and **`/health`** proxies, persistent volumes), use **`deployment/docker-compose/docker-compose.yml`**.
 
-From the **repository root**, **`npm run compose:prod`** builds and starts that stack using **`deployment/docker-compose/.env`**. **`npm run compose:prod:down`**, **`compose:prod:logs`**, and **`compose:prod:ps`** wrap the matching `docker compose` commands.
+From the **repository root**, **`npm run compose:prod`** runs **`node deployment/docker-compose/ensure-env.mjs`** (bootstrap **`deployment/docker-compose/.env`** and **`JWT_SECRET`** when needed), then builds and starts the stack. **`npm run compose:ensure-env`** only runs that bootstrap. **`npm run compose:prod:down`**, **`compose:prod:logs`**, and **`compose:prod:ps`** wrap the matching `docker compose` commands.
 
 ## Quick links
 

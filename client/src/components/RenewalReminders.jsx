@@ -7,6 +7,7 @@ import {
   daysUntilRenewal,
   nextRenewalDate,
   renewalReminderTier,
+  spentAtToIsoDateString,
   startOfLocalDay,
 } from "../renewalSchedule.js";
 
@@ -30,6 +31,20 @@ function writeDismissed(set) {
 function formatRenewalDate(d) {
   return startOfLocalDay(d).toLocaleDateString(undefined, {
     weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/** Same calendar date as renewal math (local, no timezone shift). */
+function formatTransactionAnchor(spentAt) {
+  const iso = spentAtToIsoDateString(spentAt);
+  if (!iso) return "—";
+  const y = Number(iso.slice(0, 4));
+  const mo = Number(iso.slice(5, 7), 10) - 1;
+  const d = Number(iso.slice(8, 10), 10);
+  return new Date(y, mo, d).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -104,6 +119,7 @@ export default function RenewalReminders() {
         title,
         amountNum: amountSafe,
         institution: formatFinancialInstitution(row.financial_institution),
+        spentAt: row.spent_at,
       });
     }
     out.sort((a, b) => a.days - b.days || a.tier - b.tier);
@@ -155,7 +171,10 @@ export default function RenewalReminders() {
         Based on each expense&apos;s <strong className="text-amber-200/90">frequency</strong> and{" "}
         <strong className="text-amber-200/90">transaction date</strong>. We surface renewals roughly a month out, a couple
         of weeks out, and during the final two weeks (with short windows so you still see a reminder if you skip a day).
-        Amounts are each line&apos;s stored charge (same as your expense list).
+        Amounts are each line&apos;s stored charge. <strong className="text-amber-200/90">Renews</strong> is computed from
+        the <strong className="text-amber-200/90">Transaction</strong> date and frequency (for yearly, the same month and
+        day next time it falls on or after today). If Renews looks wrong, fix the transaction date under{" "}
+        <strong className="text-amber-200/90">Your expenses</strong> → Edit.
       </p>
       <div className="overflow-x-auto rounded-lg border border-amber-900/50 bg-slate-950/50">
         <table className="min-w-full text-left text-sm">
@@ -163,6 +182,9 @@ export default function RenewalReminders() {
             <tr className="border-b border-amber-900/40 text-xs uppercase tracking-wide text-amber-200/80">
               <th scope="col" className="px-3 py-2 font-medium">
                 Expense
+              </th>
+              <th scope="col" className="px-3 py-2 font-medium whitespace-nowrap">
+                Transaction
               </th>
               <th scope="col" className="px-3 py-2 font-medium text-right whitespace-nowrap">
                 Amount
@@ -185,6 +207,9 @@ export default function RenewalReminders() {
                   <span className="font-medium line-clamp-2" title={r.title}>
                     {r.title}
                   </span>
+                </td>
+                <td className="px-3 py-2 text-amber-200/90 align-middle whitespace-nowrap text-xs">
+                  {formatTransactionAnchor(r.spentAt)}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-amber-50 font-medium align-middle whitespace-nowrap">
                   {formatProjectionCurrency(r.amountNum)}
@@ -212,6 +237,7 @@ export default function RenewalReminders() {
               <th scope="row" className="px-3 py-2 text-left font-semibold text-amber-100">
                 Total
               </th>
+              <td className="px-3 py-2 text-amber-200/40 text-xs">—</td>
               <td className="px-3 py-2 text-right tabular-nums font-semibold text-amber-50 whitespace-nowrap">
                 {formatProjectionCurrency(remindersTotal)}
               </td>

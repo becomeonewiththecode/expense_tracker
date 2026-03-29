@@ -1,6 +1,6 @@
 # Expense Tracker — Architecture diagrams
 
-This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For **Docker Compose production** commands and **`JWT_SECRET`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
+This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For **Docker Compose production**, **`ensure-env.mjs`**, **`JWT_SECRET`**, and **`env_file`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
 
 ---
 
@@ -110,7 +110,7 @@ flowchart TB
 | Stage | What runs |
 |-------|-------------|
 | **Step 1 — Development** | The Vite development server with Hot Module Replacement; the browser uses the same origin for `/api`, which Vite forwards to Express; often plain HTTP on `localhost`. Typical commands: `npm run dev` in the `client` directory and `npm run dev` in the `server` directory. |
-| **Step 2 — Production** | Run `npm run build` in the `client` directory, then serve the **`client/dist/`** directory (the Vite development process does not run in production). Express runs behind Transport Layer Security; `/api` is reached through the edge or via Cross-Origin Resource Sharing if the static site and API use different origins. Set `NODE_ENV=production` (or your host’s equivalent) for the API process. **Concrete bundle:** **`deployment/docker-compose/`** builds **`dist/`** inside the **web** image, runs **nginx** plus the **api** container, and exposes one HTTP port (see **`npm run compose:prod`** at the repository root). |
+| **Step 2 — Production** | Run `npm run build` in the `client` directory, then serve the **`client/dist/`** directory (the Vite development process does not run in production). Express runs behind Transport Layer Security; `/api` is reached through the edge or via Cross-Origin Resource Sharing if the static site and API use different origins. Set `NODE_ENV=production` (or your host’s equivalent) for the API process. **Concrete bundle:** **`deployment/docker-compose/`** builds **`dist/`** inside the **web** image, runs **nginx** plus the **api** container, and exposes one HTTP port. From the repo root, **`npm run compose:prod`** runs **`ensure-env.mjs`** then **`docker compose up`** (see **deployment/docker-compose/README.md**). |
 
 More detail: [ARCHITECTURE.md — From development to production](./ARCHITECTURE.md#from-development-to-production).
 
