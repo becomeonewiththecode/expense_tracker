@@ -18,6 +18,7 @@ export async function initDb() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_lookup TEXT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_token_hash TEXT NULL;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_ciphertext TEXT NULL;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_recovery_lookup ON users(recovery_lookup)
       WHERE recovery_lookup IS NOT NULL;
     CREATE TABLE IF NOT EXISTS oauth_identities (

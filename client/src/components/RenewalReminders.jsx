@@ -160,7 +160,11 @@ function RenewalSortableTh({ colKey, label, sort, onSort, className = "", align 
   );
 }
 
-export default function RenewalReminders({ onRenewalChipChange }) {
+export default function RenewalReminders({
+  onRenewalChipChange,
+  tablesExpanded,
+  onTablesExpandedChange,
+}) {
   const location = useLocation();
   const renewalHelpTriggerId = useId();
   const renewalHelpPanelId = useId();
@@ -279,7 +283,8 @@ export default function RenewalReminders({ onRenewalChipChange }) {
   const expandPanel = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY);
     setDismissed(new Set());
-  }, []);
+    onTablesExpandedChange(true);
+  }, [onTablesExpandedChange]);
 
   useEffect(() => {
     if (!renewalHelpOpen) return undefined;
@@ -298,8 +303,15 @@ export default function RenewalReminders({ onRenewalChipChange }) {
     }
     const eligible = eligibleRenewals.length;
     const visible = reminders.length;
-    if (eligible > 0 && visible === 0) {
-      onRenewalChipChange({ count: eligible, onExpand: expandPanel });
+    if (eligible > 0) {
+      onRenewalChipChange({
+        count: eligible,
+        allDismissed: visible === 0,
+        tablesExpanded,
+        onExpand: expandPanel,
+        onShowTables: () => onTablesExpandedChange(true),
+        onToggleTables: () => onTablesExpandedChange((v) => !v),
+      });
     } else {
       onRenewalChipChange(null);
     }
@@ -308,7 +320,9 @@ export default function RenewalReminders({ onRenewalChipChange }) {
     loadError,
     eligibleRenewals.length,
     reminders.length,
+    tablesExpanded,
     expandPanel,
+    onTablesExpandedChange,
     onRenewalChipChange,
   ]);
 
@@ -369,6 +383,7 @@ export default function RenewalReminders({ onRenewalChipChange }) {
           <strong className="text-emerald-300/90">Cancel</strong> amounts are excluded.
         </div>
       ) : null}
+      {tablesExpanded ? (
       <div className="space-y-4">
         {remindersByInstitution.map(([institution, rows]) => {
           const sortedRows = sortRenewalRows(rows, renewalSort.key, renewalSort.dir);
@@ -526,6 +541,7 @@ export default function RenewalReminders({ onRenewalChipChange }) {
           </p>
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

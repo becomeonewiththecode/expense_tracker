@@ -9,6 +9,10 @@ import multer from "multer";
 import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
 import { registerOAuthRoutes } from "../oauth/oauthRoutes.js";
+import {
+  recoveryLookupFromCode,
+  persistRecoveryCodeForUser,
+} from "../recoveryCodeStorage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const avatarsDir = path.join(__dirname, "..", "uploads", "avatars");
@@ -42,10 +46,6 @@ const RECOVER_WINDOW_MS = 15 * 60 * 1000;
 const RECOVER_MAX_PER_WINDOW = 10;
 const recoverRateByIp = new Map();
 
-function recoveryLookupFromCode(plain) {
-  return crypto.createHash("sha256").update(plain, "utf8").digest("hex").slice(0, 12);
-}
-
 function checkRecoverRateLimit(ip) {
   const key = ip || "unknown";
   const now = Date.now();
@@ -68,16 +68,11 @@ function signUserToken(user) {
 
 registerOAuthRoutes(authRouter);
 
-/** One-time random code; store hash + derived lookup. User must save the code—no email is sent. */
+/** One-time random code; store hash + derived lookup + ciphertext for backup export. User must save the code—no email is sent. */
 authRouter.post("/recovery-code", authRequired, async (req, res) => {
   try {
     const plain = crypto.randomBytes(24).toString("base64url");
-    const lookup = recoveryLookupFromCode(plain);
-    const hash = await bcrypt.hash(plain, 10);
-    await pool.query(
-      `UPDATE users SET recovery_lookup = $1, recovery_token_hash = $2 WHERE id = $3`,
-      [lookup, hash, req.userId]
-    );
+    await persistRecoveryCodeForUser(pool, req.userId, plain);
     res.status(201).json({ recoveryCode: plain });
   } catch (e) {
     if (e.code === "23505") {
@@ -91,7 +86,7 @@ authRouter.post("/recovery-code", authRequired, async (req, res) => {
 authRouter.delete("/recovery-code", authRequired, async (req, res) => {
   try {
     await pool.query(
-      `UPDATE users SET recovery_lookup = NULL, recovery_token_hash = NULL WHERE id = $1`,
+      `UPDATE users SET recovery_lookup = NULL, recovery_token_hash = NULL, recovery_code_ciphertext = NULL WHERE id = $1`,
       [req.userId]
     );
     const { rows } = await pool.query(
@@ -143,7 +138,7 @@ authRouter.post("/recover-password", async (req, res) => {
     }
     const hash = await bcrypt.hash(newPassword, 10);
     await pool.query(
-      `UPDATE users SET password_hash = $1, recovery_lookup = NULL, recovery_token_hash = NULL WHERE id = $2`,
+      `UPDATE users SET password_hash = $1, recovery_lookup = NULL, recovery_token_hash = NULL, recovery_code_ciphertext = NULL WHERE id = $2`,
       [hash, user.id]
     );
     res.json({ ok: true });

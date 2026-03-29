@@ -14,10 +14,23 @@ const linkClass = ({ isActive }) =>
 export default function Layout() {
   const { user, logout } = useAuth();
   const [renewalChip, setRenewalChip] = useState(null);
+  /** When false, RenewalReminders hides institution tables + total (header + help may remain). */
+  const [renewalTablesExpanded, setRenewalTablesExpanded] = useState(true);
   const accountMenuRef = useRef(null);
 
   function closeAccountMenu() {
     accountMenuRef.current?.removeAttribute("open");
+  }
+
+  function handleRenewalBadgeClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!renewalChip) return;
+    if (renewalChip.allDismissed) {
+      renewalChip.onExpand();
+    } else {
+      renewalChip.onToggleTables();
+    }
   }
 
   return (
@@ -52,7 +65,7 @@ export default function Layout() {
                 }
                 aria-haspopup="menu"
               >
-                <span className="relative inline-flex">
+                <span className="inline-flex items-center gap-1.5 flex-shrink-0">
                   <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
                     {user?.avatar_url ? (
                       <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -61,13 +74,28 @@ export default function Layout() {
                     )}
                   </span>
                   {renewalChip ? (
-                    <span
-                      className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-0.5 rounded-full border border-amber-600/80 bg-amber-950 text-[10px] font-semibold leading-none text-amber-100 flex items-center justify-center tabular-nums shadow-sm"
-                      title={`${renewalChip.count} upcoming renewals`}
-                      aria-hidden
+                    <button
+                      type="button"
+                      onClick={handleRenewalBadgeClick}
+                      className="min-h-[1.125rem] min-w-[1.125rem] px-1 rounded-full border border-amber-600/80 bg-amber-950 text-[10px] font-semibold leading-none text-amber-100 inline-flex items-center justify-center tabular-nums shadow-sm hover:bg-amber-900/90 hover:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                      title={
+                        renewalChip.allDismissed
+                          ? `Show ${renewalChip.count} upcoming renewals`
+                          : renewalChip.tablesExpanded
+                            ? `Hide upcoming renewals table (${renewalChip.count})`
+                            : `Show upcoming renewals table (${renewalChip.count})`
+                      }
+                      aria-expanded={renewalChip.allDismissed ? undefined : renewalChip.tablesExpanded}
+                      aria-label={
+                        renewalChip.allDismissed
+                          ? `Show upcoming renewals, ${renewalChip.count} items`
+                          : renewalChip.tablesExpanded
+                            ? `Hide upcoming renewals table, ${renewalChip.count} items`
+                            : `Show upcoming renewals table, ${renewalChip.count} items`
+                      }
                     >
                       {renewalChip.count}
-                    </span>
+                    </button>
                   ) : null}
                 </span>
               </summary>
@@ -94,7 +122,8 @@ export default function Layout() {
                     role="menuitem"
                     className="w-full text-left px-3 py-2 text-sm text-amber-100 hover:bg-slate-800 border-t border-slate-700"
                     onClick={() => {
-                      renewalChip.onExpand();
+                      if (renewalChip.allDismissed) renewalChip.onExpand();
+                      else renewalChip.onShowTables();
                       closeAccountMenu();
                     }}
                   >
@@ -118,7 +147,11 @@ export default function Layout() {
         </div>
       </header>
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
-        <RenewalReminders onRenewalChipChange={setRenewalChip} />
+        <RenewalReminders
+          tablesExpanded={renewalTablesExpanded}
+          onTablesExpandedChange={setRenewalTablesExpanded}
+          onRenewalChipChange={setRenewalChip}
+        />
         <Outlet />
       </main>
     </div>

@@ -132,6 +132,20 @@ export default function ProfilePage() {
     }
   }
 
+  function backupDownloadSlug(data) {
+    const email = data?.account?.email ?? data?.email;
+    const uid = data?.account?.userId;
+    if (email) {
+      const s = String(email)
+        .replace(/[^a-zA-Z0-9._+-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 80);
+      return s || (uid != null ? `user-${uid}` : "account");
+    }
+    if (uid != null) return `user-${uid}`;
+    return "account";
+  }
+
   async function onDownloadBackup() {
     setBackupError("");
     setBackupOk("");
@@ -145,15 +159,16 @@ export default function ProfilePage() {
       const a = document.createElement("a");
       a.href = url;
       const day = new Date().toISOString().slice(0, 10);
-      a.download = `expense-tracker-backup-${day}.json`;
+      const slug = backupDownloadSlug(data);
+      a.download = `expense-tracker-backup-${slug}-${day}.json`;
       a.rel = "noopener";
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setBackupOk(
-        `Downloaded backup with ${typeof data.expenseCount === "number" ? data.expenseCount : data.expenses?.length ?? 0} expense(s).`
-      );
+      const n = typeof data.expenseCount === "number" ? data.expenseCount : data.expenses?.length ?? 0;
+      const who = data?.account?.label ?? data?.account?.email ?? data?.email ?? "this account";
+      setBackupOk(`Downloaded backup for ${who} (${n} expense(s)).`);
     } catch (err) {
       setBackupError(getApiErrorMessage(err, "Download failed"));
     } finally {
@@ -188,12 +203,56 @@ export default function ProfilePage() {
         setBackupLoading(false);
         return;
       }
-      const { data } = await api.post("/backup/restore", {
-        ...parsed,
-        mode: restoreMode,
-      });
-      setBackupOk(`Restored ${data.restored} expense(s) (${data.mode}).`);
-      if (input) input.value = "";
+
+      const signedInAs = user?.email ?? "";
+      const backupEmail = parsed?.account?.email ?? parsed?.email ?? null;
+      let confirmCrossAccountRestore = false;
+      if (
+        backupEmail &&
+        signedInAs &&
+        backupEmail.trim().toLowerCase() !== signedInAs.trim().toLowerCase()
+      ) {
+        const proceed = window.confirm(
+          `This file is labeled for account:\n${backupEmail}\n\nYou are signed in as:\n${signedInAs}\n\nRestoring will load these expenses into the current account (${signedInAs}). Continue?`
+        );
+        if (!proceed) {
+          setBackupLoading(false);
+          return;
+        }
+        confirmCrossAccountRestore = true;
+      }
+
+      async function postRestore(withConfirm) {
+        return api.post("/backup/restore", {
+          ...parsed,
+          mode: restoreMode,
+          ...(withConfirm ? { confirmCrossAccountRestore: true } : {}),
+        });
+      }
+
+      try {
+        const { data } = await postRestore(confirmCrossAccountRestore);
+        setBackupOk(`Restored ${data.restored} expense(s) (${data.mode}) into ${signedInAs || "this account"}.`);
+        if (input) input.value = "";
+      } catch (err) {
+        const code = err.response?.data?.code;
+        const be = err.response?.data?.backupEmail;
+        const ce = err.response?.data?.currentEmail;
+        if (err.response?.status === 409 && code === "BACKUP_ACCOUNT_MISMATCH" && be && ce) {
+          const ok = window.confirm(
+            `This backup was exported for:\n${be}\n\nYou are signed in as:\n${ce}\n\nImport into the current account anyway?`
+          );
+          if (!ok) {
+            setBackupLoading(false);
+            return;
+          }
+          const { data } = await postRestore(true);
+          setBackupOk(`Restored ${data.restored} expense(s) (${data.mode}) into ${ce}.`);
+          if (input) input.value = "";
+        } else {
+          throw err;
+        }
+      }
     } catch (err) {
       setBackupError(getApiErrorMessage(err, "Restore failed"));
     } finally {
@@ -476,10 +535,16 @@ export default function ProfilePage() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
         <h2 className="text-sm font-medium text-slate-300">Backup and restore</h2>
         <p className="text-xs text-slate-500 leading-relaxed">
-          Download a JSON file with all expenses. Restore from a file created by this app.{" "}
+          Download a JSON file with all expenses. Each file includes an{" "}
+          <span className="text-slate-400">account</span> block (email, user id, and a short label) so you can tell
+          which user it belongs to—useful when several people or accounts share a machine. The download filename also
+          includes the account email. Restore from a file created by this app.{" "}
           <span className="text-slate-400">Append</span> adds rows to what you already have;{" "}
-          <span className="text-slate-400">Replace</span> removes all expenses first, then imports the file.
-          Keep backups private—they contain your spending data.
+          <span className="text-slate-400">Replace</span> removes all expenses first, then imports the file into the{" "}
+          <strong className="text-slate-400">currently signed-in</strong> account. If the file is for another email, you
+          will be asked to confirm before importing. If you use a password recovery code, the backup may also include
+          it under <span className="text-slate-400">account.recoveryCode</span> (regenerate your code once if an older
+          backup omits it). Keep backups private—they contain your spending data and may include your recovery code.
         </p>
         {backupError && (
           <p className="text-sm text-rose-400 bg-rose-950/50 border border-rose-900 rounded-lg px-3 py-2">

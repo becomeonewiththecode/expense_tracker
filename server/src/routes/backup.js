@@ -11,6 +11,11 @@ import {
   STATE_ERROR,
   paymentMetaFromSpentAt,
 } from "../expenseEnums.js";
+import {
+  decryptRecoveryStored,
+  isPlausibleRecoveryCode,
+  persistRecoveryCodeForUser,
+} from "../recoveryCodeStorage.js";
 
 export const BACKUP_FORMAT = "expense-tracker-backup";
 export const BACKUP_VERSION = 1;
@@ -111,10 +116,26 @@ function validateExpenseForRestore(raw, index) {
   };
 }
 
+function normalizeEmailForCompare(s) {
+  return String(s ?? "").trim().toLowerCase();
+}
+
 backupRouter.get("/export", authRequired, async (req, res) => {
   try {
-    const { rows: userRows } = await pool.query(`SELECT email FROM users WHERE id = $1`, [req.userId]);
-    const email = userRows[0]?.email ?? null;
+    const { rows: userRows } = await pool.query(
+      `SELECT id, email, recovery_code_ciphertext,
+        (recovery_lookup IS NOT NULL) AS has_recovery_code
+       FROM users WHERE id = $1`,
+      [req.userId]
+    );
+    const userRow = userRows[0];
+    const userId = userRow?.id ?? req.userId;
+    const email = userRow?.email ?? null;
+    const hasRecoveryCode = Boolean(userRow?.has_recovery_code);
+    const recoveryPlain =
+      userRow?.recovery_code_ciphertext && hasRecoveryCode
+        ? decryptRecoveryStored(userRow.recovery_code_ciphertext, userId)
+        : null;
     const { rows } = await pool.query(
       `SELECT amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at
        FROM expenses WHERE user_id = $1
@@ -122,15 +143,32 @@ backupRouter.get("/export", authRequired, async (req, res) => {
       [req.userId]
     );
     const expenses = rows.map(normalizeExpenseRow);
+    const accountLabel = email
+      ? `${email} (user id ${userId})`
+      : `User id ${userId}`;
     const payload = {
       format: BACKUP_FORMAT,
       version: BACKUP_VERSION,
       exportedAt: new Date().toISOString(),
-      email,
+      email, // legacy top-level; same as account.email when present
+      account: {
+        userId,
+        email,
+        label: accountLabel,
+        hasRecoveryCode,
+        ...(recoveryPlain ? { recoveryCode: recoveryPlain } : {}),
+      },
       expenseCount: expenses.length,
       expenses,
     };
-    const filename = `expense-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const day = new Date().toISOString().slice(0, 10);
+    const fileTag = email
+      ? String(email)
+          .replace(/[^a-zA-Z0-9._+-]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 80) || `user-${userId}`
+      : `user-${userId}`;
+    const filename = `expense-tracker-backup-${fileTag}-${day}.json`;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.json(payload);
@@ -165,6 +203,24 @@ backupRouter.post(
       });
     }
 
+    const backupEmail = body?.account?.email ?? body?.email ?? null;
+    const { rows: meRows } = await pool.query(`SELECT email FROM users WHERE id = $1`, [req.userId]);
+    const currentEmail = meRows[0]?.email ?? null;
+    if (
+      backupEmail &&
+      currentEmail &&
+      normalizeEmailForCompare(backupEmail) !== normalizeEmailForCompare(currentEmail) &&
+      !req.body?.confirmCrossAccountRestore
+    ) {
+      return res.status(409).json({
+        error:
+          "This backup was exported for a different account. Open the JSON and check account.email, or sign in as that user. To import into this account anyway, confirm with confirmCrossAccountRestore.",
+        backupEmail,
+        currentEmail,
+        code: "BACKUP_ACCOUNT_MISMATCH",
+      });
+    }
+
     const validated = [];
     for (let i = 0; i < expenses.length; i++) {
       const result = validateExpenseForRestore(expenses[i], i);
@@ -172,6 +228,17 @@ backupRouter.post(
         return res.status(400).json({ error: result.error });
       }
       validated.push(result.values);
+    }
+
+    let recoveryPlain = null;
+    const rawRecovery = body?.account?.recoveryCode;
+    if (rawRecovery !== undefined && rawRecovery !== null && String(rawRecovery).trim() !== "") {
+      recoveryPlain = String(rawRecovery).trim();
+      if (!isPlausibleRecoveryCode(recoveryPlain)) {
+        return res.status(400).json({
+          error: "Invalid account.recoveryCode in backup (expected a non-trivial string).",
+        });
+      }
     }
 
     const client = await pool.connect();
@@ -197,6 +264,9 @@ backupRouter.post(
             v.spent_at,
           ]
         );
+      }
+      if (recoveryPlain) {
+        await persistRecoveryCodeForUser(client, req.userId, recoveryPlain);
       }
       await client.query("COMMIT");
       res.json({ ok: true, mode, restored: validated.length });
