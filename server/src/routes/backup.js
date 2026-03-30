@@ -18,9 +18,20 @@ import {
   isPlausibleRecoveryCode,
   persistRecoveryCodeForUser,
 } from "../recoveryCodeStorage.js";
+import {
+  parsePrescriptionCategory,
+  parseRenewalPeriod,
+  parsePrescriptionState,
+  parseIsoDate,
+  PRESCRIPTION_CATEGORY_ERROR,
+  PRESCRIPTION_RENEWAL_PERIOD_ERROR,
+  PRESCRIPTION_STATE_ERROR,
+} from "../prescriptionEnums.js";
 
 export const BACKUP_FORMAT = "expense-tracker-backup";
-export const BACKUP_VERSION = 1;
+/** v1: expenses only. v2: adds `prescriptions`, `renewalCount`, `prescriptionCount`. */
+export const BACKUP_VERSION = 2;
+export const BACKUP_VERSIONS_SUPPORTED = [1, 2];
 const MAX_RESTORE_ROWS = 25_000;
 
 export const backupRouter = Router();
@@ -61,6 +72,77 @@ function normalizeExpenseRow(row) {
     website: row.website != null && String(row.website).trim() !== "" ? String(row.website).trim() : null,
     renewal_kind: row.renewal_kind ?? null,
     spent_at,
+  };
+}
+
+function normalizePrescriptionRow(row) {
+  return {
+    name: row.name ?? "",
+    amount: row.amount != null ? Number(row.amount) : 0,
+    renewal_period: row.renewal_period,
+    next_renewal_date:
+      row.next_renewal_date != null
+        ? String(row.next_renewal_date).slice(0, 10)
+        : null,
+    vendor: row.vendor ?? "",
+    notes: row.notes ?? "",
+    category: row.category,
+    state: row.state === "cancel" ? "cancel" : "active",
+  };
+}
+
+/**
+ * @param {unknown} raw
+ * @param {number} index
+ * @returns {{ ok: true, values: object } | { ok: false, error: string }}
+ */
+function validatePrescriptionForRestore(raw, index) {
+  const label = `Prescription ${index + 1}`;
+  if (!raw || typeof raw !== "object") {
+    return { ok: false, error: `${label}: invalid object` };
+  }
+  const name = String(raw.name || "").trim().slice(0, 200);
+  if (!name) {
+    return { ok: false, error: `${label}: name is required` };
+  }
+  const amount = Number(raw.amount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return { ok: false, error: `${label}: invalid amount` };
+  }
+  const renewal_period = parseRenewalPeriod(raw.renewal_period);
+  if (!renewal_period) {
+    return { ok: false, error: `${label}: ${PRESCRIPTION_RENEWAL_PERIOD_ERROR}` };
+  }
+  const next_renewal_date = parseIsoDate(raw.next_renewal_date);
+  if (!next_renewal_date) {
+    return { ok: false, error: `${label}: invalid next_renewal_date (use YYYY-MM-DD)` };
+  }
+  const vendor = String(raw.vendor ?? "").trim().slice(0, 200);
+  const notes = String(raw.notes ?? "").slice(0, 2000);
+  const category = parsePrescriptionCategory(raw.category);
+  if (!category) {
+    return { ok: false, error: `${label}: ${PRESCRIPTION_CATEGORY_ERROR}` };
+  }
+  let state = "active";
+  if (raw.state !== undefined && raw.state !== null && String(raw.state).trim() !== "") {
+    const parsed = parsePrescriptionState(raw.state);
+    if (!parsed) {
+      return { ok: false, error: `${label}: ${PRESCRIPTION_STATE_ERROR}` };
+    }
+    state = parsed;
+  }
+  return {
+    ok: true,
+    values: {
+      name,
+      amount,
+      renewal_period,
+      next_renewal_date,
+      vendor,
+      notes,
+      category,
+      state,
+    },
   };
 }
 
@@ -162,6 +244,16 @@ backupRouter.get("/export", authRequired, async (req, res) => {
       [req.userId]
     );
     const expenses = rows.map(normalizeExpenseRow);
+    const renewalCount = expenses.filter((e) => e.category === "renewal").length;
+
+    const { rows: prescRows } = await pool.query(
+      `SELECT name, amount, renewal_period, next_renewal_date, vendor, notes, category, state
+       FROM prescriptions WHERE user_id = $1
+       ORDER BY next_renewal_date ASC, id ASC`,
+      [req.userId]
+    );
+    const prescriptions = prescRows.map(normalizePrescriptionRow);
+
     const accountLabel = email
       ? `${email} (user id ${userId})`
       : `User id ${userId}`;
@@ -178,7 +270,10 @@ backupRouter.get("/export", authRequired, async (req, res) => {
         ...(recoveryPlain ? { recoveryCode: recoveryPlain } : {}),
       },
       expenseCount: expenses.length,
+      renewalCount,
       expenses,
+      prescriptionCount: prescriptions.length,
+      prescriptions,
     };
     const day = new Date().toISOString().slice(0, 10);
     const fileTag = email
@@ -207,9 +302,10 @@ backupRouter.post(
       return res.status(400).json({ error: 'mode must be "append" or "replace"' });
     }
     const body = req.body;
-    if (body?.format !== BACKUP_FORMAT || Number(body?.version) !== BACKUP_VERSION) {
+    const fileVersion = Number(body?.version);
+    if (body?.format !== BACKUP_FORMAT || !Number.isFinite(fileVersion) || !BACKUP_VERSIONS_SUPPORTED.includes(fileVersion)) {
       return res.status(400).json({
-        error: `Invalid backup file. Expected format "${BACKUP_FORMAT}" and version ${BACKUP_VERSION}.`,
+        error: `Invalid backup file. Expected format "${BACKUP_FORMAT}" and version ${BACKUP_VERSIONS_SUPPORTED.join(" or ")}.`,
       });
     }
     const expenses = body?.expenses;
@@ -220,6 +316,19 @@ backupRouter.post(
       return res.status(400).json({
         error: `Too many expenses in file (max ${MAX_RESTORE_ROWS})`,
       });
+    }
+
+    let prescriptionsRaw = [];
+    if (fileVersion >= 2) {
+      if (body.prescriptions !== undefined && !Array.isArray(body.prescriptions)) {
+        return res.status(400).json({ error: "Backup must contain a prescriptions array (use [] if none)" });
+      }
+      prescriptionsRaw = Array.isArray(body.prescriptions) ? body.prescriptions : [];
+      if (prescriptionsRaw.length > MAX_RESTORE_ROWS) {
+        return res.status(400).json({
+          error: `Too many prescriptions in file (max ${MAX_RESTORE_ROWS})`,
+        });
+      }
     }
 
     const backupEmail = body?.account?.email ?? body?.email ?? null;
@@ -249,6 +358,19 @@ backupRouter.post(
       validated.push(result.values);
     }
 
+    const validatedPrescriptions = [];
+    for (let i = 0; i < prescriptionsRaw.length; i++) {
+      const result = validatePrescriptionForRestore(prescriptionsRaw[i], i);
+      if (!result.ok) {
+        return res.status(400).json({ error: result.error });
+      }
+      validatedPrescriptions.push(result.values);
+    }
+
+    const restoredRenewals = validated.filter((v) => v.category === "renewal").length;
+    const restoredExpenses = validated.length - restoredRenewals;
+    const restoredPrescriptions = fileVersion >= 2 ? validatedPrescriptions.length : 0;
+
     let recoveryPlain = null;
     const rawRecovery = body?.account?.recoveryCode;
     if (rawRecovery !== undefined && rawRecovery !== null && String(rawRecovery).trim() !== "") {
@@ -265,6 +387,9 @@ backupRouter.post(
       await client.query("BEGIN");
       if (mode === "replace") {
         await client.query(`DELETE FROM expenses WHERE user_id = $1`, [req.userId]);
+        if (fileVersion >= 2) {
+          await client.query(`DELETE FROM prescriptions WHERE user_id = $1`, [req.userId]);
+        }
       }
       for (const v of validated) {
         await client.query(
@@ -286,11 +411,41 @@ backupRouter.post(
           ]
         );
       }
+      if (fileVersion >= 2) {
+        for (const p of validatedPrescriptions) {
+          await client.query(
+            `INSERT INTO prescriptions (user_id, name, amount, renewal_period, next_renewal_date, vendor, notes, category, state)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+              req.userId,
+              p.name,
+              p.amount,
+              p.renewal_period,
+              p.next_renewal_date,
+              p.vendor,
+              p.notes,
+              p.category,
+              p.state,
+            ]
+          );
+        }
+      }
       if (recoveryPlain) {
         await persistRecoveryCodeForUser(client, req.userId, recoveryPlain);
       }
       await client.query("COMMIT");
-      res.json({ ok: true, mode, restored: validated.length });
+      const restoredTotal =
+        validated.length + (fileVersion >= 2 ? validatedPrescriptions.length : 0);
+      res.json({
+        ok: true,
+        mode,
+        restored: restoredTotal,
+        restoredBreakdown: {
+          expenses: restoredExpenses,
+          renewals: restoredRenewals,
+          prescriptions: restoredPrescriptions,
+        },
+      });
     } catch (e) {
       await client.query("ROLLBACK");
       console.error("backup/restore:", e);

@@ -177,7 +177,24 @@ export default function ProfilePage() {
       URL.revokeObjectURL(url);
       const n = typeof data.expenseCount === "number" ? data.expenseCount : data.expenses?.length ?? 0;
       const who = data?.account?.label ?? data?.account?.email ?? data?.email ?? "this account";
-      setBackupOk(`Downloaded backup for ${who} (${n} expense(s)).`);
+      const ver = Number(data?.version);
+      const rCount =
+        typeof data.renewalCount === "number"
+          ? data.renewalCount
+          : Array.isArray(data.expenses)
+            ? data.expenses.filter((e) => e?.category === "renewal").length
+            : 0;
+      const pCount =
+        typeof data.prescriptionCount === "number"
+          ? data.prescriptionCount
+          : data.prescriptions?.length ?? 0;
+      const extra =
+        Number.isFinite(ver) && ver >= 2
+          ? ` — ${rCount} renewal row(s) (within expenses), ${pCount} prescription(s)`
+          : rCount > 0
+            ? ` — includes ${rCount} renewal row(s) (category renewal)`
+            : "";
+      setBackupOk(`Downloaded backup for ${who} (${n} expense row(s)${extra}).`);
     } catch (err) {
       setBackupError(getApiErrorMessage(err, "Download failed"));
     } finally {
@@ -195,24 +212,28 @@ export default function ProfilePage() {
       setBackupError("Choose a backup JSON file first.");
       return;
     }
+    let parsed;
+    try {
+      const text = await file.text();
+      parsed = JSON.parse(text);
+    } catch {
+      setBackupError("File is not valid JSON.");
+      return;
+    }
+
     if (restoreMode === "replace") {
+      const v = Number(parsed?.version);
+      const wipesPrescriptions = Number.isFinite(v) && v >= 2;
       const ok = window.confirm(
-        "Replace mode deletes all current expenses, then imports the file. This cannot be undone. Continue?"
+        wipesPrescriptions
+          ? "Replace mode deletes all current expenses and prescriptions, then imports the file. This cannot be undone. Continue?"
+          : "Replace mode deletes all current expenses, then imports the file. Existing prescriptions are left unchanged. This cannot be undone. Continue?"
       );
       if (!ok) return;
     }
+
     setBackupLoading(true);
     try {
-      const text = await file.text();
-      let parsed;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        setBackupError("File is not valid JSON.");
-        setBackupLoading(false);
-        return;
-      }
-
       const signedInAs = user?.email ?? "";
       const backupEmail = parsed?.account?.email ?? parsed?.email ?? null;
       let confirmCrossAccountRestore = false;
@@ -239,9 +260,21 @@ export default function ProfilePage() {
         });
       }
 
+      function restoreTypeSummary(data) {
+        const b = data?.restoredBreakdown ?? {};
+        const expenses = Number(b.expenses) || 0;
+        const renewals = Number(b.renewals) || 0;
+        const prescriptions = Number(b.prescriptions) || 0;
+        return `Expenses: ${expenses} · Renewals: ${renewals} · Prescriptions: ${prescriptions}`;
+      }
+
       try {
         const { data } = await postRestore(confirmCrossAccountRestore);
-        setBackupOk(`Restored ${data.restored} expense(s) (${data.mode}) into ${signedInAs || "this account"}.`);
+        setBackupOk(
+          `Restored ${data.restored} item(s) (${data.mode}) into ${
+            signedInAs || "this account"
+          }. ${restoreTypeSummary(data)}.`
+        );
         if (input) input.value = "";
       } catch (err) {
         const code = err.response?.data?.code;
@@ -256,7 +289,9 @@ export default function ProfilePage() {
             return;
           }
           const { data } = await postRestore(true);
-          setBackupOk(`Restored ${data.restored} expense(s) (${data.mode}) into ${ce}.`);
+          setBackupOk(
+            `Restored ${data.restored} item(s) (${data.mode}) into ${ce}. ${restoreTypeSummary(data)}.`
+          );
           if (input) input.value = "";
         } else {
           throw err;
@@ -571,16 +606,20 @@ export default function ProfilePage() {
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
         <h2 className="text-sm font-medium text-slate-300">Backup and restore</h2>
         <p className="text-xs text-slate-500 leading-relaxed">
-          Download a JSON file with all expenses. Each file includes an{" "}
-          <span className="text-slate-400">account</span> block (email, user id, and a short label) so you can tell
-          which user it belongs to—useful when several people or accounts share a machine. The download filename also
+          Download a JSON backup: all expense rows (including renewals—those use{" "}
+          <span className="text-slate-400">category</span> <span className="text-slate-400">renewal</span> in the{" "}
+          <span className="text-slate-400">expenses</span> array) plus, on current exports, prescription rows. Each file
+          includes an <span className="text-slate-400">account</span> block (email, user id, and a short label) so you can
+          tell which user it belongs to—useful when several people or accounts share a machine. The download filename also
           includes the account email. Restore from a file created by this app.{" "}
-          <span className="text-slate-400">Append</span> adds rows to what you already have;{" "}
-          <span className="text-slate-400">Replace</span> removes all expenses first, then imports the file into the{" "}
-          <strong className="text-slate-400">currently signed-in</strong> account. If the file is for another email, you
-          will be asked to confirm before importing. If you use a password recovery code, the backup may also include
-          it under <span className="text-slate-400">account.recoveryCode</span> (regenerate your code once if an older
-          backup omits it). Keep backups private—they contain your spending data and may include your recovery code.
+          <span className="text-slate-400">Append</span> adds rows to what you already have.{" "}
+          <span className="text-slate-400">Replace</span> clears expenses and, for version 2 backups, prescriptions,
+          then imports the file into the <strong className="text-slate-400">currently signed-in</strong> account; older
+          (version 1) files replace expenses only and leave prescriptions unchanged. If the file is for another email,
+          you will be asked to confirm before importing. If you use a password recovery code, the backup may also
+          include it under <span className="text-slate-400">account.recoveryCode</span> (regenerate your code once if an
+          older backup omits it). Keep backups private—they contain your spending data and may include your recovery
+          code.
         </p>
         {backupError && (
           <p className="text-sm text-rose-400 bg-rose-950/50 border border-rose-900 rounded-lg px-3 py-2">
@@ -609,8 +648,8 @@ export default function ProfilePage() {
               onChange={(e) => setRestoreMode(e.target.value)}
               className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             >
-              <option value="append">Append to current expenses</option>
-              <option value="replace">Replace all expenses</option>
+              <option value="append">Append (expenses + prescriptions from v2 files)</option>
+              <option value="replace">Replace expenses (and prescriptions for v2 files)</option>
             </select>
           </div>
           <div>

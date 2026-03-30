@@ -228,7 +228,7 @@ flowchart TB
 | `routes/expenses.js` | Expense create, read, update, delete; optional list filter **`?category=`** (for example **`renewal`**) | JSON Web Token middleware, `pg`, `expenseEnums.js` |
 | `routes/imports.js` | Upload, staging, commit; staging **`PATCH`** supports **`renewal_kind`** and **`website`**; commit requires **`renewal_kind`** when **`category`** is **`renewal`** | JSON Web Token, `multer`, `visaStatement.js` for CSV and PDF, `pg` |
 | `routes/reports.js` | Aggregates and chart data | JSON Web Token, `pg`, optional `redis.js` |
-| `routes/backup.js` | **`GET /export`**, **`POST /restore`** (append or replace expenses; each expense may include **`website`** and **`renewal_kind`**; **`account`** metadata, optional **`recoveryCode`**; restore cross-account **409** / **`confirmCrossAccountRestore`**) | JSON Web Token, `pg`, `expenseEnums.js`, **`recoveryCodeStorage.js`** |
+| `routes/backup.js` | **`GET /export`**, **`POST /restore`** (**`version`** **`1`** or **`2`**; **`2`** adds **`prescriptions`**; **replace** clears prescriptions only for **`version`** **`2`**; append or replace **expenses**; **`renewalCount`**; **`account`** metadata, optional **`recoveryCode`**; cross-account **409** / **`confirmCrossAccountRestore`**) | JSON Web Token, `pg`, `expenseEnums.js`, **`prescriptionEnums.js`**, **`recoveryCodeStorage.js`** |
 | `routes/prescriptions.js` | **`prescriptions`** CRUD — **`name`**, **`amount`**, **`renewal_period`**, **`next_renewal_date`**, **`vendor`**, **`notes`**, **`category`**, **`state`** | JSON Web Token, `pg`, **`prescriptionEnums.js`** |
 | `parsers/visaStatement.js` | Parse uploaded statements | `csv-parse/sync`, `pdf-parse` |
 | `jobs/monthlySummary.js` | Monthly rollup job | `node-cron`, `pg` writing **`monthly_summaries`** |
@@ -530,9 +530,9 @@ flowchart TB
 ```mermaid
 flowchart LR
   PR[ProfilePage] --> EXP["GET /backup/export"]
-  EXP --> FILE[JSON: account + expenses]
+  EXP --> FILE["JSON: format + version + account + expenses (+ prescriptions in v2)"]
   FILE --> RST["POST /backup/restore"]
-  RST --> PG[(PostgreSQL expenses + optional recovery)]
+  RST --> PG[(PostgreSQL expenses + prescriptions + optional recovery)]
   PR --> RST
 ```
 
@@ -543,6 +543,8 @@ flowchart LR
 **`expenses.category`:** Allow-list includes **`renewal`**. When **`category`** is **`renewal`**, **`renewal_kind`** is **required** (API + restore validation); **`website`** is optional. Non-renewal rows store **`renewal_kind`** as **`NULL`**.
 
 **`expenses.website` / `renewal_kind`:** Optional portal or URL and renewal subtype; see [RENEWALS.md](./RENEWALS.md).
+
+**`prescriptions` in backup JSON:** Included in **`version`** **`2`** exports as a separate array with **`prescriptionCount`**. Restore accepts **`version`** **`1`** or **`2`**. In **replace** mode, **`version`** **`1`** clears and restores **expenses** only; **`version`** **`2`** clears and restores both **expenses** and **prescriptions**.
 
 **`users.recovery_code_ciphertext`:** Optional encrypted copy of the recovery code for **`GET /backup/export`** (see **`recoveryCodeStorage.js`**). **`users.recovery_lookup`** / **`recovery_token_hash`** remain the source of truth for **`POST /recover-password`**.
 

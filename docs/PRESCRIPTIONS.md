@@ -8,7 +8,7 @@ This document describes the **Prescriptions** area: health-related and supply it
 
 | Idea | Meaning |
 |------|---------|
-| **Prescription row** | A row in **`prescriptions`** owned by a user. Not an **`expenses`** row; there is no import or backup tie-in unless added later. |
+| **Prescription row** | A row in **`prescriptions`** owned by a user. Not an **`expenses`** row. **Import** does not cover prescriptions. **`GET /api/backup/export`** includes **`prescriptions`** when **`version`** is **`2`**; **`POST /api/backup/restore`** restores them for **`version`** **`2`** files (see [USER_GUIDE.md](./USER_GUIDE.md) **Backup and restore**). |
 | **Category** | One of **`medical`**, **`dental`**, **`vision`**, **`supplements`**, **`equipment`** (allow-list in **`prescriptionEnums.js`**). |
 | **`renewal_period`** | How long one cycle lasts: **`one_month`** … **`eleven_months`**, then **`one_year`** … **`five_years`** (see **`PRESCRIPTION_RENEWAL_PERIODS`**). **Renewed** adds that many calendar months or years to **`next_renewal_date`** (client **`advanceNextRenewalDate`**). |
 | **`next_renewal_date`** | **`DATE`** — next refill, appointment, or reorder target. The client computes **days until** in local calendar math (**`prescriptionSchedule.js`**). |
