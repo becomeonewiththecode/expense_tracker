@@ -6,7 +6,12 @@ import {
   parseExpenseState,
   parseFinancialInstitution,
   parseFrequency,
+  parseRenewalKind,
+  parseWebsite,
+  resolveRenewalFieldsForCategory,
   CATEGORY_ERROR,
+  RENEWAL_KIND_ERROR,
+  RENEWAL_KIND_REQUIRED,
   STATE_ERROR,
   paymentMetaFromSpentAt,
   spentAtToIsoDate,
@@ -27,11 +32,19 @@ function parseDate(d) {
 }
 
 expensesRouter.get("/", async (req, res) => {
-  const { from, to, limit = "100", offset = "0" } = req.query;
+  const { from, to, limit = "100", offset = "0", category: categoryQ } = req.query;
   const params = [req.userId];
-  let sql = `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at, created_at
+  let sql = `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at
     FROM expenses WHERE user_id = $1`;
   let i = 2;
+  if (categoryQ != null && String(categoryQ).trim() !== "") {
+    const cat = parseCategory(categoryQ);
+    if (!cat) {
+      return res.status(400).json({ error: CATEGORY_ERROR });
+    }
+    sql += ` AND category = $${i++}`;
+    params.push(cat);
+  }
   if (from && parseDate(from)) {
     sql += ` AND spent_at >= $${i++}`;
     params.push(parseDate(from));
@@ -50,7 +63,7 @@ expensesRouter.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
   const { rows } = await pool.query(
-    `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at, created_at FROM expenses
+    `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at FROM expenses
      WHERE id = $1 AND user_id = $2`,
     [id, req.userId]
   );
@@ -89,12 +102,33 @@ expensesRouter.post("/", async (req, res) => {
     }
     state = parsed;
   }
+  const website = parseWebsite(req.body?.website);
+  const { renewal_kind, error: renewalErr } = resolveRenewalFieldsForCategory(
+    category,
+    req.body?.renewal_kind
+  );
+  if (renewalErr) {
+    return res.status(400).json({ error: renewalErr });
+  }
   const { payment_day, payment_month } = paymentMetaFromSpentAt(spent_at);
   const { rows } = await pool.query(
-    `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-     RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at, created_at`,
-    [req.userId, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at]
+    `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at`,
+    [
+      req.userId,
+      amount,
+      category,
+      financial_institution,
+      frequency,
+      state,
+      payment_day,
+      payment_month,
+      description,
+      website,
+      renewal_kind,
+      spent_at,
+    ]
   );
   res.status(201).json(normalizeExpense(rows[0]));
 });
@@ -104,11 +138,12 @@ expensesRouter.patch("/:id", async (req, res) => {
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
 
   const { rows: existingRows } = await pool.query(
-    `SELECT spent_at FROM expenses WHERE id = $1 AND user_id = $2`,
+    `SELECT spent_at, category, renewal_kind FROM expenses WHERE id = $1 AND user_id = $2`,
     [id, req.userId]
   );
   if (!existingRows[0]) return res.status(404).json({ error: "Not found" });
 
+  let nextCategory = existingRows[0].category;
   const updates = [];
   const params = [];
   let i = 1;
@@ -125,6 +160,7 @@ expensesRouter.patch("/:id", async (req, res) => {
     if (!category) {
       return res.status(400).json({ error: CATEGORY_ERROR });
     }
+    nextCategory = category;
     updates.push(`category = $${i++}`);
     params.push(category);
   }
@@ -167,6 +203,32 @@ expensesRouter.patch("/:id", async (req, res) => {
     updates.push(`spent_at = $${i++}`);
     params.push(d);
   }
+  if (req.body.website !== undefined) {
+    updates.push(`website = $${i++}`);
+    params.push(parseWebsite(req.body.website));
+  }
+
+  if (nextCategory === "renewal") {
+    if (req.body.renewal_kind !== undefined) {
+      const rk = parseRenewalKind(req.body.renewal_kind);
+      if (!rk) {
+        return res.status(400).json({ error: RENEWAL_KIND_ERROR });
+      }
+      updates.push(`renewal_kind = $${i++}`);
+      params.push(rk);
+    } else if (req.body.category !== undefined) {
+      if (!existingRows[0].renewal_kind) {
+        return res.status(400).json({ error: RENEWAL_KIND_REQUIRED });
+      }
+    }
+  } else if (
+    req.body.category !== undefined ||
+    req.body.renewal_kind !== undefined
+  ) {
+    updates.push(`renewal_kind = $${i++}`);
+    params.push(null);
+  }
+
   if (!updates.length) return res.status(400).json({ error: "No fields to update" });
 
   const effectiveSpent =
@@ -182,7 +244,7 @@ expensesRouter.patch("/:id", async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE expenses SET ${updates.join(", ")}
      WHERE id = $${i++} AND user_id = $${i++}
-     RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at, created_at`,
+     RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at`,
     params
   );
   if (!rows[0]) return res.status(404).json({ error: "Not found" });

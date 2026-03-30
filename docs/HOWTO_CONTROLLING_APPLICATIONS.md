@@ -155,7 +155,8 @@ PM2 is for **development-style** Vite + API on the host. For a **containerized**
 
 ## Related documentation
 
-- [User guide](./USER_GUIDE.md) — Product behavior, account types, local setup, production Compose, recovery codes, backup/restore  
+- [User guide](./USER_GUIDE.md) — Product behavior, account types, local setup, production Compose, recovery codes, backup/restore, Renewals screen  
+- [Renewals](./RENEWALS.md) — Renewal category, **`renewal_kind`**, import and API  
 - [Architecture](./ARCHITECTURE.md) — System design, including OAuth and auth routes  
 - [Architecture diagrams](./ARCHITECTURE_DIAGRAM.md) — Single sign-on sequence and data model  
 - Root [README.md](../README.md) — API overview and OAuth troubleshooting  

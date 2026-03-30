@@ -1,6 +1,6 @@
 # Expense Tracker — Architecture diagrams
 
-This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For **Docker Compose production**, **`ensure-env.mjs`**, **`JWT_SECRET`**, and **`env_file`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
+This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For the **Renewals** feature (category **`renewal`**, **`renewal_kind`**, **`/renewals`** page, import staging), see [RENEWALS.md](./RENEWALS.md). For **Docker Compose production**, **`ensure-env.mjs`**, **`JWT_SECRET`**, and **`env_file`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
 
 ---
 
@@ -157,12 +157,14 @@ flowchart TB
     R2["/api/expenses"]
     R3["/api/imports"]
     R4["/api/reports"]
+    R5["/api/backup"]
     BOOT --> MW
     MW --> R0
     MW --> R1
     MW --> R2
     MW --> R3
     MW --> R4
+    MW --> R5
   end
 
   subgraph libs [Libraries]
@@ -187,10 +189,24 @@ flowchart TB
   R3 --> CSV
   R3 --> PDF
   R4 --> JWT
+  R5 --> JWT
   R4 --> RDX
   R2 --> PG
   R3 --> PG
   R4 --> PG
+  R5 --> PG
+
+  subgraph enumHelpers [Allow-lists and parsers]
+    EE[expenseEnums.js]
+  end
+  R2 --> EE
+  R3 --> EE
+  R5 --> EE
+
+  subgraph recovery [Recovery in backups]
+    RCS[recoveryCodeStorage.js]
+  end
+  R5 --> RCS
 
   subgraph job [Background]
     CC --> PG
@@ -203,13 +219,14 @@ flowchart TB
 |--------|------|----------------|
 | `routes/auth.js` | Registration, login, **`me`**, **`POST /refresh`** (new JWT from expired-but-signed token within grace), **`PATCH /profile`**, recovery **`POST`/`DELETE /recovery-code`** (persists **`recovery_code_ciphertext`** via **`recoveryCodeStorage.js`**), **`POST /recover-password`**, **`POST`/`DELETE /avatar`**, static **`/uploads`** | `bcryptjs`, `jsonwebtoken`, `pg`, `multer`, `crypto`; mounts **`oauth/*`** from `oauth/oauthRoutes.js` |
 | `oauth/oauthRoutes.js` together with `oauthService.js` and `oauthState.js` | Single sign-on: authorize and callback | `fetch` to identity providers, `pg` for **`oauth_identities`** |
-| `routes/expenses.js` | Expense create, read, update, delete | JSON Web Token middleware, `pg`, `expenseEnums.js` |
-| `routes/imports.js` | Upload, staging, commit | JSON Web Token, `multer`, `visaStatement.js` for CSV and PDF, `pg` |
+| `routes/expenses.js` | Expense create, read, update, delete; optional list filter **`?category=`** (for example **`renewal`**) | JSON Web Token middleware, `pg`, `expenseEnums.js` |
+| `routes/imports.js` | Upload, staging, commit; staging **`PATCH`** supports **`renewal_kind`** and **`website`**; commit requires **`renewal_kind`** when **`category`** is **`renewal`** | JSON Web Token, `multer`, `visaStatement.js` for CSV and PDF, `pg` |
 | `routes/reports.js` | Aggregates and chart data | JSON Web Token, `pg`, optional `redis.js` |
-| `routes/backup.js` | **`GET /export`**, **`POST /restore`** (append or replace expenses; **`account`** metadata, optional **`recoveryCode`**; restore cross-account **409** / **`confirmCrossAccountRestore`**) | JSON Web Token, `pg`, `expenseEnums.js`, **`recoveryCodeStorage.js`** |
+| `routes/backup.js` | **`GET /export`**, **`POST /restore`** (append or replace expenses; each expense may include **`website`** and **`renewal_kind`**; **`account`** metadata, optional **`recoveryCode`**; restore cross-account **409** / **`confirmCrossAccountRestore`**) | JSON Web Token, `pg`, `expenseEnums.js`, **`recoveryCodeStorage.js`** |
 | `parsers/visaStatement.js` | Parse uploaded statements | `csv-parse/sync`, `pdf-parse` |
 | `jobs/monthlySummary.js` | Monthly rollup job | `node-cron`, `pg` writing **`monthly_summaries`** |
 | `db.js` | Connection pool and **`initDb()`** | `pg` |
+| `expenseEnums.js` | **Allow-lists** for **`category`** (including **`renewal`**), **`renewal_kind`** (**`RENEWAL_KINDS`**), institution, frequency, **state**; **`spent_at`** → **`payment_day`** / **`payment_month`** helpers | Used by **`routes/expenses.js`**, **`routes/imports.js`**, **`routes/backup.js`** |
 | `recoveryCodeStorage.js` | Encrypt/decrypt recovery plaintext for **`users.recovery_code_ciphertext`**; **`persistRecoveryCodeForUser`** shared by **`auth`** and **`backup`** | `crypto`, `bcryptjs` |
 | `middleware/auth.js` | Bearer JSON Web Token to **`req.userId`** | `jsonwebtoken` |
 | `ensureJwtSecret.js` | Persist stable **`JWT_SECRET`** | filesystem write to `server/.env` |
@@ -218,26 +235,29 @@ flowchart TB
 
 ## 4. Frontend application — pages and API surface
 
-This diagram shows how **React** pages map to backend routes. The HTTP client uses Axios with `baseURL: "/api"`.
+These diagrams show how **React** pages map to backend routes. The HTTP client uses Axios with `baseURL: "/api"`.
+
+**Pages and primary API mounts:**
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph pages [client/src/pages]
     LP[LoginPage]
     RP[RegisterPage]
     Rcv[RecoverPasswordPage]
-    EP[ExpensesPage]
-    YEP[YourExpensesPage]
+    EP[ExpensesPage — Import]
+    YEP["YourExpensesPage — /expenses/list (UI omits category renewal)"]
+    NRP[RenewalsPage — /renewals]
     RPg[ReportsPage]
     PP[ProfilePage]
   end
 
   subgraph api [Express paths under /api]
-    A1["/auth: login, register, refresh, oauth, profile, avatar, recovery"]
-    A2["/expenses"]
-    A3["/imports"]
+    A1["/auth — login register refresh oauth profile avatar recovery"]
+    A2["/expenses — CRUD list ?category=renewal"]
+    A3["/imports — upload staging commit"]
     A4["/reports"]
-    A5["/backup: export, restore"]
+    A5["/backup — export restore"]
   end
 
   LP --> A1
@@ -245,14 +265,32 @@ flowchart LR
   Rcv --> A1
   PP --> A1
   PP --> A5
-  EP --> A2 & A3
+  EP --> A3
+  EP --> A2
   YEP --> A2
+  NRP --> A2
   RPg --> A4
+```
+
+**Expense, import, renewals, and backup at a glance:**
+
+```mermaid
+flowchart LR
+  EP[ExpensesPage] --> IM["/imports + /expenses"]
+  subgraph YEP["YourExpensesPage — /expenses/list"]
+    direction TB
+    YG["GET /expenses"]
+    YV["Table + combined Projection omit category renewal"]
+    YG --- YV
+  end
+  NRP[RenewalsPage] -->|"GET ?category=renewal + same CRUD"| EX["/expenses CRUD"]
+  YEP --> EX
+  PP[ProfilePage] --> BK["/backup export · restore"]
 ```
 
 ### Renewal reminders (client)
 
-**Upcoming renewals** are computed entirely in the browser from saved expenses (no dedicated API). **`Layout`** always renders **`RenewalReminders`** above the page **`Outlet`** on every authenticated shell route (**`/expenses`**, **`/expenses/list`**, **`/reports`**, **`/profile`**, and the index redirect). It loads expenses and keeps **`renewalSchedule.js`** in sync with the same **frequency** + **`spent_at`** rules as the server’s derived **`payment_day`** / **`payment_month`**. Matching rows are **grouped by financial institution** (display labels from **`expenseOptions.js`**): each group is a **section** with its own **sortable** **table** (expense, transaction date, amount, **state** (`active` / `cancel`), renews, **Dismiss**), a **Subtotal** footer, then a **Total (all institutions)** bar (**`formatProjectionCurrency`** in **`projection.js`**); both totals sum **active** rows only—**cancel** lines are excluded from amounts. Rows with **`state === cancel`** use **emerald** (green) styling. For about **two weeks** after a renewal date, the **25–40 day** reminder band is suppressed so the row stays off the list until the next charge is closer (**`isEarlyRenewalTierSuppressedAfterRecentOccurrence`** in **`renewalSchedule.js`**). **`Layout`** holds **`renewalTablesExpanded`** and passes it to **`RenewalReminders`**. Whenever eligible renewals exist, **`RenewalReminders`** passes **`onRenewalChipChange`** to **`Layout`** with a **count** and callbacks; **`Layout`** shows an **amber badge** to the **right** of the avatar that **toggles** table visibility, and an **account menu** (avatar **`details`**) with **Profile**, **Upcoming renewals** (to **show** tables or restore after all rows dismissed), and **Sign out**; choosing **Upcoming renewals** can clear **`sessionStorage`** dismiss keys and **`expandPanel`** so the panel reappears.
+**Upcoming renewals** are computed entirely in the browser from saved expenses (no dedicated API). **`Layout`** always renders **`RenewalReminders`** above the page **`Outlet`** on every authenticated shell route (**`/expenses`**, **`/expenses/list`**, **`/renewals`**, **`/reports`**, **`/profile`**, and the index redirect). It loads expenses and keeps **`renewalSchedule.js`** in sync with the same **frequency** + **`spent_at`** rules as the server’s derived **`payment_day`** / **`payment_month`**. Matching rows are **grouped by financial institution** (display labels from **`expenseOptions.js`**): each group is a **section** with its own **sortable** **table** (expense, transaction date, amount, **state** (`active` / `cancel`), renews, **Dismiss**), a **Subtotal** footer, then a **Total (all institutions)** bar (**`formatProjectionCurrency`** in **`projection.js`**); both totals sum **active** rows only—**cancel** lines are excluded from amounts. Rows with **`state === cancel`** use **emerald** (green) styling. For about **two weeks** after a renewal date, the **25–40 day** reminder band is suppressed so the row stays off the list until the next charge is closer (**`isEarlyRenewalTierSuppressedAfterRecentOccurrence`** in **`renewalSchedule.js`**). **`Layout`** holds **`renewalTablesExpanded`** and passes it to **`RenewalReminders`**. Whenever eligible renewals exist, **`RenewalReminders`** passes **`onRenewalChipChange`** to **`Layout`** with a **count** and callbacks; **`Layout`** shows an **amber badge** to the **right** of the avatar that **toggles** table visibility, and an **account menu** (avatar **`details`**) with **Profile**, **Upcoming renewals** (to **show** tables or restore after all rows dismissed), and **Sign out**; choosing **Upcoming renewals** can clear **`sessionStorage`** dismiss keys and **`expandPanel`** so the panel reappears.
 
 ```mermaid
 flowchart TD
@@ -284,10 +322,33 @@ flowchart TD
 | Authentication state | `auth.jsx` — `AuthProvider`, protected routes, registers the session-invalid handler for `api.js` |
 | Expired session prompt | `SessionExpiredModal.jsx` — **Continue session** → **`POST /auth/refresh`** → reload; **Sign out** → **`/login`** |
 | Errors | `apiError.js` — network and proxy error messages |
-| Labels versus server enums | `expenseOptions.js` — categories, frequencies, institutions, **expense state** (**Active** / **Cancel**; API `active` / `cancel`). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
+| Labels versus server enums | `expenseOptions.js` — categories (including **Renewal**), **`RENEWAL_KIND_OPTIONS`** / **`formatRenewalKind`**, frequencies, institutions, **expense state** (**Active** / **Cancel**; API `active` / `cancel`). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
 | Upcoming renewals | **`Layout.jsx`** (avatar menu, **badge** toggles tables, **`renewalTablesExpanded`**) + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** — all main shell routes; see [Renewal reminders (client)](#renewal-reminders-client) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (client confirms when backup **`account.email`** differs from session); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
+| Renewals (odd-interval contracts) | `RenewalsPage` at **`/renewals`** — **`GET /expenses?category=renewal`**; manual add defaults to category **Renewal**; **`ExpenseTable`** with **`showRenewalColumns`**. **Import** (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
+| Expenses list (`/expenses/list`) | **`YourExpensesPage`** — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** in the table and in **combined Projection**; changing a row’s category to **Renewal** (with a type) on save removes it from this view (it remains queryable on **`/renewals`**). |
+
+### Renewals vs. Expenses list vs. Upcoming renewals (diagram)
+
+```mermaid
+flowchart TB
+  subgraph data [PostgreSQL expenses]
+    E["All rows per user"]
+  end
+  subgraph expList [Expenses page /expenses/list]
+    L["GET /expenses — UI shows rows where category is not renewal"]
+  end
+  subgraph page [Renewals page /renewals]
+    R["GET /expenses?category=renewal — renewal_kind from allow-list"]
+  end
+  subgraph banner [Upcoming renewals banner — client only]
+    U["GET /expenses?limit=500 — recurring tiers — any category"]
+  end
+  E --> L
+  E --> R
+  E --> U
+```
 
 ---
 
@@ -334,6 +395,8 @@ erDiagram
     smallint payment_day
     smallint payment_month
     text description
+    text website
+    text renewal_kind
     date spent_at
     timestamptz created_at
   }
@@ -358,6 +421,8 @@ erDiagram
     text frequency
     smallint payment_day
     smallint payment_month
+    text website
+    text renewal_kind
     timestamptz created_at
   }
 
@@ -371,13 +436,45 @@ erDiagram
   }
 ```
 
+### Import pipeline (statement → `expenses`)
+
+```mermaid
+flowchart TB
+  UP[User uploads CSV or PDF] --> PI["POST /api/imports"]
+  PI --> ST[(import_staging_rows)]
+  ST --> RV[Review UI: category frequency]
+  RV --> PR{category is renewal?}
+  PR -->|yes| RK[must set renewal_kind optional website]
+  PR -->|no| OK[category only]
+  RK --> CM
+  OK --> CM["POST .../batches/:id/commit"]
+  CM --> EX[(expenses)]
+  ST --> PT["PATCH /imports/rows/:id"]
+  PT --> ST
+```
+
+### Backup export and restore
+
+```mermaid
+flowchart LR
+  PR[ProfilePage] --> EXP["GET /backup/export"]
+  EXP --> FILE[JSON: account + expenses]
+  FILE --> RST["POST /backup/restore"]
+  RST --> PG[(PostgreSQL expenses + optional recovery)]
+  PR --> RST
+```
+
 **`expenses.payment_day` / `payment_month`:** Persisted for renewals, imports, and backup JSON; the API always sets them from **`spent_at`** (calendar day of month capped at **30**, month **1–12**). **`POST`/`PATCH /api/expenses`** and **`POST /api/backup/restore`** ignore body values for those columns.
 
 **`expenses.state`:** **`active`** (default) or **`cancel`**, constrained in PostgreSQL. Set on create and update via **`POST`/`PATCH /api/expenses`**; **import commit** inserts **`active`**; **backup** export and restore round-trip **`state`** (restore treats a missing **`state`** as **`active`**).
 
+**`expenses.category`:** Allow-list includes **`renewal`**. When **`category`** is **`renewal`**, **`renewal_kind`** is **required** (API + restore validation); **`website`** is optional. Non-renewal rows store **`renewal_kind`** as **`NULL`**.
+
+**`expenses.website` / `renewal_kind`:** Optional portal or URL and renewal subtype; see [RENEWALS.md](./RENEWALS.md).
+
 **`users.recovery_code_ciphertext`:** Optional encrypted copy of the recovery code for **`GET /backup/export`** (see **`recoveryCodeStorage.js`**). **`users.recovery_lookup`** / **`recovery_token_hash`** remain the source of truth for **`POST /recover-password`**.
 
-**Import data flow:** `POST /api/imports` replaces any previous `import_batches` for that user and inserts `import_staging_rows` (with `payment_day` / `payment_month` derived from each line’s `spent_at`). `PATCH /api/imports/rows/:id` may change category or frequency and refreshes `payment_day` / `payment_month` from `spent_at`. `POST /api/imports/batches/:batchId/commit` on a batch moves categorized rows into `expenses` (each new row **`state = active`**) and removes the batch.
+**Import data flow:** `POST /api/imports` replaces any previous `import_batches` for that user and inserts `import_staging_rows` (with `payment_day` / `payment_month` derived from each line’s `spent_at`). `PATCH /api/imports/rows/:id` may change **`category`**, **`frequency`**, **`renewal_kind`**, or **`website`** and refreshes `payment_day` / `payment_month` from `spent_at`. Changing **`category`** away from **`renewal`** clears **`renewal_kind`** on the staging row. `POST /api/imports/batches/:batchId/commit` moves rows that have a **category** and (for **`renewal`**) a **`renewal_kind`** into `expenses` (each new row **`state = active`**; **`website`** / **`renewal_kind`** on inserted rows apply only when **`category`** is **`renewal`**) and removes the batch.
 
 ---
 
@@ -399,6 +496,26 @@ sequenceDiagram
   PG-->>API: rows
   API-->>Vite: 200 JSON
   Vite-->>Browser: 200 JSON
+```
+
+**Expenses list page:** the browser may call **`GET /api/expenses`** the same way (no **`category`** query). The API returns **all** of the user’s rows; **`YourExpensesPage`** then **omits** rows whose **`category`** is **`renewal`** when building the table and the **combined Projection** (those rows are listed only on **`/renewals`**).
+
+**Filtered list (Renewals page):** the same sequence applies with **`GET /api/expenses?category=renewal`** (and optional **`limit`**); the API adds **`AND category = $n`** after validating **`category`** against **`expenseEnums`**.
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant Edge as Vite or nginx
+  participant API as Express API
+  participant PG as PostgreSQL
+
+  Browser->>Edge: GET /api/expenses?category=renewal
+  Edge->>API: proxy
+  Note over API: JWT + parseCategory renewal
+  API->>PG: SELECT ... WHERE user_id AND category = renewal
+  PG-->>API: rows
+  API-->>Edge: 200 JSON
+  Edge-->>Browser: 200 JSON
 ```
 
 **After you deploy to production**, the first network hop is not Vite: the browser talks to your **edge** server (for example nginx). Requests whose path begins with `/api` (for example `GET /api/expenses`) are forwarded to Express; **`GET /health`** can be proxied the same way (see **`deployment/docker/nginx.conf`**). The single-page application still issues `/api` requests when the static site and API share **one origin** behind that edge.

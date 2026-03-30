@@ -17,4 +17,4 @@ From the **repository root**, **`npm run compose:prod`** runs **`node deployment
 - **Docker Compose (single host):** [docker-compose/README.md](docker-compose/README.md)  
 - **Kubernetes (cluster):** [kubernetes/README.md](kubernetes/README.md)  
 
-For application behavior, environment variables, OAuth, recovery codes, and **Profile backup/restore**, see the root [README.md](../README.md), [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md), and [docs/USER_GUIDE.md](../docs/USER_GUIDE.md). The Compose **web** nginx **`client_max_body_size`** (25 MB on `/api/`) is enough for default **backup restore** payloads (15 MB limit on the API).
+For application behavior, environment variables, OAuth, recovery codes, **Renewals**, and **Profile backup/restore**, see the root [README.md](../README.md), [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md), [docs/RENEWALS.md](../docs/RENEWALS.md), and [docs/USER_GUIDE.md](../docs/USER_GUIDE.md). The Compose **web** nginx **`client_max_body_size`** (25 MB on `/api/`) is enough for default **backup restore** payloads (15 MB limit on the API).
