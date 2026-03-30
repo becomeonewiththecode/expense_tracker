@@ -570,9 +570,9 @@ sequenceDiagram
   Vite-->>Browser: 200 JSON
 ```
 
-**Expenses list page:** the browser may call **`GET /api/expenses`** the same way (no **`category`** query). The API returns **all** of the user’s rows; **`YourExpensesPage`** then **omits** rows whose **`category`** is **`renewal`** when building the table and the **combined Projection** (those rows are listed only on **`/renewals`**).
+**Expenses list page:** the browser may call **`GET /api/expenses`** the same way (no **`category`** query). The API returns **all** of the user’s rows; **`YourExpensesPage`** then **omits** rows whose **`category`** is **`renewal`** when building the table and the **combined Projection** (those rows are listed only on **`/renewals`**). The table shows pagination controls at the bottom, including a **Rows** selector; it paginates client-side using your **Profile → Table display → Rows per page** preference (default **10**; options **5**, **10**, **25**, **50**, **100**).
 
-**Filtered list (Renewals page):** the same sequence applies with **`GET /api/expenses?category=renewal`** (and optional **`limit`**); the API adds **`AND category = $n`** after validating **`category`** against **`expenseEnums`**.
+**Filtered list (Renewals page):** the same sequence applies with **`GET /api/expenses?category=renewal`** (and optional **`limit`**); the API adds **`AND category = $n`** after validating **`category`** against **`expenseEnums`**. The table paginates client-side with the same rows-per-page preference and footer **Rows** selector (default **10**; options **5**, **10**, **25**, **50**, **100**).
 
 ```mermaid
 sequenceDiagram
