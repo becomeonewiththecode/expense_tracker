@@ -119,7 +119,7 @@ See the entity-relationship figure in [ARCHITECTURE_DIAGRAM.md § Data model](./
 | Reminder banner | `client/src/components/PrescriptionReminders.jsx` |
 | Labels | `client/src/prescriptionOptions.js` |
 | Day math + advance date | `client/src/prescriptionSchedule.js` |
-| Nav + shell | `client/src/components/Layout.jsx` — **Lists** menu (**Expenses**, **Renewals**, **Prescriptions**) plus **Import** / **Reports** |
+| Nav + shell | `client/src/components/Layout.jsx` — **Import** and **Lists** menu (**Expenses**, **Renewals**, **Prescriptions**, **Reports**) |
 | Route **`/prescriptions`** | `client/src/App.jsx` |
 
 ---

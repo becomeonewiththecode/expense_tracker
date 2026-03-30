@@ -22,7 +22,10 @@ function ListsNavDropdown() {
   const { pathname } = useLocation();
   const listsMenuRef = useRef(null);
   const listsSectionActive =
-    pathname === "/expenses/list" || pathname === "/renewals" || pathname === "/prescriptions";
+    pathname === "/expenses/list" ||
+    pathname === "/renewals" ||
+    pathname === "/prescriptions" ||
+    pathname === "/reports";
 
   function closeListsMenu() {
     listsMenuRef.current?.removeAttribute("open");
@@ -73,6 +76,14 @@ function ListsNavDropdown() {
         >
           Prescriptions
         </NavLink>
+        <NavLink
+          to="/reports"
+          role="menuitem"
+          className={listsDropdownItemClass}
+          onClick={closeListsMenu}
+        >
+          Reports
+        </NavLink>
       </div>
     </details>
   );
@@ -112,9 +123,6 @@ export default function Layout() {
               Import
             </NavLink>
             <ListsNavDropdown />
-            <NavLink to="/reports" className={linkClass}>
-              Reports
-            </NavLink>
           </nav>
           <div className="flex items-center text-sm text-slate-400 justify-end">
             <details
