@@ -100,5 +100,22 @@ export async function initDb() {
       generated_at TIMESTAMPTZ DEFAULT NOW(),
       UNIQUE (user_id, year, month)
     );
+    CREATE TABLE IF NOT EXISTS prescriptions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
+      renewal_period TEXT NOT NULL,
+      next_renewal_date DATE NOT NULL,
+      vendor TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT 'active',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    ALTER TABLE prescriptions DROP CONSTRAINT IF EXISTS prescriptions_state_check;
+    ALTER TABLE prescriptions ADD CONSTRAINT prescriptions_state_check
+      CHECK (state IN ('active', 'cancel'));
+    CREATE INDEX IF NOT EXISTS idx_prescriptions_user_next ON prescriptions(user_id, next_renewal_date);
   `);
 }

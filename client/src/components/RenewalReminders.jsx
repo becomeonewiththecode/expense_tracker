@@ -335,12 +335,17 @@ export default function RenewalReminders({
       aria-label="Subscription renewal reminders"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 gap-y-2">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <p className="font-medium text-amber-100">Upcoming renewals</p>
+        <div
+          className="flex flex-wrap items-center gap-2 min-w-0 flex-1"
+          onDoubleClick={() => onTablesExpandedChange((v) => !v)}
+          title="Double-click to show or hide renewal tables"
+        >
+          <p className="font-medium text-amber-100 select-none">Upcoming renewals</p>
           <button
             type="button"
             id={renewalHelpTriggerId}
             onClick={() => setRenewalHelpOpen((o) => !o)}
+            onDoubleClick={(e) => e.stopPropagation()}
             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-amber-400/70 bg-amber-950/90 text-amber-100 shadow-sm hover:bg-amber-900 hover:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400/80 focus:ring-offset-2 focus:ring-offset-amber-950"
             aria-expanded={renewalHelpOpen}
             aria-controls={renewalHelpPanelId}

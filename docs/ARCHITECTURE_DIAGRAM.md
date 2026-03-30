@@ -1,6 +1,6 @@
 # Expense Tracker — Architecture diagrams
 
-This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For the **Renewals** feature (category **`renewal`**, **`renewal_kind`**, **`/renewals`** page, import staging), see [RENEWALS.md](./RENEWALS.md). For **Docker Compose production**, **`ensure-env.mjs`**, **`JWT_SECRET`**, and **`env_file`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
+This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For the **Renewals** feature (category **`renewal`**, **`renewal_kind`**, **`/renewals`** page, import staging), see [RENEWALS.md](./RENEWALS.md). For **Prescriptions** (**`/prescriptions`**, **`prescriptions`** table, **`renewal_period`** monthly **1–11** or **1–5 years**, 30-day reminders), see [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). For **Docker Compose production**, **`ensure-env.mjs`**, **`JWT_SECRET`**, and **`env_file`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
 
 ---
 
@@ -158,6 +158,7 @@ flowchart TB
     R3["/api/imports"]
     R4["/api/reports"]
     R5["/api/backup"]
+    R6["/api/prescriptions"]
     BOOT --> MW
     MW --> R0
     MW --> R1
@@ -165,6 +166,7 @@ flowchart TB
     MW --> R3
     MW --> R4
     MW --> R5
+    MW --> R6
   end
 
   subgraph libs [Libraries]
@@ -190,18 +192,22 @@ flowchart TB
   R3 --> PDF
   R4 --> JWT
   R5 --> JWT
+  R6 --> JWT
   R4 --> RDX
   R2 --> PG
   R3 --> PG
   R4 --> PG
   R5 --> PG
+  R6 --> PG
 
   subgraph enumHelpers [Allow-lists and parsers]
     EE[expenseEnums.js]
+    PE[prescriptionEnums.js]
   end
   R2 --> EE
   R3 --> EE
   R5 --> EE
+  R6 --> PE
 
   subgraph recovery [Recovery in backups]
     RCS[recoveryCodeStorage.js]
@@ -223,10 +229,12 @@ flowchart TB
 | `routes/imports.js` | Upload, staging, commit; staging **`PATCH`** supports **`renewal_kind`** and **`website`**; commit requires **`renewal_kind`** when **`category`** is **`renewal`** | JSON Web Token, `multer`, `visaStatement.js` for CSV and PDF, `pg` |
 | `routes/reports.js` | Aggregates and chart data | JSON Web Token, `pg`, optional `redis.js` |
 | `routes/backup.js` | **`GET /export`**, **`POST /restore`** (append or replace expenses; each expense may include **`website`** and **`renewal_kind`**; **`account`** metadata, optional **`recoveryCode`**; restore cross-account **409** / **`confirmCrossAccountRestore`**) | JSON Web Token, `pg`, `expenseEnums.js`, **`recoveryCodeStorage.js`** |
+| `routes/prescriptions.js` | **`prescriptions`** CRUD — **`name`**, **`amount`**, **`renewal_period`**, **`next_renewal_date`**, **`vendor`**, **`notes`**, **`category`**, **`state`** | JSON Web Token, `pg`, **`prescriptionEnums.js`** |
 | `parsers/visaStatement.js` | Parse uploaded statements | `csv-parse/sync`, `pdf-parse` |
 | `jobs/monthlySummary.js` | Monthly rollup job | `node-cron`, `pg` writing **`monthly_summaries`** |
 | `db.js` | Connection pool and **`initDb()`** | `pg` |
 | `expenseEnums.js` | **Allow-lists** for **`category`** (including **`renewal`**), **`renewal_kind`** (**`RENEWAL_KINDS`**), institution, frequency, **state**; **`spent_at`** → **`payment_day`** / **`payment_month`** helpers | Used by **`routes/expenses.js`**, **`routes/imports.js`**, **`routes/backup.js`** |
+| `prescriptionEnums.js` | **`PRESCRIPTION_CATEGORIES`**, **`PRESCRIPTION_RENEWAL_PERIODS`** (**`one_month`** … **`eleven_months`**, **`one_year`** … **`five_years`**), **state**; **`parseIsoDate`** | **`routes/prescriptions.js`** |
 | `recoveryCodeStorage.js` | Encrypt/decrypt recovery plaintext for **`users.recovery_code_ciphertext`**; **`persistRecoveryCodeForUser`** shared by **`auth`** and **`backup`** | `crypto`, `bcryptjs` |
 | `middleware/auth.js` | Bearer JSON Web Token to **`req.userId`** | `jsonwebtoken` |
 | `ensureJwtSecret.js` | Persist stable **`JWT_SECRET`** | filesystem write to `server/.env` |
@@ -236,6 +244,21 @@ flowchart TB
 ## 4. Frontend application — pages and API surface
 
 These diagrams show how **React** pages map to backend routes. The HTTP client uses Axios with `baseURL: "/api"`.
+
+**Shell navigation (signed-in `Layout.jsx` header):** **Import** links to **`/expenses`**; **Lists** is a dropdown with **Expenses** (`/expenses/list`), **Renewals** (`/renewals`), **Prescriptions** (`/prescriptions`), and **Reports** (`/reports`) in that order. **Profile** and **Sign out** live in the avatar **account menu**, not in the main nav bar.
+
+```mermaid
+flowchart TB
+  subgraph hdr [Layout header]
+    IMP[Import]
+    LST[Lists]
+  end
+  IMP -->|"/expenses"| EPn[ExpensesPage]
+  LST --> L1["/expenses/list — YourExpensesPage"]
+  LST --> L2["/renewals — RenewalsPage"]
+  LST --> L3["/prescriptions — PrescriptionsPage"]
+  LST --> L4["/reports — ReportsPage"]
+```
 
 **Pages and primary API mounts:**
 
@@ -248,6 +271,7 @@ flowchart TB
     EP[ExpensesPage — Import]
     YEP["YourExpensesPage — /expenses/list (UI omits category renewal)"]
     NRP[RenewalsPage — /renewals]
+    PSP[PrescriptionsPage — /prescriptions]
     RPg[ReportsPage]
     PP[ProfilePage]
   end
@@ -258,6 +282,7 @@ flowchart TB
     A3["/imports — upload staging commit"]
     A4["/reports"]
     A5["/backup — export restore"]
+    A6["/prescriptions — CRUD"]
   end
 
   LP --> A1
@@ -269,6 +294,7 @@ flowchart TB
   EP --> A2
   YEP --> A2
   NRP --> A2
+  PSP --> A6
   RPg --> A4
 ```
 
@@ -283,14 +309,43 @@ flowchart LR
     YV["Table + combined Projection omit category renewal"]
     YG --- YV
   end
-  NRP[RenewalsPage] -->|"GET ?category=renewal + same CRUD"| EX["/expenses CRUD"]
+  subgraph NRP["RenewalsPage — /renewals"]
+    direction TB
+    NG["GET ?category=renewal + CRUD"]
+    NV["Header Projection: Active only omit state cancel"]
+    NG --- NV
+  end
+  NRP --> EX["/expenses CRUD"]
   YEP --> EX
+  subgraph PSPg["PrescriptionsPage — /prescriptions"]
+    direction TB
+    PG2["GET POST PATCH DELETE /prescriptions"]
+    PG2 --- PGnote["next_renewal_date + renewal_period 1-11 mo or 1-5 yr"]
+  end
+  PSPg --> PRX["/prescriptions CRUD"]
   PP[ProfilePage] --> BK["/backup export · restore"]
+```
+
+### Prescription reminders (client)
+
+**Prescription reminders** are **in-app only** (no email). **`Layout`** renders **`PrescriptionReminders`** after **`RenewalReminders`** on every authenticated shell route. The component loads **`GET /api/prescriptions?limit=500`**, applies **`prescriptionNeedsReminder`** from **`prescriptionSchedule.js`** (**active** rows whose **`next_renewal_date`** is within **30** calendar days or **1–14** days overdue). A **cyan** panel lists qualifying items (name, category, lead time). **`Dismiss for this visit`** hides the panel until the next full load; saves on **`PrescriptionsPage`** dispatch **`prescriptions-changed`** so the banner refreshes. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md).
+
+```mermaid
+flowchart TD
+  L[Layout.jsx]
+  PR[PrescriptionReminders.jsx]
+  API["GET /api/prescriptions"]
+  PS[prescriptionSchedule.js]
+  L --> PR
+  PR --> API
+  PR --> PS
+  PS --> D[daysUntilPrescriptionRenewal]
+  PS --> N[prescriptionNeedsReminder]
 ```
 
 ### Renewal reminders (client)
 
-**Upcoming renewals** are computed entirely in the browser from saved expenses (no dedicated API). **`Layout`** always renders **`RenewalReminders`** above the page **`Outlet`** on every authenticated shell route (**`/expenses`**, **`/expenses/list`**, **`/renewals`**, **`/reports`**, **`/profile`**, and the index redirect). It loads expenses and keeps **`renewalSchedule.js`** in sync with the same **frequency** + **`spent_at`** rules as the server’s derived **`payment_day`** / **`payment_month`**. Matching rows are **grouped by financial institution** (display labels from **`expenseOptions.js`**): each group is a **section** with its own **sortable** **table** (expense, transaction date, amount, **state** (`active` / `cancel`), renews, **Dismiss**), a **Subtotal** footer, then a **Total (all institutions)** bar (**`formatProjectionCurrency`** in **`projection.js`**); both totals sum **active** rows only—**cancel** lines are excluded from amounts. Rows with **`state === cancel`** use **emerald** (green) styling. For about **two weeks** after a renewal date, the **25–40 day** reminder band is suppressed so the row stays off the list until the next charge is closer (**`isEarlyRenewalTierSuppressedAfterRecentOccurrence`** in **`renewalSchedule.js`**). **`Layout`** holds **`renewalTablesExpanded`** and passes it to **`RenewalReminders`**. Whenever eligible renewals exist, **`RenewalReminders`** passes **`onRenewalChipChange`** to **`Layout`** with a **count** and callbacks; **`Layout`** shows an **amber badge** to the **right** of the avatar that **toggles** table visibility, and an **account menu** (avatar **`details`**) with **Profile**, **Upcoming renewals** (to **show** tables or restore after all rows dismissed), and **Sign out**; choosing **Upcoming renewals** can clear **`sessionStorage`** dismiss keys and **`expandPanel`** so the panel reappears.
+**Upcoming renewals** are computed entirely in the browser from saved expenses (no dedicated API). **`Layout`** always renders **`RenewalReminders`** then **`PrescriptionReminders`** above the page **`Outlet`** on every authenticated shell route (**`/expenses`**, **`/expenses/list`**, **`/renewals`**, **`/prescriptions`**, **`/reports`**, **`/profile`**, and the index redirect). It loads expenses and keeps **`renewalSchedule.js`** in sync with the same **frequency** + **`spent_at`** rules as the server’s derived **`payment_day`** / **`payment_month`**. Matching rows are **grouped by financial institution** (display labels from **`expenseOptions.js`**): each group is a **section** with its own **sortable** **table** (expense, transaction date, amount, **state** (`active` / `cancel`), renews, **Dismiss**), a **Subtotal** footer, then a **Total (all institutions)** bar (**`formatProjectionCurrency`** in **`projection.js`**); both totals sum **active** rows only—**cancel** lines are excluded from amounts. Rows with **`state === cancel`** use **emerald** (green) styling. For about **two weeks** after a renewal date, the **25–40 day** reminder band is suppressed so the row stays off the list until the next charge is closer (**`isEarlyRenewalTierSuppressedAfterRecentOccurrence`** in **`renewalSchedule.js`**). **`Layout`** holds **`renewalTablesExpanded`** and passes it to **`RenewalReminders`**. Whenever eligible renewals exist, **`RenewalReminders`** passes **`onRenewalChipChange`** to **`Layout`** with a **count** and callbacks; **`Layout`** shows an **amber badge** to the **right** of the avatar that **toggles** table visibility, and an **account menu** (avatar **`details`**) with **Profile**, **Upcoming renewals** (to **show** tables or restore after all rows dismissed), and **Sign out**; choosing **Upcoming renewals** can clear **`sessionStorage`** dismiss keys and **`expandPanel`** so the panel reappears.
 
 ```mermaid
 flowchart TD
@@ -323,10 +378,12 @@ flowchart TD
 | Expired session prompt | `SessionExpiredModal.jsx` — **Continue session** → **`POST /auth/refresh`** → reload; **Sign out** → **`/login`** |
 | Errors | `apiError.js` — network and proxy error messages |
 | Labels versus server enums | `expenseOptions.js` — categories (including **Renewal**), **`RENEWAL_KIND_OPTIONS`** / **`formatRenewalKind`**, frequencies, institutions, **expense state** (**Active** / **Cancel**; API `active` / `cancel`). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
+| Main navigation (authenticated shell) | **`Layout.jsx`** — **Import**, **Lists** dropdown (**Expenses**, **Renewals**, **Prescriptions**, **Reports** in that order); avatar **account menu** (**Profile**, **Upcoming renewals** when applicable, **Sign out**) |
 | Upcoming renewals | **`Layout.jsx`** (avatar menu, **badge** toggles tables, **`renewalTablesExpanded`**) + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** — all main shell routes; see [Renewal reminders (client)](#renewal-reminders-client) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (client confirms when backup **`account.email`** differs from session); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
-| Renewals (odd-interval contracts) | `RenewalsPage` at **`/renewals`** — **`GET /expenses?category=renewal`**; manual add defaults to category **Renewal**; **`ExpenseTable`** with **`showRenewalColumns`** and **no** **`onRowProjection`** (no per-row **Projection** in Actions; header **Projection** = all renewals combined). **`YourExpensesPage`** passes **`onRowProjection`**. **Import** (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
+| Renewals (odd-interval contracts) | `RenewalsPage` at **`/renewals`** — **`GET /expenses?category=renewal`** (list includes **Cancel** rows); manual add defaults to category **Renewal**; **`ExpenseTable`** with **`showRenewalColumns`** and **no** **`onRowProjection`** (no per-row **Projection** in Actions; header **Projection** uses **`projection.js`** on **Active** rows only—**`state`** **`cancel`** excluded client-side). **`YourExpensesPage`** passes **`onRowProjection`**. **Import** (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
+| Prescriptions (health / supplies) | `PrescriptionsPage` at **`/prescriptions`** — **`/api/prescriptions`** CRUD; **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
 | Expenses list (`/expenses/list`) | **`YourExpensesPage`** — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** in the table and in **combined Projection**; changing a row’s category to **Renewal** (with a type) on save removes it from this view (it remains queryable on **`/renewals`**). |
 
 ### Renewals vs. Expenses list vs. Upcoming renewals (diagram)
@@ -359,6 +416,7 @@ Logical schema owned by the API (PostgreSQL). Redis holds **short-lived** report
 ```mermaid
 erDiagram
   users ||--o{ expenses : has
+  users ||--o{ prescriptions : has
   users ||--o{ oauth_identities : has
   users ||--o{ import_batches : has
   users ||--o{ import_staging_rows : has
@@ -434,6 +492,20 @@ erDiagram
     numeric total
     timestamptz generated_at
   }
+
+  prescriptions {
+    serial id PK
+    int user_id FK
+    text name
+    numeric amount
+    text renewal_period
+    date next_renewal_date
+    text vendor
+    text notes
+    text category
+    text state
+    timestamptz created_at
+  }
 ```
 
 ### Import pipeline (statement → `expenses`)
@@ -498,9 +570,9 @@ sequenceDiagram
   Vite-->>Browser: 200 JSON
 ```
 
-**Expenses list page:** the browser may call **`GET /api/expenses`** the same way (no **`category`** query). The API returns **all** of the user’s rows; **`YourExpensesPage`** then **omits** rows whose **`category`** is **`renewal`** when building the table and the **combined Projection** (those rows are listed only on **`/renewals`**).
+**Expenses list page:** the browser may call **`GET /api/expenses`** the same way (no **`category`** query). The API returns **all** of the user’s rows; **`YourExpensesPage`** then **omits** rows whose **`category`** is **`renewal`** when building the table and the **combined Projection** (those rows are listed only on **`/renewals`**). The table shows pagination controls at the bottom, including a **Rows** selector; it paginates client-side using your **Profile → Table display → Rows per page** preference (default **10**; options **5**, **10**, **25**, **50**, **100**).
 
-**Filtered list (Renewals page):** the same sequence applies with **`GET /api/expenses?category=renewal`** (and optional **`limit`**); the API adds **`AND category = $n`** after validating **`category`** against **`expenseEnums`**.
+**Filtered list (Renewals page):** the same sequence applies with **`GET /api/expenses?category=renewal`** (and optional **`limit`**); the API adds **`AND category = $n`** after validating **`category`** against **`expenseEnums`**. The table paginates client-side with the same rows-per-page preference and footer **Rows** selector (default **10**; options **5**, **10**, **25**, **50**, **100**).
 
 ```mermaid
 sequenceDiagram

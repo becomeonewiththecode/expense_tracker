@@ -8,8 +8,10 @@ import {
   Tooltip,
 } from "recharts";
 import { formatFrequency } from "../expenseOptions.js";
+import { formatRenewalPeriod } from "../prescriptionOptions.js";
 import {
   filterItemsForProjectionSlice,
+  filterPrescriptionItemsForProjectionSlice,
   formatProjectionCurrency,
 } from "../projection.js";
 
@@ -35,6 +37,8 @@ export default function ProjectionModal({
   pieData,
   projectionItems,
   projectionScopeKey,
+  /** `"expense"` (default) or `"prescription"` — copy and slice list differ. */
+  projectionKind = "expense",
 }) {
   const [selectedSlice, setSelectedSlice] = useState(null);
 
@@ -58,7 +62,9 @@ export default function ProjectionModal({
   const sliceItems =
     selectedSlice === null || !Array.isArray(projectionItems)
       ? []
-      : filterItemsForProjectionSlice(projectionItems, selectedSlice);
+      : projectionKind === "prescription"
+        ? filterPrescriptionItemsForProjectionSlice(projectionItems, selectedSlice)
+        : filterItemsForProjectionSlice(projectionItems, selectedSlice);
 
   const activePieIndex =
     selectedSlice != null && Array.isArray(pieData)
@@ -103,7 +109,22 @@ export default function ProjectionModal({
           </button>
         </div>
         <p className="text-xs text-slate-500 leading-relaxed">
-          {singleItem ? (
+          {projectionKind === "prescription" ? (
+            singleItem ? (
+              <>
+                This row&apos;s <strong className="text-slate-400">amount</strong> (per renewal) and{" "}
+                <strong className="text-slate-400">renewal period</strong> are annualized: N-month cycles use{" "}
+                <strong className="text-slate-400">12 ÷ N</strong> charges per year; multi-year cycles divide the charge
+                across years. <strong className="text-slate-400">Cancel</strong> rows do not contribute to run rate.
+              </>
+            ) : (
+              <>
+                Estimates use each item&apos;s <strong className="text-slate-400">amount</strong> (per renewal) and{" "}
+                <strong className="text-slate-400">renewal period</strong> the same way.{" "}
+                <strong className="text-slate-400">Cancel</strong> rows are excluded from combined totals and the pie.
+              </>
+            )
+          ) : singleItem ? (
             <>
               This row&apos;s <strong className="text-slate-400">amount</strong> and{" "}
               <strong className="text-slate-400">frequency</strong> are annualized: weekly × 52, monthly × 12,
@@ -150,9 +171,18 @@ export default function ProjectionModal({
         {Array.isArray(pieData) && pieData.length > 0 && (
           <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
             <p className="text-xs text-slate-500 mb-1">
-              Annualized share — recurring by category; one-time amounts grouped as{" "}
-              <strong className="text-slate-400">One-time</strong> (same scale as yearly run rate). Click a slice
-              to list expenses in that segment; click again to clear.
+              {projectionKind === "prescription" ? (
+                <>
+                  Annualized share by category (same scale as yearly run rate). Click a slice to list prescriptions in
+                  that segment; click again to clear.
+                </>
+              ) : (
+                <>
+                  Annualized share — recurring by category; one-time amounts grouped as{" "}
+                  <strong className="text-slate-400">One-time</strong> (same scale as yearly run rate). Click a slice
+                  to list expenses in that segment; click again to clear.
+                </>
+              )}
             </p>
             <div className="h-56 w-full min-h-[14rem]">
               <ResponsiveContainer width="100%" height="100%">
@@ -203,7 +233,12 @@ export default function ProjectionModal({
                 <p className="text-xs font-medium text-slate-300 mb-2">
                   <span className="text-violet-300">{selectedSlice}</span>
                   <span className="text-slate-500"> · </span>
-                  {sliceItems.length} expense{sliceItems.length !== 1 ? "s" : ""}
+                  {sliceItems.length}{" "}
+                  {projectionKind === "prescription"
+                    ? sliceItems.length !== 1
+                      ? "items"
+                      : "item"
+                    : `expense${sliceItems.length !== 1 ? "s" : ""}`}
                 </p>
                 {sliceItems.length === 0 ? (
                   <p className="text-xs text-slate-500">No line items match this slice.</p>
@@ -218,8 +253,17 @@ export default function ProjectionModal({
                           {formatProjectionCurrency(row.amount)}
                         </span>
                         <span className="text-slate-400">
-                          {formatFrequency(row.frequency)}
-                          {row.description ? ` · ${row.description}` : ""}
+                          {projectionKind === "prescription" ? (
+                            <>
+                              {formatRenewalPeriod(row.renewal_period)}
+                              {row.name ? ` · ${row.name}` : ""}
+                            </>
+                          ) : (
+                            <>
+                              {formatFrequency(row.frequency)}
+                              {row.description ? ` · ${row.description}` : ""}
+                            </>
+                          )}
                         </span>
                       </li>
                     ))}
@@ -231,10 +275,16 @@ export default function ProjectionModal({
         )}
         {!hasRecurring && oneTimeTotal === 0 && (
           <p className="text-sm text-slate-500">
-            {singleItem ? "No amount to project for this row." : "No amounts to project from your current list."}
+            {projectionKind === "prescription"
+              ? singleItem
+                ? "No recurring run rate for this row (check amount, renewal period, or State Cancel)."
+                : "No amounts to project from your current list."
+              : singleItem
+                ? "No amount to project for this row."
+                : "No amounts to project from your current list."}
           </p>
         )}
-        {!hasRecurring && oneTimeTotal > 0 && (
+        {!hasRecurring && oneTimeTotal > 0 && projectionKind !== "prescription" && (
           <p className="text-xs text-slate-500">
             {singleItem
               ? "This expense is one-time only, so there is no recurring daily, monthly, or yearly run rate."
