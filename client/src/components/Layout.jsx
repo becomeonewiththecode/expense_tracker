@@ -93,7 +93,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const [renewalChip, setRenewalChip] = useState(null);
   /** When false, RenewalReminders hides institution tables + total (header + help may remain). */
-  const [renewalTablesExpanded, setRenewalTablesExpanded] = useState(true);
+  const [renewalTablesExpanded, setRenewalTablesExpanded] = useState(false);
   const accountMenuRef = useRef(null);
 
   function closeAccountMenu() {
