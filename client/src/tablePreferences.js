@@ -1,7 +1,7 @@
 export const TABLE_ROWS_PER_PAGE_KEY = "expenseTracker.rowsPerPage.v1";
 
 export const TABLE_ROWS_PER_PAGE_DEFAULT = 10;
-export const TABLE_ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
+export const TABLE_ROWS_PER_PAGE_OPTIONS = [5, 10, 25, 50, 100];
 
 function coerceRowsPerPage(n) {
   const x = Number(n);
