@@ -5,7 +5,6 @@ import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/M
 import ExpenseTable from "../components/ExpenseTable.jsx";
 import ProjectionModal from "../components/ProjectionModal.jsx";
 import { computeProjectionPieData, computeSpendingProjection } from "../projection.js";
-import { formatRenewalKind } from "../expenseOptions.js";
 
 function toDateInputValue(spentAt) {
   if (spentAt == null) return "";
@@ -13,13 +12,6 @@ function toDateInputValue(spentAt) {
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
   const t = Date.parse(s);
   return Number.isNaN(t) ? "" : new Date(t).toISOString().slice(0, 10);
-}
-
-function projectionContextLabel(row) {
-  const kind = formatRenewalKind(row.renewal_kind);
-  const note = (row.description || "").trim();
-  const short = note.length > 48 ? `${note.slice(0, 46)}…` : note;
-  return short ? `${kind} · ${short}` : kind;
 }
 
 function createRenewalManualForm() {
@@ -38,7 +30,7 @@ export default function RenewalsPage() {
   const [expenseEditDraft, setExpenseEditDraft] = useState(null);
   const [expenseSaving, setExpenseSaving] = useState(false);
   const [expensesModifyMode, setExpensesModifyMode] = useState(false);
-  const [projectionTarget, setProjectionTarget] = useState(null);
+  const [projectionOpen, setProjectionOpen] = useState(false);
   const [addForm, setAddForm] = useState(() => createRenewalManualForm());
   const [addSaving, setAddSaving] = useState(false);
 
@@ -63,18 +55,9 @@ export default function RenewalsPage() {
       setExpensesModifyMode(false);
       setExpenseEditId(null);
       setExpenseEditDraft(null);
-      setProjectionTarget(null);
+      setProjectionOpen(false);
     }
   }, [items.length]);
-
-  useEffect(() => {
-    if (
-      projectionTarget?.kind === "row" &&
-      !items.some((r) => r.id === projectionTarget.row.id)
-    ) {
-      setProjectionTarget(null);
-    }
-  }, [items, projectionTarget]);
 
   function openExpenseEdit(row) {
     if (!expensesModifyMode) return;
@@ -125,7 +108,7 @@ export default function RenewalsPage() {
         description: expenseEditDraft.description,
       });
       cancelExpenseEdit();
-      setProjectionTarget(null);
+      setProjectionOpen(false);
       load();
     } catch (err) {
       setError(err.response?.data?.error || "Could not save changes");
@@ -176,7 +159,7 @@ export default function RenewalsPage() {
         spent_at: addForm.spent_at,
       });
       setAddForm(createRenewalManualForm());
-      setProjectionTarget(null);
+      setProjectionOpen(false);
       if (expenseEditId) cancelExpenseEdit();
       await load();
     } catch (err) {
@@ -258,52 +241,21 @@ export default function RenewalsPage() {
           cancelExpenseEdit={cancelExpenseEdit}
           saveExpenseEdit={saveExpenseEdit}
           remove={remove}
-          onProjection={() => setProjectionTarget({ kind: "all" })}
-          onRowProjection={(row) => setProjectionTarget({ kind: "row", row })}
+          onProjection={() => setProjectionOpen(true)}
           showRenewalColumns
           tableTitle="Renewal items"
         />
       )}
 
       <ProjectionModal
-        open={projectionTarget != null}
-        onClose={() => setProjectionTarget(null)}
-        projection={
-          projectionTarget
-            ? projectionTarget.kind === "all"
-              ? computeSpendingProjection(items)
-              : computeSpendingProjection([projectionTarget.row])
-            : null
-        }
-        contextLabel={
-          projectionTarget?.kind === "row"
-            ? projectionContextLabel(projectionTarget.row)
-            : projectionTarget?.kind === "all"
-              ? "All renewals (combined)"
-              : undefined
-        }
-        singleItem={projectionTarget?.kind === "row"}
-        pieData={computeProjectionPieData(
-          projectionTarget?.kind === "all"
-            ? items
-            : projectionTarget?.kind === "row"
-              ? [projectionTarget.row]
-              : []
-        )}
-        projectionItems={
-          projectionTarget?.kind === "all"
-            ? items
-            : projectionTarget?.kind === "row"
-              ? [projectionTarget.row]
-              : []
-        }
-        projectionScopeKey={
-          projectionTarget == null
-            ? ""
-            : projectionTarget.kind === "all"
-              ? "renewals-all"
-              : String(projectionTarget.row.id)
-        }
+        open={projectionOpen}
+        onClose={() => setProjectionOpen(false)}
+        projection={projectionOpen ? computeSpendingProjection(items) : null}
+        contextLabel="All renewals (combined)"
+        singleItem={false}
+        pieData={computeProjectionPieData(projectionOpen ? items : [])}
+        projectionItems={projectionOpen ? items : []}
+        projectionScopeKey={projectionOpen ? "renewals-all" : ""}
       />
     </div>
   );

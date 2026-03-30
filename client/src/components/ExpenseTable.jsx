@@ -167,6 +167,7 @@ export default function ExpenseTable({
   saveExpenseEdit,
   remove,
   onProjection,
+  /** Omit to hide per-row Projection (e.g. Renewals list). */
   onRowProjection,
   showRenewalColumns = false,
   tableTitle = "Expenses",
@@ -519,13 +520,15 @@ export default function ExpenseTable({
                   <td className="px-4 py-3 text-right align-middle min-w-[15rem]">
                     {editing ? (
                       <div className="flex flex-row flex-wrap gap-x-3 gap-y-1 justify-end items-center">
-                        <button
-                          type="button"
-                          onClick={() => onRowProjection(snapshot)}
-                          className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
-                        >
-                          Projection
-                        </button>
+                        {onRowProjection && (
+                          <button
+                            type="button"
+                            onClick={() => onRowProjection(snapshot)}
+                            className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
+                          >
+                            Projection
+                          </button>
+                        )}
                         <button
                           type="button"
                           disabled={expenseSaving}
@@ -545,13 +548,15 @@ export default function ExpenseTable({
                       </div>
                     ) : (
                       <div className="flex flex-row flex-wrap gap-x-3 gap-y-1 justify-end items-center">
-                        <button
-                          type="button"
-                          onClick={() => onRowProjection(snapshot)}
-                          className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
-                        >
-                          Projection
-                        </button>
+                        {onRowProjection && (
+                          <button
+                            type="button"
+                            onClick={() => onRowProjection(snapshot)}
+                            className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
+                          >
+                            Projection
+                          </button>
+                        )}
                         {expensesModifyMode && (
                           <button
                             type="button"

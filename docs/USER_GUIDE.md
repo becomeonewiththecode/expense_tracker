@@ -127,7 +127,7 @@ Parsing uses **date, amount, and description** from the file; **comma-separated 
 
 ## Renewals screen
 
-The **Renewals** tab (**`/renewals`**) lists only expenses whose **category** is **Renewal**—use it for items that renew on unusual schedules (often **Yearly** or longer horizons in practice). Each row has the same core fields as on **Expenses**, plus **Renewal type** and optional **Website**.
+The **Renewals** tab (**`/renewals`**) lists only expenses whose **category** is **Renewal**—use it for items that renew on unusual schedules (often **Yearly** or longer horizons in practice). Each row has the same core fields as on **Expenses**, plus **Renewal type** and optional **Website**. **Projection** in the table header opens a **combined** report for all renewal items (same style as on **Expenses**); individual rows do **not** have a **Projection** action (unlike the **Expenses** list).
 
 - **Add renewal manually** (or the form when the list is empty) defaults to category **Renewal** and frequency **Yearly**; you must pick a **renewal type**.  
 - **Import:** On **Import**, set a row’s category to **Renewal**, choose the **renewal type**, optionally add a **website**, then commit—those lines appear here; they do **not** appear in the main **Expenses** table (only on **Renewals**).  
