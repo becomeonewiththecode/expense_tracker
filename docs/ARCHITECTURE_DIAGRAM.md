@@ -245,6 +245,21 @@ flowchart TB
 
 These diagrams show how **React** pages map to backend routes. The HTTP client uses Axios with `baseURL: "/api"`.
 
+**Shell navigation (signed-in `Layout.jsx` header):** **Import** links to **`/expenses`**; **Lists** is a dropdown with **Expenses** (`/expenses/list`), **Renewals** (`/renewals`), **Prescriptions** (`/prescriptions`), and **Reports** (`/reports`) in that order. **Profile** and **Sign out** live in the avatar **account menu**, not in the main nav bar.
+
+```mermaid
+flowchart TB
+  subgraph hdr [Layout header]
+    IMP[Import]
+    LST[Lists]
+  end
+  IMP -->|"/expenses"| EPn[ExpensesPage]
+  LST --> L1["/expenses/list — YourExpensesPage"]
+  LST --> L2["/renewals — RenewalsPage"]
+  LST --> L3["/prescriptions — PrescriptionsPage"]
+  LST --> L4["/reports — ReportsPage"]
+```
+
 **Pages and primary API mounts:**
 
 ```mermaid

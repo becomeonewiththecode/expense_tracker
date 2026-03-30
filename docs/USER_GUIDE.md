@@ -11,10 +11,10 @@ You can:
 - **Register** and **sign in** with **email and password**, or use **Google (Gmail), GitHub, GitLab, or Microsoft 365** when the server administrator has configured **OAuth** for those providers  
 - **Add expenses** with amount, **transaction date**, category, how often the cost occurs, how you paid, **State** (**Active** or **Cancel**), and an optional note (recurring metadata is derived from the transaction date)  
 - **Import** a **comma-separated values or PDF** statement, **review** each line, set **categories** (and adjust **frequency** if needed), then commit the import (see below); use category **Renewal** plus a **renewal type** for long-cycle renewals (see [Renewals screen](#renewals-screen))  
-- Open **Renewals** in the header to work with renewal-tagged expenses only (annual fees, domains, policies, and similar)  
-- Open **Prescriptions** to track medical, dental, vision, supplements, and equipment on **irregular renewal cycles** (**1–11 months** in monthly steps, or **1–5 years**), with **next renewal date** reminders in the app  
+- Open **Lists** → **Renewals** to work with renewal-tagged expenses only (annual fees, domains, policies, and similar)  
+- Open **Lists** → **Prescriptions** to track medical, dental, vision, supplements, and equipment on **irregular renewal cycles** (**1–11 months** in monthly steps, or **1–5 years**), with **next renewal date** reminders in the app  
 - **Delete** expenses from the list  
-- **View reports** as charts: daily, weekly, monthly, yearly, or a custom date range  
+- **Lists** → **Reports** shows charts: daily, weekly, monthly, yearly, or a custom date range  
 - See **stored monthly summaries** (totals computed by a background job on a schedule)
 
 The interface is **responsive**: it works on phones, tablets, and desktops.
