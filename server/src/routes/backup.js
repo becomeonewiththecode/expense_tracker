@@ -45,6 +45,40 @@ function parseDate(d) {
   return null;
 }
 
+/**
+ * PostgreSQL DATE columns often arrive as JS Date objects. Never use String(date).slice(0,10)
+ * (that yields locale strings like "Mon Mar 30").
+ * @param {unknown} value
+ * @returns {string | null}
+ */
+function normalizePgDateForBackup(value) {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return value.toISOString().slice(0, 10);
+  }
+  const s = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const t = Date.parse(s);
+  if (!Number.isNaN(t)) return new Date(t).toISOString().slice(0, 10);
+  return null;
+}
+
+/**
+ * Accept YYYY-MM-DD plus values from older broken exports (bad slice of Date string).
+ * @param {unknown} raw
+ * @returns {string | null}
+ */
+function parsePrescriptionNextRenewalForRestore(raw) {
+  const strict = parseIsoDate(raw);
+  if (strict) return strict;
+  if (raw == null || raw === "") return null;
+  const t = Date.parse(String(raw));
+  if (!Number.isNaN(t)) return new Date(t).toISOString().slice(0, 10);
+  return null;
+}
+
 function normalizeExpenseRow(row) {
   let spent_at = row.spent_at;
   if (spent_at != null) {
@@ -80,10 +114,7 @@ function normalizePrescriptionRow(row) {
     name: row.name ?? "",
     amount: row.amount != null ? Number(row.amount) : 0,
     renewal_period: row.renewal_period,
-    next_renewal_date:
-      row.next_renewal_date != null
-        ? String(row.next_renewal_date).slice(0, 10)
-        : null,
+    next_renewal_date: normalizePgDateForBackup(row.next_renewal_date),
     vendor: row.vendor ?? "",
     notes: row.notes ?? "",
     category: row.category,
@@ -113,7 +144,7 @@ function validatePrescriptionForRestore(raw, index) {
   if (!renewal_period) {
     return { ok: false, error: `${label}: ${PRESCRIPTION_RENEWAL_PERIOD_ERROR}` };
   }
-  const next_renewal_date = parseIsoDate(raw.next_renewal_date);
+  const next_renewal_date = parsePrescriptionNextRenewalForRestore(raw.next_renewal_date);
   if (!next_renewal_date) {
     return { ok: false, error: `${label}: invalid next_renewal_date (use YYYY-MM-DD)` };
   }
