@@ -12,6 +12,7 @@ You can:
 - **Add expenses** with amount, **transaction date**, category, how often the cost occurs, how you paid, **State** (**Active** or **Cancel**), and an optional note (recurring metadata is derived from the transaction date)  
 - **Import** a **comma-separated values or PDF** statement, **review** each line, set **categories** (and adjust **frequency** if needed), then commit the import (see below); use category **Renewal** plus a **renewal type** for long-cycle renewals (see [Renewals screen](#renewals-screen))  
 - Open **Renewals** in the header to work with renewal-tagged expenses only (annual fees, domains, policies, and similar)  
+- Open **Prescriptions** to track medical, dental, vision, supplements, and equipment on **irregular renewal cycles** (**1–11 months** in monthly steps, or **1–5 years**), with **next renewal date** reminders in the app  
 - **Delete** expenses from the list  
 - **View reports** as charts: daily, weekly, monthly, yearly, or a custom date range  
 - See **stored monthly summaries** (totals computed by a background job on a schedule)
@@ -137,9 +138,22 @@ Technical detail: [RENEWALS.md](./RENEWALS.md).
 
 ---
 
+## Prescriptions screen
+
+The **Prescriptions** tab (**`/prescriptions`**) is for items that **do not** follow the same model as bank-card **expenses**: you set a **renewal period** (**1–11 months** in monthly steps, then **1–5 years**), a **next renewal date**, and optional **vendor** and **notes**. **Categories** are **Medical**, **Dental**, **Vision**, **Supplements**, and **Equipment**. **State** works like expenses (**Active** / **Cancel**); cancelled lines stay in the list but **do not** appear in the reminder banner.
+
+- **Add prescription** — Fill **name**, **amount**, **category**, **renewal period**, **next renewal date**, **vendor**, **notes**, and **state**, then save.  
+- **Edit** / **Delete** — Use the row actions.  
+- **Renewed** — After a refill or visit, click **Renewed** to move **next renewal date** forward by one **renewal period** (you can still edit the date manually).  
+- **Reminders** — When an **active** item is due within about **30 days**, or is **1–14 days overdue**, a **cyan** **Prescription renewals** panel appears **above the page** (on Import, Expenses, Renewals, Prescriptions, Reports, Profile). It is **in-app only** (not email). Use **Dismiss for this visit** to hide it until you reload or change prescriptions. Saving on this page updates the banner for the same session.
+
+Technical detail: [PRESCRIPTIONS.md](./PRESCRIPTIONS.md).
+
+---
+
 ## Reports screen
 
-The **Reports** page shows **charts** of spending for different periods. The same **Upcoming renewals** panel (when applicable) appears above the report content as on other main screens.
+The **Reports** page shows **charts** of spending for different periods. The same **Upcoming renewals** and **Prescription renewals** panels (when applicable) appear above the report content as on other main screens.
 
 Use the tabs:
 
@@ -159,7 +173,7 @@ The application can show **precomputed monthly totals** from the `monthly_summar
 
 ## Profile
 
-The header shows **Import**, **Expenses**, **Renewals**, and **Reports** as the main navigation; there is no separate **Profile** tab. Signed-in users open **Profile** from the **account menu** (click the avatar in the header) to update **email**, **password**, and **profile picture**. **Recovery code** (under **Password recovery**): generate a code once, store it safely offline, and use it on **`/recover`** if you forget your password. The **full code is shown only at the moment you create or replace it**; afterward, Profile shows a **masked placeholder** so you can see that a code is on file without seeing the secret. Replacing or removing the code invalidates the previous one.
+The header shows **Import**, **Expenses**, **Renewals**, **Prescriptions**, and **Reports** as the main navigation; there is no separate **Profile** tab. Signed-in users open **Profile** from the **account menu** (click the avatar in the header) to update **email**, **password**, and **profile picture**. **Recovery code** (under **Password recovery**): generate a code once, store it safely offline, and use it on **`/recover`** if you forget your password. The **full code is shown only at the moment you create or replace it**; afterward, Profile shows a **masked placeholder** so you can see that a code is on file without seeing the secret. Replacing or removing the code invalidates the previous one.
 
 **Backup and restore:** Download a **JSON** file of all expenses (`expense-tracker-backup` format). The file includes an **`account`** object (**`userId`**, **`email`**, and a human-readable **`label`**) so you can see which user the backup belongs to—downloads also use the email in the **filename**. **`account.hasRecoveryCode`** indicates whether a recovery code is on file; **`account.recoveryCode`** may contain the actual code (so you can restore password recovery after moving servers). Codes created before the server stored an exportable copy will show **`hasRecoveryCode`** without **`recoveryCode`** until you **replace** the code once. The top-level **`email`** field is still present for compatibility. Each expense object includes **`spent_at`**, **`frequency`**, **`state`** (`active` or `cancel`), category, institution, amount, description, optional **`website`** and **`renewal_kind`** when applicable, and denormalized **`payment_day`** / **`payment_month`** (derived from **`spent_at`** on save and restore). Older backup files without **`state`** still restore successfully (**Active** is assumed). **Restore** loads data into the **currently signed-in** account. If the backup’s email does not match your session, the app asks you to confirm before importing; the API can also reject a cross-account restore unless you confirm. **Append** adds imported rows to existing data; **Replace** deletes all current expenses first, then imports the file (use with care). Each restore is limited to **25,000** expense rows and a **15 MB** request body. Store backup files securely. If **Download backup** or **Restore** reports **Invalid token**, try **Continue session** if a prompt appears; otherwise **sign out** and **sign in** again (or the server’s signing secret may have changed).
 
@@ -179,6 +193,7 @@ The header shows **Import**, **Expenses**, **Renewals**, and **Reports** as the 
 
 - **Installation, ports, OAuth, and production Compose:** root `README.md` and [deployment/docker-compose/README.md](../deployment/docker-compose/README.md)  
 - **Renewals feature (API, import, data model):** [RENEWALS.md](./RENEWALS.md)  
+- **Prescriptions feature (API, reminders, data model):** [PRESCRIPTIONS.md](./PRESCRIPTIONS.md)  
 - **How the system is built (including single sign-on and recovery):** [ARCHITECTURE.md](./ARCHITECTURE.md)  
 - **PM2 process manager:** [HOWTO_CONTROLLING_APPLICATIONS.md](./HOWTO_CONTROLLING_APPLICATIONS.md)  
 - **Deployment index (Compose and Kubernetes):** [deployment/README.md](../deployment/README.md)

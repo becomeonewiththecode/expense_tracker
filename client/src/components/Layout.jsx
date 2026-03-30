@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 import RenewalReminders from "./RenewalReminders.jsx";
+import PrescriptionReminders from "./PrescriptionReminders.jsx";
 
 const linkClass = ({ isActive }) =>
   [
@@ -49,6 +50,9 @@ export default function Layout() {
             </NavLink>
             <NavLink to="/renewals" className={linkClass}>
               Renewals
+            </NavLink>
+            <NavLink to="/prescriptions" className={linkClass}>
+              Prescriptions
             </NavLink>
             <NavLink to="/reports" className={linkClass}>
               Reports
@@ -155,6 +159,7 @@ export default function Layout() {
           onTablesExpandedChange={setRenewalTablesExpanded}
           onRenewalChipChange={setRenewalChip}
         />
+        <PrescriptionReminders />
         <Outlet />
       </main>
     </div>
