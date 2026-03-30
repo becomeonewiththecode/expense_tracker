@@ -7,6 +7,8 @@ import {
   parseExpenseState,
   parseFinancialInstitution,
   parseFrequency,
+  parseRenewalKind,
+  parseWebsite,
   CATEGORY_ERROR,
   STATE_ERROR,
   paymentMetaFromSpentAt,
@@ -56,6 +58,8 @@ function normalizeExpenseRow(row) {
     payment_day: row.payment_day != null ? Number(row.payment_day) : null,
     payment_month: row.payment_month != null ? Number(row.payment_month) : null,
     description: row.description ?? "",
+    website: row.website != null && String(row.website).trim() !== "" ? String(row.website).trim() : null,
+    renewal_kind: row.renewal_kind ?? null,
     spent_at,
   };
 }
@@ -100,6 +104,19 @@ function validateExpenseForRestore(raw, index) {
     }
     state = parsed;
   }
+  const website = parseWebsite(raw.website);
+  let renewal_kind = null;
+  if (category === "renewal") {
+    renewal_kind = parseRenewalKind(raw.renewal_kind);
+    if (!renewal_kind) {
+      return {
+        ok: false,
+        error: `${label}: renewal category requires a valid renewal_kind (renewal type)`,
+      };
+    }
+  } else if (raw.renewal_kind != null && String(raw.renewal_kind).trim() !== "") {
+    return { ok: false, error: `${label}: renewal_kind is only allowed when category is renewal` };
+  }
   return {
     ok: true,
     values: {
@@ -111,6 +128,8 @@ function validateExpenseForRestore(raw, index) {
       payment_day,
       payment_month,
       description,
+      website,
+      renewal_kind,
       spent_at,
     },
   };
@@ -137,7 +156,7 @@ backupRouter.get("/export", authRequired, async (req, res) => {
         ? decryptRecoveryStored(userRow.recovery_code_ciphertext, userId)
         : null;
     const { rows } = await pool.query(
-      `SELECT amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at
+      `SELECT amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at
        FROM expenses WHERE user_id = $1
        ORDER BY spent_at ASC, id ASC`,
       [req.userId]
@@ -249,8 +268,8 @@ backupRouter.post(
       }
       for (const v of validated) {
         await client.query(
-          `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, spent_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
           [
             req.userId,
             v.amount,
@@ -261,6 +280,8 @@ backupRouter.post(
             v.payment_day,
             v.payment_month,
             v.description,
+            v.website,
+            v.renewal_kind,
             v.spent_at,
           ]
         );

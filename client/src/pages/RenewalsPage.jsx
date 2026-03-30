@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api";
 import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
 import ExpenseTable from "../components/ExpenseTable.jsx";
 import ProjectionModal from "../components/ProjectionModal.jsx";
 import { computeProjectionPieData, computeSpendingProjection } from "../projection.js";
-import { formatCategory } from "../expenseOptions.js";
 
-/** Normalize API spent_at to YYYY-MM-DD for date inputs. */
 function toDateInputValue(spentAt) {
   if (spentAt == null) return "";
   const s = String(spentAt);
@@ -16,14 +14,15 @@ function toDateInputValue(spentAt) {
   return Number.isNaN(t) ? "" : new Date(t).toISOString().slice(0, 10);
 }
 
-function projectionContextLabel(row) {
-  const cat = formatCategory(row.category);
-  const note = (row.description || "").trim();
-  const short = note.length > 48 ? `${note.slice(0, 46)}…` : note;
-  return short ? `${cat} · ${short}` : cat;
+function createRenewalManualForm() {
+  return {
+    ...createEmptyManualExpenseForm(),
+    category: "renewal",
+    frequency: "yearly",
+  };
 }
 
-export default function YourExpensesPage() {
+export default function RenewalsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -31,24 +30,17 @@ export default function YourExpensesPage() {
   const [expenseEditDraft, setExpenseEditDraft] = useState(null);
   const [expenseSaving, setExpenseSaving] = useState(false);
   const [expensesModifyMode, setExpensesModifyMode] = useState(false);
-  /** `all` = combined projection for every saved expense; `row` = single expense snapshot. */
-  const [projectionTarget, setProjectionTarget] = useState(null);
-  const [addForm, setAddForm] = useState(() => createEmptyManualExpenseForm());
+  const [projectionOpen, setProjectionOpen] = useState(false);
+  const [addForm, setAddForm] = useState(() => createRenewalManualForm());
   const [addSaving, setAddSaving] = useState(false);
-
-  /** Renewal-category rows belong on Renewals, not in this list. */
-  const expenseListItems = useMemo(
-    () => items.filter((r) => r.category !== "renewal"),
-    [items]
-  );
 
   async function load() {
     setError("");
     try {
-      const { data } = await api.get("/expenses");
+      const { data } = await api.get("/expenses", { params: { category: "renewal", limit: 500 } });
       setItems(data);
     } catch (e) {
-      setError(e.response?.data?.error || "Failed to load expenses");
+      setError(e.response?.data?.error || "Failed to load renewals");
     } finally {
       setLoading(false);
     }
@@ -59,21 +51,13 @@ export default function YourExpensesPage() {
   }, []);
 
   useEffect(() => {
-    if (expenseListItems.length === 0) {
+    if (items.length === 0) {
       setExpensesModifyMode(false);
       setExpenseEditId(null);
       setExpenseEditDraft(null);
-      setProjectionTarget(null);
+      setProjectionOpen(false);
     }
-  }, [expenseListItems.length]);
-
-  useEffect(() => {
-    if (projectionTarget?.kind !== "row") return;
-    const row = items.find((r) => r.id === projectionTarget.row.id);
-    if (!row || row.category === "renewal") {
-      setProjectionTarget(null);
-    }
-  }, [items, projectionTarget]);
+  }, [items.length]);
 
   function openExpenseEdit(row) {
     if (!expensesModifyMode) return;
@@ -105,7 +89,7 @@ export default function YourExpensesPage() {
       return;
     }
     if (expenseEditDraft.category === "renewal" && !expenseEditDraft.renewal_kind?.trim()) {
-      setError("Choose a renewal type for Renewal category.");
+      setError("Choose a renewal type.");
       return;
     }
     setExpenseSaving(true);
@@ -116,9 +100,7 @@ export default function YourExpensesPage() {
         amount,
         category: expenseEditDraft.category,
         renewal_kind:
-          expenseEditDraft.category === "renewal"
-            ? expenseEditDraft.renewal_kind
-            : undefined,
+          expenseEditDraft.category === "renewal" ? expenseEditDraft.renewal_kind : undefined,
         website: expenseEditDraft.website,
         frequency: expenseEditDraft.frequency,
         financial_institution: expenseEditDraft.financial_institution,
@@ -126,7 +108,7 @@ export default function YourExpensesPage() {
         description: expenseEditDraft.description,
       });
       cancelExpenseEdit();
-      setProjectionTarget(null);
+      setProjectionOpen(false);
       load();
     } catch (err) {
       setError(err.response?.data?.error || "Could not save changes");
@@ -136,7 +118,7 @@ export default function YourExpensesPage() {
   }
 
   async function remove(id) {
-    if (!confirm("Delete this expense?")) return;
+    if (!confirm("Delete this renewal item?")) return;
     if (expenseEditId === id) cancelExpenseEdit();
     try {
       await api.delete(`/expenses/${id}`);
@@ -158,8 +140,8 @@ export default function YourExpensesPage() {
       setError("Enter a valid amount");
       return;
     }
-    if (addForm.category === "renewal" && !addForm.renewal_kind?.trim()) {
-      setError("Choose a renewal type for Renewal category.");
+    if (!addForm.renewal_kind?.trim()) {
+      setError("Choose a renewal type.");
       return;
     }
     setAddSaving(true);
@@ -167,8 +149,8 @@ export default function YourExpensesPage() {
     try {
       await api.post("/expenses", {
         amount,
-        category: addForm.category,
-        renewal_kind: addForm.category === "renewal" ? addForm.renewal_kind : undefined,
+        category: "renewal",
+        renewal_kind: addForm.renewal_kind,
         website: addForm.website || undefined,
         financial_institution: addForm.financial_institution,
         frequency: addForm.frequency,
@@ -176,12 +158,12 @@ export default function YourExpensesPage() {
         description: addForm.description,
         spent_at: addForm.spent_at,
       });
-      setAddForm(createEmptyManualExpenseForm());
-      setProjectionTarget(null);
+      setAddForm(createRenewalManualForm());
+      setProjectionOpen(false);
       if (expenseEditId) cancelExpenseEdit();
       await load();
     } catch (err) {
-      setError(err.response?.data?.error || "Could not save expense");
+      setError(err.response?.data?.error || "Could not save");
     } finally {
       setAddSaving(false);
     }
@@ -190,11 +172,11 @@ export default function YourExpensesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-white">Expenses</h1>
+        <h1 className="text-xl font-semibold text-white">Renewals</h1>
         <p className="text-sm text-slate-400 mt-1">
           {loading
             ? "Loading…"
-            : "Add expenses here or on Import; review, edit, or delete. Items with category Renewal appear under Renewals. Default order is newest first—click a column heading to sort."}
+            : "Track renewals on unusual schedules (annual, multi-year, and other frequencies). Each row is an expense with category Renewal, a renewal type, and an optional website. On Import, choose category Renewal and pick a type for each line you want listed here."}
         </p>
       </div>
 
@@ -210,12 +192,13 @@ export default function YourExpensesPage() {
             form={addForm}
             setForm={setAddForm}
             onSubmit={addExpense}
-            submitLabel={addSaving ? "Saving…" : "Add expense"}
+            submitLabel={addSaving ? "Saving…" : "Add renewal"}
             disabled={addSaving}
           />
           <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-center space-y-3">
             <p className="text-slate-400 text-sm">
-              No saved expenses yet. Use the form above or import a statement.
+              No renewal items yet. Add one above, or import a statement and set category to{" "}
+              <strong className="text-slate-300">Renewal</strong> plus a renewal type for each row.
             </p>
             <Link
               to="/expenses"
@@ -231,14 +214,14 @@ export default function YourExpensesPage() {
         <details className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 group">
           <summary className="cursor-pointer text-sm font-medium text-slate-200 list-none [&::-webkit-details-marker]:hidden flex items-center gap-2">
             <span className="text-slate-500 group-open:rotate-90 transition-transform inline-block">▸</span>
-            Add expense manually
+            Add renewal manually
           </summary>
           <div className="mt-4 pt-4 border-t border-slate-800">
             <ManualExpenseForm
               form={addForm}
               setForm={setAddForm}
               onSubmit={addExpense}
-              submitLabel={addSaving ? "Saving…" : "Add expense"}
+              submitLabel={addSaving ? "Saving…" : "Add renewal"}
               disabled={addSaving}
             />
           </div>
@@ -246,74 +229,33 @@ export default function YourExpensesPage() {
       )}
 
       {!loading && items.length > 0 && (
-        <>
-          {expenseListItems.length === 0 && (
-            <p className="text-sm text-slate-400 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2">
-              You only have renewal items right now—they are listed under{" "}
-              <Link to="/renewals" className="text-sky-400 hover:text-sky-300">
-                Renewals
-              </Link>
-              .
-            </p>
-          )}
-          <ExpenseTable
-            items={expenseListItems}
-            expensesModifyMode={expensesModifyMode}
-            setExpensesModifyMode={setModifyMode}
-            expenseEditId={expenseEditId}
-            expenseEditDraft={expenseEditDraft}
-            setExpenseEditDraft={setExpenseEditDraft}
-            expenseSaving={expenseSaving}
-            openExpenseEdit={openExpenseEdit}
-            cancelExpenseEdit={cancelExpenseEdit}
-            saveExpenseEdit={saveExpenseEdit}
-            remove={remove}
-            onProjection={() => setProjectionTarget({ kind: "all" })}
-            onRowProjection={(row) => setProjectionTarget({ kind: "row", row })}
-            showRenewalColumns={expenseEditDraft?.category === "renewal"}
-          />
-        </>
+        <ExpenseTable
+          items={items}
+          expensesModifyMode={expensesModifyMode}
+          setExpensesModifyMode={setModifyMode}
+          expenseEditId={expenseEditId}
+          expenseEditDraft={expenseEditDraft}
+          setExpenseEditDraft={setExpenseEditDraft}
+          expenseSaving={expenseSaving}
+          openExpenseEdit={openExpenseEdit}
+          cancelExpenseEdit={cancelExpenseEdit}
+          saveExpenseEdit={saveExpenseEdit}
+          remove={remove}
+          onProjection={() => setProjectionOpen(true)}
+          showRenewalColumns
+          tableTitle="Renewal items"
+        />
       )}
 
       <ProjectionModal
-        open={projectionTarget != null}
-        onClose={() => setProjectionTarget(null)}
-        projection={
-          projectionTarget
-            ? projectionTarget.kind === "all"
-              ? computeSpendingProjection(expenseListItems)
-              : computeSpendingProjection([projectionTarget.row])
-            : null
-        }
-        contextLabel={
-          projectionTarget?.kind === "row"
-            ? projectionContextLabel(projectionTarget.row)
-            : projectionTarget?.kind === "all"
-              ? "All expenses (combined)"
-              : undefined
-        }
-        singleItem={projectionTarget?.kind === "row"}
-        pieData={computeProjectionPieData(
-          projectionTarget?.kind === "all"
-            ? expenseListItems
-            : projectionTarget?.kind === "row"
-              ? [projectionTarget.row]
-              : []
-        )}
-        projectionItems={
-          projectionTarget?.kind === "all"
-            ? expenseListItems
-            : projectionTarget?.kind === "row"
-              ? [projectionTarget.row]
-              : []
-        }
-        projectionScopeKey={
-          projectionTarget == null
-            ? ""
-            : projectionTarget.kind === "all"
-              ? "all"
-              : String(projectionTarget.row.id)
-        }
+        open={projectionOpen}
+        onClose={() => setProjectionOpen(false)}
+        projection={projectionOpen ? computeSpendingProjection(items) : null}
+        contextLabel="All renewals (combined)"
+        singleItem={false}
+        pieData={computeProjectionPieData(projectionOpen ? items : [])}
+        projectionItems={projectionOpen ? items : []}
+        projectionScopeKey={projectionOpen ? "renewals-all" : ""}
       />
     </div>
   );

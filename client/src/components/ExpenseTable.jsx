@@ -4,10 +4,12 @@ import {
   EXPENSE_STATE_OPTIONS,
   FREQUENCY_OPTIONS,
   FINANCIAL_INSTITUTION_OPTIONS,
+  RENEWAL_KIND_OPTIONS,
   formatCategory,
   formatExpenseState,
   formatFinancialInstitution,
   formatFrequency,
+  formatRenewalKind,
 } from "../expenseOptions.js";
 
 /** Normalize API spent_at to YYYY-MM-DD for date inputs and sorting. */
@@ -24,6 +26,8 @@ const SORT_KEYS = [
   "spent_at",
   "amount",
   "category",
+  "renewal_kind",
+  "website",
   "frequency",
   "financial_institution",
   "state",
@@ -51,6 +55,18 @@ function compareExpenseRows(a, b, key, dir) {
       cmp = formatCategory(a.category).localeCompare(formatCategory(b.category), undefined, {
         sensitivity: "base",
       });
+      break;
+    case "renewal_kind":
+      cmp = formatRenewalKind(a.renewal_kind).localeCompare(
+        formatRenewalKind(b.renewal_kind),
+        undefined,
+        { sensitivity: "base" }
+      );
+      break;
+    case "website":
+      cmp = String(a.website ?? "")
+        .toLowerCase()
+        .localeCompare(String(b.website ?? "").toLowerCase(), undefined, { numeric: true });
       break;
     case "frequency":
       cmp = formatFrequency(a.frequency).localeCompare(formatFrequency(b.frequency), undefined, {
@@ -126,6 +142,8 @@ function rowSnapshotForProjection(row, draft) {
       ...row,
       amount: Number.isFinite(amt) ? amt : row.amount,
       category: draft.category,
+      renewal_kind: draft.renewal_kind,
+      website: draft.website,
       frequency: draft.frequency,
       financial_institution: draft.financial_institution,
       state: draft.state,
@@ -149,7 +167,10 @@ export default function ExpenseTable({
   saveExpenseEdit,
   remove,
   onProjection,
+  /** Omit to hide per-row Projection (e.g. Renewals list). */
   onRowProjection,
+  showRenewalColumns = false,
+  tableTitle = "Expenses",
 }) {
   const [sort, setSort] = useState({ key: null, dir: "asc" });
 
@@ -170,7 +191,7 @@ export default function ExpenseTable({
   return (
     <div className="rounded-xl border border-slate-800 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-900/80 border-b border-slate-800">
-        <h2 className="text-sm font-medium text-slate-200">Expenses</h2>
+        <h2 className="text-sm font-medium text-slate-200">{tableTitle}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -247,6 +268,24 @@ export default function ExpenseTable({
                 onSort={handleSort}
                 className="px-4 py-3 hidden md:table-cell w-[5.5rem]"
               />
+              {showRenewalColumns && (
+                <SortableTh
+                  colKey="renewal_kind"
+                  label="Renewal type"
+                  sort={sort}
+                  onSort={handleSort}
+                  className="px-4 py-3 min-w-[9rem] hidden lg:table-cell"
+                />
+              )}
+              {showRenewalColumns && (
+                <SortableTh
+                  colKey="website"
+                  label="Website"
+                  sort={sort}
+                  onSort={handleSort}
+                  className="px-4 py-3 min-w-[8rem] hidden xl:table-cell"
+                />
+              )}
               <SortableTh
                 colKey="description"
                 label="Note"
@@ -306,11 +345,18 @@ export default function ExpenseTable({
                     {editing && d ? (
                       <select
                         value={d.category}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const category = e.target.value;
                           setExpenseEditDraft((prev) =>
-                            prev ? { ...prev, category: e.target.value } : prev
-                          )
-                        }
+                            prev
+                              ? {
+                                  ...prev,
+                                  category,
+                                  renewal_kind: category === "renewal" ? prev.renewal_kind : "",
+                                }
+                              : prev
+                          );
+                        }}
                         className="w-full max-w-[11rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
                       >
                         {CATEGORY_OPTIONS.map((o) => (
@@ -392,6 +438,67 @@ export default function ExpenseTable({
                       formatExpenseState(row.state)
                     )}
                   </td>
+                  {showRenewalColumns && (
+                    <td
+                      className={`px-4 py-3 text-slate-300 align-middle hidden lg:table-cell ${editing ? "" : ""}`}
+                    >
+                      {editing && d && d.category === "renewal" ? (
+                        <select
+                          value={d.renewal_kind || ""}
+                          onChange={(e) =>
+                            setExpenseEditDraft((prev) =>
+                              prev ? { ...prev, renewal_kind: e.target.value } : prev
+                            )
+                          }
+                          className="w-full max-w-[12rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        >
+                          <option value="">— Type —</option>
+                          {RENEWAL_KIND_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : row.category === "renewal" ? (
+                        formatRenewalKind(row.renewal_kind)
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  )}
+                  {showRenewalColumns && (
+                    <td
+                      className={`px-4 py-3 text-slate-300 align-middle hidden xl:table-cell max-w-[12rem]`}
+                    >
+                      {editing && d && d.category === "renewal" ? (
+                        <input
+                          value={d.website ?? ""}
+                          onChange={(e) =>
+                            setExpenseEditDraft((prev) =>
+                              prev ? { ...prev, website: e.target.value } : prev
+                            )
+                          }
+                          className="w-full min-w-0 rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-slate-300 text-xs"
+                          placeholder="URL or portal"
+                        />
+                      ) : row.category === "renewal" && row.website ? (
+                        <a
+                          href={
+                            /^https?:\/\//i.test(row.website)
+                              ? row.website
+                              : `https://${row.website}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sky-400 hover:text-sky-300 truncate block max-w-[12rem]"
+                        >
+                          {row.website}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  )}
                   <td
                     className={`px-4 py-3 align-middle ${editing ? "" : "hidden sm:table-cell"}`}
                   >
@@ -413,13 +520,15 @@ export default function ExpenseTable({
                   <td className="px-4 py-3 text-right align-middle min-w-[15rem]">
                     {editing ? (
                       <div className="flex flex-row flex-wrap gap-x-3 gap-y-1 justify-end items-center">
-                        <button
-                          type="button"
-                          onClick={() => onRowProjection(snapshot)}
-                          className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
-                        >
-                          Projection
-                        </button>
+                        {onRowProjection && (
+                          <button
+                            type="button"
+                            onClick={() => onRowProjection(snapshot)}
+                            className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
+                          >
+                            Projection
+                          </button>
+                        )}
                         <button
                           type="button"
                           disabled={expenseSaving}
@@ -439,13 +548,15 @@ export default function ExpenseTable({
                       </div>
                     ) : (
                       <div className="flex flex-row flex-wrap gap-x-3 gap-y-1 justify-end items-center">
-                        <button
-                          type="button"
-                          onClick={() => onRowProjection(snapshot)}
-                          className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
-                        >
-                          Projection
-                        </button>
+                        {onRowProjection && (
+                          <button
+                            type="button"
+                            onClick={() => onRowProjection(snapshot)}
+                            className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
+                          >
+                            Projection
+                          </button>
+                        )}
                         {expensesModifyMode && (
                           <button
                             type="button"

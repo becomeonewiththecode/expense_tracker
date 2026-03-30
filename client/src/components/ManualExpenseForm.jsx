@@ -3,6 +3,7 @@ import {
   EXPENSE_STATE_OPTIONS,
   FREQUENCY_OPTIONS,
   FINANCIAL_INSTITUTION_OPTIONS,
+  RENEWAL_KIND_OPTIONS,
 } from "../expenseOptions.js";
 
 export function todayISODate() {
@@ -17,6 +18,8 @@ export function createEmptyManualExpenseForm() {
     frequency: "monthly",
     state: "active",
     description: "",
+    renewal_kind: "",
+    website: "",
     spent_at: todayISODate(),
   };
 }
@@ -50,7 +53,14 @@ export default function ManualExpenseForm({
         <label className="text-xs text-slate-500 block mb-1">Category</label>
         <select
           value={form.category}
-          onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+          onChange={(e) => {
+            const category = e.target.value;
+            setForm((f) => ({
+              ...f,
+              category,
+              renewal_kind: category === "renewal" ? f.renewal_kind : "",
+            }));
+          }}
           className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
         >
           {CATEGORY_OPTIONS.map((o) => (
@@ -60,6 +70,36 @@ export default function ManualExpenseForm({
           ))}
         </select>
       </div>
+      {form.category === "renewal" && (
+        <div className="sm:col-span-2 lg:col-span-2">
+          <label className="text-xs text-slate-500 block mb-1">Renewal type</label>
+          <select
+            value={form.renewal_kind}
+            onChange={(e) => setForm((f) => ({ ...f, renewal_kind: e.target.value }))}
+            required
+            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          >
+            <option value="">— Select type —</option>
+            {RENEWAL_KIND_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {form.category === "renewal" && (
+        <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
+          <label className="text-xs text-slate-500 block mb-1">Website (optional)</label>
+          <input
+            type="text"
+            value={form.website}
+            onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))}
+            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+            placeholder="https://…"
+          />
+        </div>
+      )}
       <div>
         <label className="text-xs text-slate-500 block mb-1">Frequency</label>
         <select

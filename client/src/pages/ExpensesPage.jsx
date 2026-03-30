@@ -6,6 +6,7 @@ import {
   CATEGORY_OPTIONS,
   FINANCIAL_INSTITUTION_OPTIONS,
   FREQUENCY_OPTIONS,
+  RENEWAL_KIND_OPTIONS,
 } from "../expenseOptions.js";
 import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
 
@@ -62,11 +63,17 @@ export default function ExpensesPage() {
       setError("Enter a valid amount");
       return;
     }
+    if (form.category === "renewal" && !form.renewal_kind?.trim()) {
+      setError("Choose a renewal type when category is Renewal.");
+      return;
+    }
     const wasEmpty = items.length === 0;
     try {
       await api.post("/expenses", {
         amount,
         category: form.category,
+        renewal_kind: form.category === "renewal" ? form.renewal_kind : undefined,
+        website: form.website || undefined,
         financial_institution: form.financial_institution,
         frequency: form.frequency,
         state: form.state,
@@ -142,9 +149,16 @@ export default function ExpensesPage() {
 
   async function commitStaging() {
     if (!staging?.batch?.id) return;
-    const categorized = staging.rows.filter((r) => r.category);
+    const categorized = staging.rows.filter(
+      (r) => r.category && (r.category !== "renewal" || r.renewal_kind)
+    );
+    const needsRenewalType = staging.rows.some((r) => r.category === "renewal" && !r.renewal_kind);
     if (!categorized.length) {
-      setError("Select at least one category to import anything.");
+      setError(
+        needsRenewalType
+          ? "Rows marked Renewal need a renewal type before import."
+          : "Select at least one category to import anything."
+      );
       return;
     }
     setError("");
@@ -179,7 +193,9 @@ export default function ExpensesPage() {
     }
   }
 
-  const uncategorizedCount = staging ? staging.rows.filter((r) => !r.category).length : 0;
+  const uncategorizedCount = staging
+    ? staging.rows.filter((r) => !r.category || (r.category === "renewal" && !r.renewal_kind)).length
+    : 0;
 
   const hasSavedExpenses = items.length > 0;
   const showOnboarding = !loading && !hasSavedExpenses;
@@ -229,7 +245,7 @@ export default function ExpensesPage() {
           <h2 className="text-sm font-semibold text-white">Import from statement</h2>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl">
             Upload a <strong className="text-slate-400">CSV</strong> or <strong className="text-slate-400">PDF</strong>. Parsed rows appear in the <strong className="text-slate-400">review table</strong> below.
-            Set defaults for <strong className="text-slate-400">institution</strong> and <strong className="text-slate-400">frequency</strong> before upload. Each row’s <strong className="text-slate-400">posted date</strong> comes from the statement. In <strong className="text-slate-400">Review import</strong>, set <strong className="text-slate-400">category</strong> (required) and adjust per-row <strong className="text-slate-400">frequency</strong> if needed. Saved expenses derive recurring metadata from each line’s posted date. Only rows with a category are saved when you commit. Credits / payments are skipped during parsing.
+            Set defaults for <strong className="text-slate-400">institution</strong> and <strong className="text-slate-400">frequency</strong> before upload. Each row’s <strong className="text-slate-400">posted date</strong> comes from the statement. In <strong className="text-slate-400">Review import</strong>, set <strong className="text-slate-400">category</strong> (required). For <strong className="text-slate-400">Renewal</strong>, also choose a <strong className="text-slate-400">renewal type</strong> and optionally a <strong className="text-slate-400">website</strong>; those rows appear under <strong className="text-slate-400">Renewals</strong>. Adjust per-row <strong className="text-slate-400">frequency</strong> if needed. Saved expenses derive recurring metadata from each line’s posted date. Only rows with a category (and a renewal type when category is Renewal) are saved when you commit. Credits / payments are skipped during parsing.
           </p>
         </div>
         <form onSubmit={runImportUpload} className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
@@ -296,7 +312,7 @@ export default function ExpensesPage() {
               <p className="text-xs text-amber-200/60 mt-0.5">
                 {staging.batch?.source_filename || "Statement"} · {staging.rows.length} row(s)
                 {uncategorizedCount > 0
-                  ? ` · ${uncategorizedCount} without category (will not be imported)`
+                  ? ` · ${uncategorizedCount} not ready (no category, or Renewal without a type)`
                   : ""}
               </p>
             </div>
@@ -325,6 +341,8 @@ export default function ExpensesPage() {
                   <th className="px-3 py-2">Posted</th>
                   <th className="px-3 py-2">Amount</th>
                   <th className="px-3 py-2 min-w-[10rem]">Category</th>
+                  <th className="px-3 py-2 min-w-[9rem]">Renewal type</th>
+                  <th className="px-3 py-2 min-w-[8rem]">Website</th>
                   <th className="px-3 py-2 min-w-[7rem]">Frequency</th>
                   <th className="px-3 py-2">Description</th>
                 </tr>
@@ -340,7 +358,7 @@ export default function ExpensesPage() {
                       <select
                         value={row.category || ""}
                         onChange={(e) =>
-                          patchImportStagingRow(row.id, { category: e.target.value })
+                          patchImportStagingRow(row.id, { category: e.target.value || null })
                         }
                         className="w-full max-w-[12rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
                       >
@@ -351,6 +369,45 @@ export default function ExpensesPage() {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      {row.category === "renewal" ? (
+                        <select
+                          value={row.renewal_kind || ""}
+                          onChange={(e) =>
+                            patchImportStagingRow(row.id, { renewal_kind: e.target.value || null })
+                          }
+                          className="w-full max-w-[13rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        >
+                          <option value="">— Type —</option>
+                          {RENEWAL_KIND_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-slate-600 text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {row.category === "renewal" ? (
+                        <input
+                          type="text"
+                          defaultValue={row.website || ""}
+                          key={`${row.id}-${row.website || ""}`}
+                          onBlur={(e) => {
+                            const v = e.target.value.trim();
+                            if (v !== (row.website || "")) {
+                              patchImportStagingRow(row.id, { website: v || null });
+                            }
+                          }}
+                          className="w-full max-w-[14rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-slate-300 text-xs"
+                          placeholder="Optional"
+                        />
+                      ) : (
+                        <span className="text-slate-600 text-xs">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <select

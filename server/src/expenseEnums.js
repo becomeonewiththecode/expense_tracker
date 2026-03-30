@@ -8,6 +8,51 @@ export const CATEGORIES = new Set([
   "mortgage",
   "insurance",
   "subscription",
+  "renewal",
+]);
+
+/** Sub-types for `category === "renewal"` (odd-interval renewals). */
+export const RENEWAL_KINDS = new Set([
+  "appliances",
+  "washer",
+  "dryer",
+  "domain_names",
+  "car_insurance",
+  "software_subscriptions",
+  "gym_membership",
+  "professional_certifications",
+  "magazine_subscriptions",
+  "online_education",
+  "web_hosting_services",
+  "home_warranty_plans",
+  "security_system_monitoring",
+  "vpn_subscriptions",
+  "cloud_storage_services",
+  "business_licenses",
+  "pet_insurance",
+  "parking_permits",
+  "streaming_services",
+  "credit_card_annual_fees",
+  "roadside_assistance_plans",
+  "home_security_cameras",
+  "equipment_maintenance_contracts",
+  "tax_preparation_software",
+  "legal_service_plans",
+  "medical_alert_systems",
+  "lawn_care_services",
+  "pest_control_contracts",
+  "identity_theft_protection",
+  "extended_warranties",
+  "timeshare_fees",
+  "professional_association_dues",
+  "safe_deposit_box_rental",
+  "backup_power_generator_service",
+  "water_softener_salt_delivery",
+  "propane_tank_refills",
+  "air_filter_subscription_services",
+  "hoa_fees",
+  "pool_maintenance_contracts",
+  "septic_tank_pumping_service",
 ]);
 
 export const FINANCIAL_INSTITUTIONS = new Set([
@@ -88,13 +133,51 @@ export function tryParsePaymentMonth(raw) {
 }
 
 export const CATEGORY_ERROR =
-  "Invalid category (use home, entertainment, personal, business, education, rent, mortgage, insurance, subscription)";
+  "Invalid category (use home, entertainment, personal, business, education, rent, mortgage, insurance, subscription, renewal)";
+
+export const RENEWAL_KIND_ERROR = "Invalid renewal_kind (unknown renewal type)";
+
+export const RENEWAL_KIND_REQUIRED =
+  "Renewal category requires renewal_kind (choose a renewal type such as appliances or domain_names)";
 
 export function parseCategory(value) {
   const s = String(value ?? "personal")
     .toLowerCase()
     .trim();
   return CATEGORIES.has(s) ? s : null;
+}
+
+/** @param {unknown} value */
+export function parseRenewalKind(value) {
+  const s = String(value ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_");
+  return RENEWAL_KINDS.has(s) ? s : null;
+}
+
+/** @param {unknown} value */
+export function parseWebsite(value) {
+  if (value === undefined || value === null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  return s.slice(0, 500);
+}
+
+/**
+ * @param {string} category
+ * @param {unknown} renewalKindRaw
+ * @returns {{ renewal_kind: string | null, error: string | null }}
+ */
+export function resolveRenewalFieldsForCategory(category, renewalKindRaw) {
+  if (category !== "renewal") {
+    return { renewal_kind: null, error: null };
+  }
+  const k = parseRenewalKind(renewalKindRaw);
+  if (!k) {
+    return { renewal_kind: null, error: RENEWAL_KIND_REQUIRED };
+  }
+  return { renewal_kind: k, error: null };
 }
 
 export function parseFinancialInstitution(value) {
