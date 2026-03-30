@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api";
 import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
@@ -22,6 +22,11 @@ function createRenewalManualForm() {
   };
 }
 
+/** Cancel rows stay in the table but are excluded from combined Projection (same idea as reminder subtotals). */
+function renewalRowsForProjection(rows) {
+  return rows.filter((r) => r.state !== "cancel");
+}
+
 export default function RenewalsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +38,8 @@ export default function RenewalsPage() {
   const [projectionOpen, setProjectionOpen] = useState(false);
   const [addForm, setAddForm] = useState(() => createRenewalManualForm());
   const [addSaving, setAddSaving] = useState(false);
+
+  const projectionSourceItems = useMemo(() => renewalRowsForProjection(items), [items]);
 
   async function load() {
     setError("");
@@ -250,11 +257,11 @@ export default function RenewalsPage() {
       <ProjectionModal
         open={projectionOpen}
         onClose={() => setProjectionOpen(false)}
-        projection={projectionOpen ? computeSpendingProjection(items) : null}
-        contextLabel="All renewals (combined)"
+        projection={projectionOpen ? computeSpendingProjection(projectionSourceItems) : null}
+        contextLabel="Active renewals (combined)"
         singleItem={false}
-        pieData={computeProjectionPieData(projectionOpen ? items : [])}
-        projectionItems={projectionOpen ? items : []}
+        pieData={computeProjectionPieData(projectionOpen ? projectionSourceItems : [])}
+        projectionItems={projectionOpen ? projectionSourceItems : []}
         projectionScopeKey={projectionOpen ? "renewals-all" : ""}
       />
     </div>
