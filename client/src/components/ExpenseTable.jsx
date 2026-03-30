@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CATEGORY_OPTIONS,
   EXPENSE_STATE_OPTIONS,
@@ -11,6 +11,8 @@ import {
   formatFrequency,
   formatRenewalKind,
 } from "../expenseOptions.js";
+import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
+import PaginationControls from "./PaginationControls.jsx";
 
 /** Normalize API spent_at to YYYY-MM-DD for date inputs and sorting. */
 function toDateInputValue(spentAt) {
@@ -173,11 +175,36 @@ export default function ExpenseTable({
   tableTitle = "Expenses",
 }) {
   const [sort, setSort] = useState({ key: null, dir: "asc" });
+  const rowsPerPage = useTableRowsPerPage();
+  const [page, setPage] = useState(1);
 
   const sortedItems = useMemo(
     () => sortExpenseItems(items, sort.key, sort.dir),
     [items, sort.key, sort.dir]
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [rowsPerPage]);
+
+  const totalItems = sortedItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / Math.max(1, rowsPerPage)));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+
+  const pageItems = sortedItems.slice(
+    (safePage - 1) * rowsPerPage,
+    safePage * rowsPerPage
+  );
+
+  useEffect(() => {
+    if (safePage !== page) setPage(safePage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safePage]);
+
+  function handlePageChange(nextPage) {
+    cancelExpenseEdit();
+    setPage(nextPage);
+  }
 
   function handleSort(colKey) {
     setSort((prev) => {
@@ -299,7 +326,7 @@ export default function ExpenseTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800 bg-slate-950/40">
-            {sortedItems.map((row) => {
+            {pageItems.map((row) => {
               const editing = expensesModifyMode && expenseEditId === row.id;
               const d = expenseEditDraft;
               const snapshot = rowSnapshotForProjection(row, editing ? d : null);
@@ -581,6 +608,14 @@ export default function ExpenseTable({
             })}
           </tbody>
         </table>
+        {totalItems > 0 && (
+          <PaginationControls
+            currentPage={safePage}
+            totalItems={totalItems}
+            pageSize={rowsPerPage}
+            onPageChange={handlePageChange}
+          />
+        )}
       </div>
     </div>
   );

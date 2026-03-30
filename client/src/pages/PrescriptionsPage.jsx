@@ -1,13 +1,46 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "../api";
+import ProjectionModal from "../components/ProjectionModal.jsx";
+import PaginationControls from "../components/PaginationControls.jsx";
+import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
 import {
   PRESCRIPTION_CATEGORY_OPTIONS,
   PRESCRIPTION_RENEWAL_PERIOD_OPTIONS,
   formatPrescriptionCategory,
   formatRenewalPeriod,
 } from "../prescriptionOptions.js";
+import {
+  computePrescriptionProjectionPieData,
+  computePrescriptionSpendingProjection,
+} from "../projection.js";
 import { advanceNextRenewalDate, daysUntilPrescriptionRenewal } from "../prescriptionSchedule.js";
 import { EXPENSE_STATE_OPTIONS, formatExpenseState } from "../expenseOptions.js";
+
+/** Cancel rows stay in the table but are excluded from combined Projection (same idea as Renewals). */
+function prescriptionRowsForProjection(rows) {
+  return rows.filter((r) => r.state !== "cancel");
+}
+
+function prescriptionRowSnapshotForProjection(row, draft) {
+  if (!draft) return row;
+  const amt = Number(draft.amount);
+  return {
+    ...row,
+    name: draft.name.trim(),
+    amount: Number.isFinite(amt) ? amt : row.amount,
+    renewal_period: draft.renewal_period,
+    category: draft.category,
+    state: draft.state,
+    next_renewal_date: draft.next_renewal_date,
+    vendor: draft.vendor ?? "",
+    notes: draft.notes ?? "",
+  };
+}
+
+function projectionContextLabel(row) {
+  const n = row.name?.trim();
+  return n ? `Prescription — ${n}` : "Prescription";
+}
 
 function emptyForm() {
   return {
@@ -26,11 +59,15 @@ export default function PrescriptionsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [addFormOpen, setAddFormOpen] = useState(false);
   const [addForm, setAddForm] = useState(emptyForm);
   const [addSaving, setAddSaving] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [projectionTarget, setProjectionTarget] = useState(null);
+  const rowsPerPage = useTableRowsPerPage();
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setError("");
@@ -48,6 +85,22 @@ export default function PrescriptionsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!loading && items.length === 0) {
+      setAddFormOpen(true);
+    }
+  }, [loading, items.length]);
+
+  useEffect(() => {
+    if (items.length === 0) setProjectionTarget(null);
+  }, [items.length]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [rowsPerPage]);
+
+  const projectionSourceItems = useMemo(() => prescriptionRowsForProjection(items), [items]);
 
   async function addPrescription(e) {
     e.preventDefault();
@@ -75,6 +128,7 @@ export default function PrescriptionsPage() {
       });
       setAddForm(emptyForm());
       await load();
+      setAddFormOpen(false);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save");
     } finally {
@@ -169,6 +223,19 @@ export default function PrescriptionsPage() {
     });
   }, [items]);
 
+  const totalItems = sortedItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / Math.max(1, rowsPerPage)));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pageItems = sortedItems.slice(
+    (safePage - 1) * rowsPerPage,
+    safePage * rowsPerPage
+  );
+
+  function handlePageChange(nextPage) {
+    cancelEdit();
+    setPage(nextPage);
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -184,7 +251,24 @@ export default function PrescriptionsPage() {
         <p className="text-sm text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-lg px-3 py-2">{error}</p>
       )}
 
+      {!loading && items.length > 0 ? (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+          <button
+            type="button"
+            onClick={() => setAddFormOpen((v) => !v)}
+            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-800/70 text-slate-200"
+            aria-expanded={addFormOpen}
+            aria-controls="prescriptions-add-form"
+          >
+            <span className="text-sm font-medium">Add prescription</span>
+            <span className="text-xs text-slate-400">{addFormOpen ? "Hide" : "Show"}</span>
+          </button>
+        </div>
+      ) : null}
+
+      {addFormOpen ? (
       <form
+        id="prescriptions-add-form"
         onSubmit={addPrescription}
         className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-end bg-slate-900/50 border border-slate-800 rounded-xl p-4"
       >
@@ -294,6 +378,7 @@ export default function PrescriptionsPage() {
           </button>
         </div>
       </form>
+      ) : null}
 
       {!loading && items.length === 0 && (
         <p className="text-sm text-slate-500 text-center py-8 border border-dashed border-slate-700 rounded-xl">
@@ -303,8 +388,15 @@ export default function PrescriptionsPage() {
 
       {!loading && items.length > 0 && (
         <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-900/80 border-b border-slate-800">
             <h2 className="text-sm font-medium text-slate-200">Your items</h2>
+            <button
+              type="button"
+              onClick={() => setProjectionTarget({ kind: "all" })}
+              className="rounded-lg border border-violet-500/40 bg-violet-950/40 hover:bg-violet-900/35 text-violet-200 text-xs font-medium px-3 py-1.5"
+            >
+              Projection
+            </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[56rem] text-sm text-left">
@@ -322,9 +414,10 @@ export default function PrescriptionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedItems.map((row) => {
+                {pageItems.map((row) => {
                   const editing = editId === row.id;
                   const d = editing ? editDraft : null;
+                  const projectionRow = prescriptionRowSnapshotForProjection(row, d);
                   const days = daysUntilPrescriptionRenewal(row.next_renewal_date);
                   return (
                     <tr key={row.id} className="border-t border-slate-800 bg-slate-900/40">
@@ -488,6 +581,13 @@ export default function PrescriptionsPage() {
                           <div className="flex flex-wrap justify-end gap-x-2 gap-y-1">
                             <button
                               type="button"
+                              onClick={() => setProjectionTarget({ kind: "row", row: projectionRow })}
+                              className="text-violet-400 hover:text-violet-300 text-xs"
+                            >
+                              Projection
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => markRenewed(row)}
                               className="text-cyan-400 hover:text-cyan-300 text-xs"
                               title="Advance next renewal by one cycle"
@@ -509,8 +609,58 @@ export default function PrescriptionsPage() {
               </tbody>
             </table>
           </div>
+          {totalItems > 0 ? (
+            <PaginationControls
+              currentPage={safePage}
+              totalItems={totalItems}
+              pageSize={rowsPerPage}
+              onPageChange={handlePageChange}
+            />
+          ) : null}
         </div>
       )}
+
+      <ProjectionModal
+        open={projectionTarget != null}
+        onClose={() => setProjectionTarget(null)}
+        projectionKind="prescription"
+        projection={
+          projectionTarget
+            ? projectionTarget.kind === "all"
+              ? computePrescriptionSpendingProjection(projectionSourceItems)
+              : computePrescriptionSpendingProjection([projectionTarget.row])
+            : null
+        }
+        contextLabel={
+          projectionTarget?.kind === "row"
+            ? projectionContextLabel(projectionTarget.row)
+            : projectionTarget?.kind === "all"
+              ? "Active prescriptions (combined)"
+              : undefined
+        }
+        singleItem={projectionTarget?.kind === "row"}
+        pieData={computePrescriptionProjectionPieData(
+          projectionTarget?.kind === "all"
+            ? projectionSourceItems
+            : projectionTarget?.kind === "row"
+              ? [projectionTarget.row]
+              : []
+        )}
+        projectionItems={
+          projectionTarget?.kind === "all"
+            ? projectionSourceItems
+            : projectionTarget?.kind === "row"
+              ? [projectionTarget.row]
+              : []
+        }
+        projectionScopeKey={
+          projectionTarget == null
+            ? ""
+            : projectionTarget.kind === "all"
+              ? "prescriptions-all"
+              : `prescription-${projectionTarget.row.id}`
+        }
+      />
     </div>
   );
 }

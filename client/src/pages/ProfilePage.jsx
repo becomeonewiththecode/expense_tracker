@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../api";
 import { getApiErrorMessage } from "../apiError.js";
 import { useAuth } from "../auth.jsx";
+import { getRowsPerPage, setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 
 export default function ProfilePage() {
   const { user, setSession, token, refreshUser } = useAuth();
@@ -17,6 +18,8 @@ export default function ProfilePage() {
   const [avatarOk, setAvatarOk] = useState("");
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+
+  const [rowsPerPage, setRowsPerPageUi] = useState(() => getRowsPerPage());
 
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryError, setRecoveryError] = useState("");
@@ -34,6 +37,12 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user?.email) setEmail(user.email);
   }, [user?.email]);
+
+  useEffect(() => {
+    const onChange = () => setRowsPerPageUi(getRowsPerPage());
+    window.addEventListener("tableRowsPerPage-changed", onChange);
+    return () => window.removeEventListener("tableRowsPerPage-changed", onChange);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -366,6 +375,33 @@ export default function ProfilePage() {
             )}
             {avatarOk && <p className="text-sm text-emerald-400">{avatarOk}</p>}
           </div>
+        </div>
+      </div>
+
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
+        <h2 className="text-sm font-medium text-slate-300">Table display</h2>
+        <div>
+          <label className="block text-xs font-medium text-slate-400 mb-1">
+            Rows per page (Expenses / Renewals / Prescriptions)
+          </label>
+          <select
+            value={rowsPerPage}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              setRowsPerPageUi(next);
+              setRowsPerPage(next);
+            }}
+            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          >
+            {TABLE_ROWS_PER_PAGE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] text-slate-500 mt-2">
+            Default is 19. Tables will page at the bottom of the list.
+          </p>
         </div>
       </div>
 
