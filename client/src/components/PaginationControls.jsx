@@ -3,6 +3,8 @@ export default function PaginationControls({
   totalItems,
   pageSize,
   onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = [],
 }) {
   const safePageSize = pageSize > 0 ? pageSize : 19;
   const totalPages = Math.max(1, Math.ceil((totalItems ?? 0) / safePageSize));
@@ -74,12 +76,31 @@ export default function PaginationControls({
         </button>
       </div>
 
-      <div className="text-xs text-slate-400">
-        Showing{" "}
-        <span className="text-slate-200">
-          {Math.min(totalItems ?? 0, (page - 1) * safePageSize + 1)}–{Math.min(totalItems ?? 0, page * safePageSize)}
-        </span>{" "}
-        of <span className="text-slate-200">{totalItems ?? 0}</span>
+      <div className="flex items-center gap-3 text-xs text-slate-400">
+        {onPageSizeChange && pageSizeOptions.length > 0 ? (
+          <label className="inline-flex items-center gap-1.5">
+            <span>Rows</span>
+            <select
+              value={safePageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              className="rounded-md bg-slate-950 border border-slate-700 px-1.5 py-1 text-xs text-slate-200"
+            >
+              {pageSizeOptions.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <span>
+          Showing{" "}
+          <span className="text-slate-200">
+            {Math.min(totalItems ?? 0, (page - 1) * safePageSize + 1)}–
+            {Math.min(totalItems ?? 0, page * safePageSize)}
+          </span>{" "}
+          of <span className="text-slate-200">{totalItems ?? 0}</span>
+        </span>
       </div>
     </div>
   );

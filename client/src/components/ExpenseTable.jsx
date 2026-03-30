@@ -12,6 +12,7 @@ import {
   formatRenewalKind,
 } from "../expenseOptions.js";
 import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
+import { setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import PaginationControls from "./PaginationControls.jsx";
 
 /** Normalize API spent_at to YYYY-MM-DD for date inputs and sorting. */
@@ -204,6 +205,12 @@ export default function ExpenseTable({
   function handlePageChange(nextPage) {
     cancelExpenseEdit();
     setPage(nextPage);
+  }
+
+  function handleRowsPerPageChange(nextSize) {
+    cancelExpenseEdit();
+    setRowsPerPage(nextSize);
+    setPage(1);
   }
 
   function handleSort(colKey) {
@@ -614,6 +621,8 @@ export default function ExpenseTable({
             totalItems={totalItems}
             pageSize={rowsPerPage}
             onPageChange={handlePageChange}
+            onPageSizeChange={handleRowsPerPageChange}
+            pageSizeOptions={TABLE_ROWS_PER_PAGE_OPTIONS}
           />
         )}
       </div>

@@ -3,6 +3,7 @@ import api from "../api";
 import ProjectionModal from "../components/ProjectionModal.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
 import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
+import { setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import {
   PRESCRIPTION_CATEGORY_OPTIONS,
   PRESCRIPTION_RENEWAL_PERIOD_OPTIONS,
@@ -234,6 +235,12 @@ export default function PrescriptionsPage() {
   function handlePageChange(nextPage) {
     cancelEdit();
     setPage(nextPage);
+  }
+
+  function handleRowsPerPageChange(nextSize) {
+    cancelEdit();
+    setRowsPerPage(nextSize);
+    setPage(1);
   }
 
   return (
@@ -615,6 +622,8 @@ export default function PrescriptionsPage() {
               totalItems={totalItems}
               pageSize={rowsPerPage}
               onPageChange={handlePageChange}
+              onPageSizeChange={handleRowsPerPageChange}
+              pageSizeOptions={TABLE_ROWS_PER_PAGE_OPTIONS}
             />
           ) : null}
         </div>
