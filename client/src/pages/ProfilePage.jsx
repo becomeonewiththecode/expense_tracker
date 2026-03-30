@@ -400,7 +400,7 @@ export default function ProfilePage() {
             ))}
           </select>
           <p className="text-[10px] text-slate-500 mt-2">
-            Default is 19. Tables will page at the bottom of the list.
+            Default is 10. Tables will page at the bottom of the list.
           </p>
         </div>
       </div>
