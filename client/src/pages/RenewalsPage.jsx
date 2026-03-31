@@ -5,6 +5,13 @@ import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/M
 import ExpenseTable from "../components/ExpenseTable.jsx";
 import ProjectionModal from "../components/ProjectionModal.jsx";
 import { computeProjectionPieData, computeSpendingProjection } from "../projection.js";
+import { formatRenewalKind } from "../expenseOptions.js";
+
+function renewalProjectionContextLabel(row) {
+  const note = (row.description || "").trim();
+  const kind = formatRenewalKind(row.renewal_kind);
+  return note ? `${kind} · ${note}` : kind;
+}
 
 function toDateInputValue(spentAt) {
   if (spentAt == null) return "";
@@ -34,7 +41,8 @@ export default function RenewalsPage() {
   const [expenseEditId, setExpenseEditId] = useState(null);
   const [expenseEditDraft, setExpenseEditDraft] = useState(null);
   const [expenseSaving, setExpenseSaving] = useState(false);
-  const [projectionOpen, setProjectionOpen] = useState(false);
+  /** `null` | `{ kind: 'all' }` | `{ kind: 'row', row }` — combined or single-row projection modal */
+  const [projectionTarget, setProjectionTarget] = useState(null);
   const [addForm, setAddForm] = useState(() => createRenewalManualForm());
   const [addSaving, setAddSaving] = useState(false);
 
@@ -60,7 +68,7 @@ export default function RenewalsPage() {
     if (items.length === 0) {
       setExpenseEditId(null);
       setExpenseEditDraft(null);
-      setProjectionOpen(false);
+      setProjectionTarget(null);
     }
   }, [items.length]);
 
@@ -112,7 +120,7 @@ export default function RenewalsPage() {
         description: expenseEditDraft.description,
       });
       cancelExpenseEdit();
-      setProjectionOpen(false);
+      setProjectionTarget(null);
       load();
     } catch (err) {
       setError(err.response?.data?.error || "Could not save changes");
@@ -158,7 +166,7 @@ export default function RenewalsPage() {
         spent_at: addForm.spent_at,
       });
       setAddForm(createRenewalManualForm());
-      setProjectionOpen(false);
+      setProjectionTarget(null);
       if (expenseEditId) cancelExpenseEdit();
       await load();
     } catch (err) {
@@ -238,21 +246,52 @@ export default function RenewalsPage() {
           cancelExpenseEdit={cancelExpenseEdit}
           saveExpenseEdit={saveExpenseEdit}
           remove={remove}
-          onProjection={() => setProjectionOpen(true)}
+          onProjection={() => setProjectionTarget({ kind: "all" })}
+          onRowProjection={(row) => setProjectionTarget({ kind: "row", row })}
           showRenewalColumns
           tableTitle="Renewal items"
         />
       )}
 
       <ProjectionModal
-        open={projectionOpen}
-        onClose={() => setProjectionOpen(false)}
-        projection={projectionOpen ? computeSpendingProjection(projectionSourceItems) : null}
-        contextLabel="Active renewals (combined)"
-        singleItem={false}
-        pieData={computeProjectionPieData(projectionOpen ? projectionSourceItems : [])}
-        projectionItems={projectionOpen ? projectionSourceItems : []}
-        projectionScopeKey={projectionOpen ? "renewals-all" : ""}
+        open={projectionTarget != null}
+        onClose={() => setProjectionTarget(null)}
+        projection={
+          projectionTarget
+            ? projectionTarget.kind === "all"
+              ? computeSpendingProjection(projectionSourceItems)
+              : computeSpendingProjection([projectionTarget.row])
+            : null
+        }
+        contextLabel={
+          projectionTarget?.kind === "row"
+            ? renewalProjectionContextLabel(projectionTarget.row)
+            : projectionTarget?.kind === "all"
+              ? "Active renewals (combined)"
+              : undefined
+        }
+        singleItem={projectionTarget?.kind === "row"}
+        pieData={computeProjectionPieData(
+          projectionTarget?.kind === "all"
+            ? projectionSourceItems
+            : projectionTarget?.kind === "row"
+              ? [projectionTarget.row]
+              : []
+        )}
+        projectionItems={
+          projectionTarget?.kind === "all"
+            ? projectionSourceItems
+            : projectionTarget?.kind === "row"
+              ? [projectionTarget.row]
+              : []
+        }
+        projectionScopeKey={
+          projectionTarget == null
+            ? ""
+            : projectionTarget.kind === "all"
+              ? "renewals-all"
+              : String(projectionTarget.row.id)
+        }
       />
     </div>
   );

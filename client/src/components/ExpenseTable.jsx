@@ -13,6 +13,22 @@ import {
 } from "../expenseOptions.js";
 import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
 import { setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
+import {
+  SORTABLE_TH_BUTTON,
+  SORTABLE_TH_ICON_ACTIVE,
+  SORTABLE_TH_ICON_IDLE,
+  TABLE,
+  TABLE_BODY,
+  TABLE_CARD,
+  TABLE_HEAD,
+  TABLE_HEADER_BAR,
+  TABLE_ROW,
+  TABLE_ROW_EDITING,
+  TABLE_SCROLL,
+  TABLE_TD_STICKY_ACTIONS_DEFAULT,
+  TABLE_TD_STICKY_ACTIONS_EDITING,
+  TABLE_TH_STICKY_ACTIONS,
+} from "../tableStyles.js";
 import PaginationControls from "./PaginationControls.jsx";
 import RowActionsMenu from "./RowActionsMenu.jsx";
 
@@ -121,13 +137,13 @@ function SortableTh({ colKey, label, sort, onSort, className }) {
       <button
         type="button"
         onClick={() => onSort(colKey)}
-        className="group inline-flex items-center gap-1 w-full min-w-0 text-left font-medium uppercase tracking-wide text-slate-400 hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 rounded px-0.5 -mx-0.5 -my-1"
+        className={`${SORTABLE_TH_BUTTON} text-left`}
         title={`Sort by ${label}`}
       >
         <span className="truncate">{label}</span>
         <span
           className={`shrink-0 text-[10px] leading-none w-3.5 text-center ${
-            active ? "text-sky-400" : "text-slate-600 opacity-0 group-hover:opacity-100"
+            active ? SORTABLE_TH_ICON_ACTIVE : SORTABLE_TH_ICON_IDLE
           }`}
           aria-hidden
         >
@@ -222,8 +238,8 @@ export default function ExpenseTable({
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-900/80 border-b border-slate-800">
+    <div className={TABLE_CARD}>
+      <div className={TABLE_HEADER_BAR}>
         <h2 className="text-sm font-medium text-slate-200">{tableTitle}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -235,9 +251,9 @@ export default function ExpenseTable({
           </button>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[70rem] text-sm text-left">
-          <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
+      <div className={TABLE_SCROLL}>
+        <table className={`${TABLE} min-w-[70rem]`}>
+          <thead className={TABLE_HEAD}>
             <tr>
               <SortableTh
                 colKey="spent_at"
@@ -306,18 +322,21 @@ export default function ExpenseTable({
                 onSort={handleSort}
                 className="px-4 py-3 hidden sm:table-cell min-w-[8rem]"
               />
-              <th scope="col" className="px-4 py-3 text-right min-w-[15rem] font-medium uppercase tracking-wide text-slate-400">
+              <th scope="col" className={TABLE_TH_STICKY_ACTIONS}>
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800 bg-slate-950/40">
+          <tbody className={TABLE_BODY}>
             {pageItems.map((row) => {
               const editing = expenseEditId === row.id;
               const d = expenseEditDraft;
               const snapshot = rowSnapshotForProjection(row, editing ? d : null);
               return (
-                <tr key={row.id} className={editing ? "bg-slate-900/80" : "hover:bg-slate-900/60"}>
+                <tr
+                  key={row.id}
+                  className={editing ? TABLE_ROW_EDITING : TABLE_ROW}
+                >
                   <td className="px-4 py-3 text-slate-300 whitespace-nowrap align-middle">
                     {editing && d ? (
                       <input
@@ -530,7 +549,9 @@ export default function ExpenseTable({
                       <span className="text-slate-500 max-w-xs truncate block">{row.description}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right align-middle min-w-[10rem]">
+                  <td
+                    className={editing ? TABLE_TD_STICKY_ACTIONS_EDITING : TABLE_TD_STICKY_ACTIONS_DEFAULT}
+                  >
                     {editing ? (
                       <div className="flex justify-end">
                         <RowActionsMenu

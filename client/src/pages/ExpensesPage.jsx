@@ -9,6 +9,17 @@ import {
   RENEWAL_KIND_OPTIONS,
 } from "../expenseOptions.js";
 import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
+import {
+  TABLE,
+  TABLE_BODY,
+  TABLE_CARD,
+  TABLE_FIELD_INPUT,
+  TABLE_HEAD,
+  TABLE_ROW,
+  TABLE_SCROLL,
+  TABLE_TD,
+  TABLE_TH,
+} from "../tableStyles.js";
 
 export default function ExpensesPage() {
   const navigate = useNavigate();
@@ -334,33 +345,33 @@ export default function ExpensesPage() {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto rounded-lg border border-slate-800">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
+          <div className={`${TABLE_SCROLL} ${TABLE_CARD}`}>
+            <table className={`${TABLE} min-w-[64rem]`}>
+              <thead className={TABLE_HEAD}>
                 <tr>
-                  <th className="px-3 py-2">Posted</th>
-                  <th className="px-3 py-2">Amount</th>
-                  <th className="px-3 py-2 min-w-[10rem]">Category</th>
-                  <th className="px-3 py-2 min-w-[9rem]">Renewal type</th>
-                  <th className="px-3 py-2 min-w-[8rem]">Website</th>
-                  <th className="px-3 py-2 min-w-[7rem]">Frequency</th>
-                  <th className="px-3 py-2">Description</th>
+                  <th className={`${TABLE_TH} whitespace-nowrap w-[9.5rem]`}>Posted</th>
+                  <th className={`${TABLE_TH} w-[5.5rem]`}>Amount</th>
+                  <th className={`${TABLE_TH} min-w-[10rem]`}>Category</th>
+                  <th className={`${TABLE_TH} min-w-[9rem]`}>Renewal type</th>
+                  <th className={`${TABLE_TH} min-w-[8rem]`}>Website</th>
+                  <th className={`${TABLE_TH} min-w-[7rem]`}>Frequency</th>
+                  <th className={`${TABLE_TH} min-w-[8rem]`}>Description</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800 bg-slate-950/40">
+              <tbody className={TABLE_BODY}>
                 {staging.rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-3 py-2 text-slate-300 whitespace-nowrap">{row.spent_at}</td>
-                    <td className="px-3 py-2 text-white tabular-nums">
+                  <tr key={row.id} className={TABLE_ROW}>
+                    <td className={`${TABLE_TD} text-slate-300 whitespace-nowrap`}>{row.spent_at}</td>
+                    <td className={`${TABLE_TD} font-medium text-white tabular-nums`}>
                       ${Number(row.amount).toFixed(2)}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={TABLE_TD}>
                       <select
                         value={row.category || ""}
                         onChange={(e) =>
                           patchImportStagingRow(row.id, { category: e.target.value || null })
                         }
-                        className="w-full max-w-[12rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        className={`w-full max-w-[12rem] ${TABLE_FIELD_INPUT}`}
                       >
                         <option value="">— Select category —</option>
                         {CATEGORY_OPTIONS.map((o) => (
@@ -370,14 +381,14 @@ export default function ExpensesPage() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={TABLE_TD}>
                       {row.category === "renewal" ? (
                         <select
                           value={row.renewal_kind || ""}
                           onChange={(e) =>
                             patchImportStagingRow(row.id, { renewal_kind: e.target.value || null })
                           }
-                          className="w-full max-w-[13rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                          className={`w-full max-w-[13rem] ${TABLE_FIELD_INPUT}`}
                         >
                           <option value="">— Type —</option>
                           {RENEWAL_KIND_OPTIONS.map((o) => (
@@ -390,7 +401,7 @@ export default function ExpensesPage() {
                         <span className="text-slate-600 text-xs">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={TABLE_TD}>
                       {row.category === "renewal" ? (
                         <input
                           type="text"
@@ -402,14 +413,14 @@ export default function ExpensesPage() {
                               patchImportStagingRow(row.id, { website: v || null });
                             }
                           }}
-                          className="w-full max-w-[14rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-slate-300 text-xs"
+                          className={`w-full max-w-[14rem] ${TABLE_FIELD_INPUT} text-slate-300`}
                           placeholder="Optional"
                         />
                       ) : (
                         <span className="text-slate-600 text-xs">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={TABLE_TD}>
                       <select
                         value={
                           row.frequency ||
@@ -419,7 +430,7 @@ export default function ExpensesPage() {
                         onChange={(e) =>
                           patchImportStagingRow(row.id, { frequency: e.target.value })
                         }
-                        className="w-full max-w-[9rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        className={`w-full max-w-[9rem] ${TABLE_FIELD_INPUT}`}
                       >
                         {FREQUENCY_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>
@@ -428,7 +439,7 @@ export default function ExpensesPage() {
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-2 text-slate-400 max-w-md truncate">{row.description}</td>
+                    <td className={`${TABLE_TD} text-slate-400 max-w-md truncate`}>{row.description}</td>
                   </tr>
                 ))}
               </tbody>

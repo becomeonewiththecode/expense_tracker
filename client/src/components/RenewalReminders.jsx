@@ -11,6 +11,20 @@ import {
   spentAtToIsoDateString,
   startOfLocalDay,
 } from "../renewalSchedule.js";
+import {
+  SORTABLE_TH_BUTTON,
+  SORTABLE_TH_ICON_ACTIVE,
+  SORTABLE_TH_ICON_IDLE,
+  TABLE,
+  TABLE_BODY,
+  TABLE_CARD,
+  TABLE_HEAD,
+  TABLE_ROW,
+  TABLE_SCROLL,
+  TABLE_TD,
+  TABLE_TD_STICKY_ACTIONS_DEFAULT,
+  TABLE_TH_STICKY_ACTIONS,
+} from "../tableStyles.js";
 
 const STORAGE_KEY = "renewalReminderDismissed";
 
@@ -137,19 +151,19 @@ function RenewalSortableTh({ colKey, label, sort, onSort, className = "", align 
   return (
     <th
       scope="col"
-      className={`px-3 py-2 font-medium ${className}`}
+      className={`px-4 py-3 ${className}`}
       aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : undefined}
     >
       <button
         type="button"
         onClick={() => onSort(colKey)}
-        className={`group inline-flex items-center gap-1 w-full min-w-0 uppercase tracking-wide text-xs ${justify} text-amber-200/90 hover:text-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 rounded px-0.5 -mx-0.5 -my-1 whitespace-nowrap`}
+        className={`${SORTABLE_TH_BUTTON} ${justify} whitespace-nowrap`}
         title={`Sort by ${label}`}
       >
         <span className="truncate">{label}</span>
         <span
           className={`shrink-0 text-[10px] leading-none w-3.5 text-center ${
-            active ? "text-amber-300" : "text-amber-600/80 opacity-0 group-hover:opacity-100"
+            active ? SORTABLE_TH_ICON_ACTIVE : SORTABLE_TH_ICON_IDLE
           }`}
           aria-hidden
         >
@@ -406,10 +420,10 @@ export default function RenewalReminders({
               <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-200/90 mb-2">
                 {institution}
               </h3>
-              <div className="overflow-x-auto rounded-lg border border-amber-900/50 bg-slate-950/50">
-                <table className="min-w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-amber-900/40 text-xs uppercase tracking-wide text-amber-200/80">
+              <div className={`${TABLE_SCROLL} ${TABLE_CARD}`}>
+                <table className={`${TABLE} min-w-[56rem]`}>
+                  <thead className={TABLE_HEAD}>
+                    <tr>
                       <RenewalSortableTh
                         colKey="title"
                         label="Expense"
@@ -444,15 +458,12 @@ export default function RenewalReminders({
                         onSort={handleRenewalSort}
                         className="min-w-[12rem]"
                       />
-                      <th
-                        scope="col"
-                        className="px-3 py-2 font-medium text-right w-[1%] whitespace-nowrap uppercase tracking-wide text-amber-200/80 text-xs"
-                      >
+                      <th scope="col" className={TABLE_TH_STICKY_ACTIONS}>
                         <span className="sr-only">Actions</span>
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-amber-950/60">
+                  <tbody className={TABLE_BODY}>
                     {sortedRows.map((r) => {
                       const cancelled = r.state === "cancel";
                       return (
@@ -460,44 +471,50 @@ export default function RenewalReminders({
                           key={r.key}
                           className={
                             cancelled
-                              ? "bg-emerald-950/75 hover:bg-emerald-900/55 border-l-[3px] border-emerald-500"
-                              : "hover:bg-slate-900/50"
+                              ? "bg-emerald-950/75 hover:bg-emerald-900/55 border-l-[3px] border-emerald-500 group"
+                              : TABLE_ROW
                           }
                         >
                           <td
-                            className={`px-3 py-2 align-middle max-w-[14rem] ${cancelled ? "text-emerald-50" : "text-amber-50"}`}
+                            className={`${TABLE_TD} max-w-[14rem] ${cancelled ? "text-emerald-50" : "text-slate-200"}`}
                           >
                             <span className="font-medium line-clamp-2" title={r.title}>
                               {r.title}
                             </span>
                           </td>
                           <td
-                            className={`px-3 py-2 align-middle whitespace-nowrap text-xs ${cancelled ? "text-emerald-200/90" : "text-amber-200/90"}`}
+                            className={`${TABLE_TD} whitespace-nowrap text-xs ${cancelled ? "text-emerald-200/90" : "text-slate-400"}`}
                           >
                             {formatTransactionAnchor(r.spentAt)}
                           </td>
                           <td
-                            className={`px-3 py-2 text-right tabular-nums font-medium align-middle whitespace-nowrap ${cancelled ? "text-emerald-50" : "text-amber-50"}`}
+                            className={`${TABLE_TD} text-right tabular-nums font-medium whitespace-nowrap ${cancelled ? "text-emerald-50" : "text-white"}`}
                           >
                             {formatProjectionCurrency(r.amountNum)}
                           </td>
                           <td
-                            className={`px-3 py-2 whitespace-nowrap text-xs font-medium align-middle ${cancelled ? "text-emerald-200" : "text-amber-200/90"}`}
+                            className={`${TABLE_TD} whitespace-nowrap text-xs font-medium ${cancelled ? "text-emerald-200" : "text-slate-300"}`}
                           >
                             {formatExpenseState(r.state)}
                           </td>
                           <td
-                            className={`px-3 py-2 text-xs align-middle ${cancelled ? "text-emerald-200/85" : "text-amber-200/80"}`}
+                            className={`${TABLE_TD} text-xs ${cancelled ? "text-emerald-200/85" : "text-slate-400"}`}
                           >
-                            <span className={cancelled ? "text-emerald-100" : "text-amber-100/90"}>
+                            <span className={cancelled ? "text-emerald-100" : "text-slate-200"}>
                               {formatRenewalDate(r.next)}
                             </span>
-                            <span className={cancelled ? "text-emerald-300/80" : "text-amber-200/70"}>
+                            <span className={cancelled ? "text-emerald-300/80" : "text-slate-500"}>
                               {" "}
                               ({leadTimePhrase(r.tier, r.days)})
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-right align-middle whitespace-nowrap">
+                          <td
+                            className={`${
+                              cancelled
+                                ? "sticky right-0 z-10 px-4 py-3 text-right align-middle min-w-[10rem] border-l border-emerald-800/60 shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.35)] bg-emerald-950/90 group-hover:bg-emerald-900/70"
+                                : TABLE_TD_STICKY_ACTIONS_DEFAULT
+                            } whitespace-nowrap`}
+                          >
                             <button
                               type="button"
                               onClick={() => dismiss(r.key)}
@@ -516,15 +533,15 @@ export default function RenewalReminders({
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-amber-800/60 bg-amber-950/30">
-                      <th scope="row" className="px-3 py-2 text-left font-semibold text-amber-100">
+                    <tr className="border-t border-slate-800 bg-slate-900/50">
+                      <th scope="row" className={`${TABLE_TD} text-left font-semibold text-slate-200`}>
                         Subtotal
                       </th>
-                      <td className="px-3 py-2 text-amber-200/40 text-xs">—</td>
-                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-amber-50 whitespace-nowrap">
+                      <td className={`${TABLE_TD} text-slate-500 text-xs`}>—</td>
+                      <td className={`${TABLE_TD} text-right tabular-nums font-semibold text-white whitespace-nowrap`}>
                         {formatProjectionCurrency(sectionTotal)}
                       </td>
-                      <td className="px-3 py-2 text-amber-200/50 text-xs" colSpan={3}>
+                      <td className={`${TABLE_TD} text-slate-500 text-xs`} colSpan={3}>
                         {subtotalFooterNote}
                       </td>
                     </tr>
