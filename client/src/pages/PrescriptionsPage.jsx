@@ -6,6 +6,23 @@ import RowActionsMenu from "../components/RowActionsMenu.jsx";
 import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
 import { setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import {
+  TABLE,
+  TABLE_BODY,
+  TABLE_CARD,
+  TABLE_FIELD_INPUT,
+  TABLE_FIELD_INPUT_NUM,
+  TABLE_HEAD,
+  TABLE_HEADER_BAR,
+  TABLE_ROW,
+  TABLE_ROW_EDITING,
+  TABLE_SCROLL,
+  TABLE_TD,
+  TABLE_TD_STICKY_ACTIONS_DEFAULT,
+  TABLE_TD_STICKY_ACTIONS_EDITING,
+  TABLE_TH,
+  TABLE_TH_STICKY_ACTIONS,
+} from "../tableStyles.js";
+import {
   PRESCRIPTION_CATEGORY_OPTIONS,
   PRESCRIPTION_RENEWAL_PERIOD_OPTIONS,
   formatPrescriptionCategory,
@@ -251,7 +268,7 @@ export default function PrescriptionsPage() {
         <p className="text-sm text-slate-400 mt-1">
           {loading
             ? "Loading…"
-            : "Track medical, dental, vision, supplements, and equipment on irregular renewal cycles (6 months to 5 years). You will see reminders here and at the top of the app within 30 days of each next renewal date."}
+            : "Track medical, dental, vision, supplements, and equipment on irregular renewal cycles (1–11 months in monthly steps, or 1–5 years). Reminders appear here and at the top of the app when the next renewal is within 30 days or up to 14 days overdue."}
         </p>
       </div>
 
@@ -395,8 +412,8 @@ export default function PrescriptionsPage() {
       )}
 
       {!loading && items.length > 0 && (
-        <div className="rounded-xl border border-slate-800 overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-900/80 border-b border-slate-800">
+        <div className={TABLE_CARD}>
+          <div className={TABLE_HEADER_BAR}>
             <h2 className="text-sm font-medium text-slate-200">Your items</h2>
             <button
               type="button"
@@ -406,41 +423,41 @@ export default function PrescriptionsPage() {
               Projection
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[56rem] text-sm text-left">
-              <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
+          <div className={TABLE_SCROLL}>
+            <table className={`${TABLE} min-w-[56rem]`}>
+              <thead className={TABLE_HEAD}>
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Renewal</th>
-                  <th className="px-4 py-3">Next date</th>
-                  <th className="px-4 py-3 hidden md:table-cell">Vendor</th>
-                  <th className="px-4 py-3 hidden lg:table-cell">Notes</th>
-                  <th className="px-4 py-3">State</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className={`${TABLE_TH} min-w-[8rem]`}>Name</th>
+                  <th className={`${TABLE_TH} w-[6rem]`}>Amount</th>
+                  <th className={`${TABLE_TH} min-w-[7rem]`}>Category</th>
+                  <th className={`${TABLE_TH} min-w-[7rem]`}>Renewal</th>
+                  <th className={`${TABLE_TH} min-w-[9rem]`}>Next date</th>
+                  <th className={`${TABLE_TH} hidden md:table-cell min-w-[8rem]`}>Vendor</th>
+                  <th className={`${TABLE_TH} hidden lg:table-cell min-w-[8rem]`}>Notes</th>
+                  <th className={`${TABLE_TH} w-[5.5rem]`}>State</th>
+                  <th className={TABLE_TH_STICKY_ACTIONS}>Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className={TABLE_BODY}>
                 {pageItems.map((row) => {
                   const editing = editId === row.id;
                   const d = editing ? editDraft : null;
                   const projectionRow = prescriptionRowSnapshotForProjection(row, d);
                   const days = daysUntilPrescriptionRenewal(row.next_renewal_date);
                   return (
-                    <tr key={row.id} className="border-t border-slate-800 bg-slate-900/40">
-                      <td className="px-4 py-3 text-slate-200">
+                    <tr key={row.id} className={editing ? TABLE_ROW_EDITING : TABLE_ROW}>
+                      <td className={`${TABLE_TD} text-slate-200`}>
                         {editing && d ? (
                           <input
                             value={d.name}
                             onChange={(e) => setEditDraft((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
-                            className="w-full min-w-[8rem] rounded bg-slate-950 border border-slate-600 px-2 py-1 text-xs"
+                            className={`w-full min-w-[8rem] ${TABLE_FIELD_INPUT}`}
                           />
                         ) : (
                           row.name
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-300">
+                      <td className={`${TABLE_TD} text-slate-300`}>
                         {editing && d ? (
                           <input
                             type="number"
@@ -450,20 +467,22 @@ export default function PrescriptionsPage() {
                             onChange={(e) =>
                               setEditDraft((prev) => (prev ? { ...prev, amount: e.target.value } : prev))
                             }
-                            className="w-24 rounded bg-slate-950 border border-slate-600 px-2 py-1 text-xs"
+                            className={`w-24 ${TABLE_FIELD_INPUT_NUM}`}
                           />
                         ) : (
-                          `$${Number(row.amount).toFixed(2)}`
+                          <span className="font-medium text-white tabular-nums">
+                            ${Number(row.amount).toFixed(2)}
+                          </span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={TABLE_TD}>
                         {editing && d ? (
                           <select
                             value={d.category}
                             onChange={(e) =>
                               setEditDraft((prev) => (prev ? { ...prev, category: e.target.value } : prev))
                             }
-                            className="rounded bg-slate-950 border border-slate-600 px-2 py-1 text-xs max-w-[9rem]"
+                            className={`max-w-[9rem] ${TABLE_FIELD_INPUT}`}
                           >
                             {PRESCRIPTION_CATEGORY_OPTIONS.map((o) => (
                               <option key={o.value} value={o.value}>
@@ -475,14 +494,14 @@ export default function PrescriptionsPage() {
                           <span className="text-slate-300">{formatPrescriptionCategory(row.category)}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={TABLE_TD}>
                         {editing && d ? (
                           <select
                             value={d.renewal_period}
                             onChange={(e) =>
                               setEditDraft((prev) => (prev ? { ...prev, renewal_period: e.target.value } : prev))
                             }
-                            className="rounded bg-slate-950 border border-slate-600 px-2 py-1 text-xs max-w-[9rem]"
+                            className={`max-w-[9rem] ${TABLE_FIELD_INPUT}`}
                           >
                             {PRESCRIPTION_RENEWAL_PERIOD_OPTIONS.map((o) => (
                               <option key={o.value} value={o.value}>
@@ -494,7 +513,7 @@ export default function PrescriptionsPage() {
                           <span className="text-slate-300">{formatRenewalPeriod(row.renewal_period)}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={TABLE_TD}>
                         {editing && d ? (
                           <input
                             type="date"
@@ -504,7 +523,7 @@ export default function PrescriptionsPage() {
                                 prev ? { ...prev, next_renewal_date: e.target.value } : prev
                               )
                             }
-                            className="rounded bg-slate-950 border border-slate-600 px-2 py-1 text-xs"
+                            className={TABLE_FIELD_INPUT}
                           />
                         ) : (
                           <span className="text-slate-300">
@@ -523,40 +542,40 @@ export default function PrescriptionsPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
+                      <td className={`${TABLE_TD} text-slate-400 hidden md:table-cell`}>
                         {editing && d ? (
                           <input
                             value={d.vendor}
                             onChange={(e) =>
                               setEditDraft((prev) => (prev ? { ...prev, vendor: e.target.value } : prev))
                             }
-                            className="w-full max-w-xs rounded bg-slate-950 border border-slate-600 px-2 py-1 text-xs"
+                            className={`w-full max-w-xs ${TABLE_FIELD_INPUT}`}
                           />
                         ) : (
                           row.vendor || "—"
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-500 hidden lg:table-cell max-w-[12rem] truncate">
+                      <td className={`${TABLE_TD} text-slate-500 hidden lg:table-cell max-w-[12rem] truncate`}>
                         {editing && d ? (
                           <input
                             value={d.notes}
                             onChange={(e) =>
                               setEditDraft((prev) => (prev ? { ...prev, notes: e.target.value } : prev))
                             }
-                            className="w-full rounded bg-slate-950 border border-slate-600 px-2 py-1 text-xs"
+                            className={`w-full ${TABLE_FIELD_INPUT} text-slate-300`}
                           />
                         ) : (
                           row.notes || "—"
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className={TABLE_TD}>
                         {editing && d ? (
                           <select
                             value={d.state}
                             onChange={(e) =>
                               setEditDraft((prev) => (prev ? { ...prev, state: e.target.value } : prev))
                             }
-                            className="rounded bg-slate-950 border border-slate-600 px-2 py-1 text-xs"
+                            className={TABLE_FIELD_INPUT}
                           >
                             {EXPENSE_STATE_OPTIONS.map((o) => (
                               <option key={o.value} value={o.value}>
@@ -570,7 +589,11 @@ export default function PrescriptionsPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap min-w-[10rem]">
+                      <td
+                        className={`${
+                          editing && d ? TABLE_TD_STICKY_ACTIONS_EDITING : TABLE_TD_STICKY_ACTIONS_DEFAULT
+                        } whitespace-nowrap`}
+                      >
                         {editing && d ? (
                           <div className="flex justify-end">
                             <RowActionsMenu
@@ -604,13 +627,6 @@ export default function PrescriptionsPage() {
                                     setProjectionTarget({ kind: "row", row: projectionRow }),
                                 },
                                 {
-                                  key: "renewed",
-                                  label: "Renewed",
-                                  title: "Advance next renewal by one cycle",
-                                  className: "text-cyan-400",
-                                  onClick: () => markRenewed(row),
-                                },
-                                {
                                   key: "edit",
                                   label: "Edit",
                                   className: "text-sky-400",
@@ -621,6 +637,13 @@ export default function PrescriptionsPage() {
                                   label: "Delete",
                                   className: "text-rose-400",
                                   onClick: () => remove(row.id),
+                                },
+                                {
+                                  key: "renewed",
+                                  label: "Renewed",
+                                  title: "Advance next renewal by one cycle",
+                                  className: "text-cyan-400",
+                                  onClick: () => markRenewed(row),
                                 },
                               ]}
                             />
