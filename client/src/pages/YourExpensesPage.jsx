@@ -34,12 +34,20 @@ export default function YourExpensesPage() {
   const [projectionTarget, setProjectionTarget] = useState(null);
   const [addForm, setAddForm] = useState(() => createEmptyManualExpenseForm());
   const [addSaving, setAddSaving] = useState(false);
+  const [addFormOpen, setAddFormOpen] = useState(false);
+  const [noteSearch, setNoteSearch] = useState("");
+  const [tableUpdateFlashToken, setTableUpdateFlashToken] = useState(0);
 
-  /** Renewal-category rows belong on Renewals, not in this list. */
+  /** Renewal and Payment Plan rows live on their own tabs, not this list. */
   const expenseListItems = useMemo(
-    () => items.filter((r) => r.category !== "renewal"),
+    () => items.filter((r) => r.category !== "renewal" && r.category !== "payment_plan"),
     [items]
   );
+  const filteredExpenseListItems = useMemo(() => {
+    const q = noteSearch.trim().toLowerCase();
+    if (!q) return expenseListItems;
+    return expenseListItems.filter((r) => String(r.description ?? "").toLowerCase().includes(q));
+  }, [expenseListItems, noteSearch]);
 
   async function load() {
     setError("");
@@ -58,17 +66,17 @@ export default function YourExpensesPage() {
   }, []);
 
   useEffect(() => {
-    if (expenseListItems.length === 0) {
+    if (filteredExpenseListItems.length === 0) {
       setExpenseEditId(null);
       setExpenseEditDraft(null);
       setProjectionTarget(null);
     }
-  }, [expenseListItems.length]);
+  }, [filteredExpenseListItems.length]);
 
   useEffect(() => {
     if (projectionTarget?.kind !== "row") return;
     const row = items.find((r) => r.id === projectionTarget.row.id);
-    if (!row || row.category === "renewal") {
+    if (!row || row.category === "renewal" || row.category === "payment_plan") {
       setProjectionTarget(null);
     }
   }, [items, projectionTarget]);
@@ -124,7 +132,8 @@ export default function YourExpensesPage() {
       });
       cancelExpenseEdit();
       setProjectionTarget(null);
-      load();
+      await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save changes");
     } finally {
@@ -172,6 +181,7 @@ export default function YourExpensesPage() {
       setProjectionTarget(null);
       if (expenseEditId) cancelExpenseEdit();
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save expense");
     } finally {
@@ -186,7 +196,7 @@ export default function YourExpensesPage() {
         <p className="text-sm text-slate-400 mt-1">
           {loading
             ? "Loading…"
-            : "Add expenses here or on Import; review, edit, or delete. Items with category Renewal appear under Renewals. Default order is newest first—click a column heading to sort."}
+            : "Add expenses here or on Import; review, edit, or delete. Items with category Renewal appear under Renewals, and Payment Plan items appear under Payment Plan. Default order is newest first—click a column heading to sort."}
         </p>
       </div>
 
@@ -220,36 +230,47 @@ export default function YourExpensesPage() {
       )}
 
       {!loading && items.length > 0 && (
-        <details className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 group">
-          <summary className="cursor-pointer text-sm font-medium text-slate-200 list-none [&::-webkit-details-marker]:hidden flex items-center gap-2">
-            <span className="text-slate-500 group-open:rotate-90 transition-transform inline-block">▸</span>
-            Add expense manually
-          </summary>
-          <div className="mt-4 pt-4 border-t border-slate-800">
-            <ManualExpenseForm
-              form={addForm}
-              setForm={setAddForm}
-              onSubmit={addExpense}
-              submitLabel={addSaving ? "Saving…" : "Add expense"}
-              disabled={addSaving}
-            />
-          </div>
-        </details>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <button
+            type="button"
+            onClick={() => setAddFormOpen((v) => !v)}
+            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-800/70 text-slate-200"
+            aria-expanded={addFormOpen}
+          >
+            <span className="font-medium text-sm">Add expense manually</span>
+            <span className="text-slate-500 text-xs">{addFormOpen ? "Hide" : "Show"}</span>
+          </button>
+          {addFormOpen ? (
+            <div className="mt-4 pt-4 border-t border-slate-800">
+              <ManualExpenseForm
+                form={addForm}
+                setForm={setAddForm}
+                onSubmit={addExpense}
+                submitLabel={addSaving ? "Saving…" : "Add expense"}
+                disabled={addSaving}
+              />
+            </div>
+          ) : null}
+        </div>
       )}
 
       {!loading && items.length > 0 && (
         <>
-          {expenseListItems.length === 0 && (
+          {filteredExpenseListItems.length === 0 && (
             <p className="text-sm text-slate-400 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2">
-              You only have renewal items right now—they are listed under{" "}
+              You only have renewal or payment plan items right now—they are listed under{" "}
               <Link to="/renewals" className="text-sky-400 hover:text-sky-300">
                 Renewals
+              </Link>
+              {" "}and{" "}
+              <Link to="/payment-plans" className="text-sky-400 hover:text-sky-300">
+                Payment Plan
               </Link>
               .
             </p>
           )}
           <ExpenseTable
-            items={expenseListItems}
+            items={filteredExpenseListItems}
             expenseEditId={expenseEditId}
             expenseEditDraft={expenseEditDraft}
             setExpenseEditDraft={setExpenseEditDraft}
@@ -261,6 +282,10 @@ export default function YourExpensesPage() {
             onProjection={() => setProjectionTarget({ kind: "all" })}
             onRowProjection={(row) => setProjectionTarget({ kind: "row", row })}
             showRenewalColumns={expenseEditDraft?.category === "renewal"}
+            searchValue={noteSearch}
+            onSearchChange={setNoteSearch}
+            searchPlaceholder="Search notes"
+            updateFlashToken={tableUpdateFlashToken}
           />
         </>
       )}
@@ -271,7 +296,7 @@ export default function YourExpensesPage() {
         projection={
           projectionTarget
             ? projectionTarget.kind === "all"
-              ? computeSpendingProjection(expenseListItems)
+              ? computeSpendingProjection(filteredExpenseListItems)
               : computeSpendingProjection([projectionTarget.row])
             : null
         }
@@ -285,14 +310,14 @@ export default function YourExpensesPage() {
         singleItem={projectionTarget?.kind === "row"}
         pieData={computeProjectionPieData(
           projectionTarget?.kind === "all"
-            ? expenseListItems
+            ? filteredExpenseListItems
             : projectionTarget?.kind === "row"
               ? [projectionTarget.row]
               : []
         )}
         projectionItems={
           projectionTarget?.kind === "all"
-            ? expenseListItems
+            ? filteredExpenseListItems
             : projectionTarget?.kind === "row"
               ? [projectionTarget.row]
               : []

@@ -9,6 +9,7 @@ export const CATEGORY_OPTIONS = [
   { value: "insurance", label: "Insurance" },
   { value: "subscription", label: "Subscription" },
   { value: "renewal", label: "Renewal" },
+  { value: "payment_plan", label: "Payment Plan" },
 ];
 
 /** Shown when category is Renewal (import, expenses, renewals page). */
@@ -50,6 +51,7 @@ export const RENEWAL_KIND_OPTIONS = [
   { value: "water_softener_salt_delivery", label: "Water softener salt delivery" },
   { value: "propane_tank_refills", label: "Propane tank refills" },
   { value: "air_filter_subscription_services", label: "Air filter subscription services" },
+  { value: "ring_doorbell", label: "Ring Doorbell" },
   { value: "hoa_fees", label: "HOA fees" },
   { value: "pool_maintenance_contracts", label: "Pool maintenance contracts" },
   { value: "septic_tank_pumping_service", label: "Septic tank pumping service" },

@@ -117,5 +117,28 @@ export async function initDb() {
     ALTER TABLE prescriptions ADD CONSTRAINT prescriptions_state_check
       CHECK (state IN ('active', 'cancel'));
     CREATE INDEX IF NOT EXISTS idx_prescriptions_user_next ON prescriptions(user_id, next_renewal_date);
+    CREATE TABLE IF NOT EXISTS payment_plans (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      source_expense_id INTEGER NULL REFERENCES expenses(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
+      category TEXT NOT NULL,
+      payment_schedule TEXT NOT NULL,
+      priority_level TEXT NOT NULL,
+      status TEXT NOT NULL,
+      account_type TEXT NOT NULL,
+      payment_method TEXT NOT NULL,
+      institution TEXT NOT NULL,
+      tag TEXT NOT NULL,
+      frequency TEXT NOT NULL,
+      notes TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    ALTER TABLE payment_plans ADD COLUMN IF NOT EXISTS source_expense_id INTEGER NULL REFERENCES expenses(id) ON DELETE CASCADE;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_plans_user_source_expense
+      ON payment_plans(user_id, source_expense_id)
+      WHERE source_expense_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_payment_plans_user_id_desc ON payment_plans(user_id, id DESC);
   `);
 }

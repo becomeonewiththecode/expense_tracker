@@ -16,6 +16,7 @@ import {
   paymentMetaFromSpentAt,
   spentAtToIsoDate,
 } from "../expenseEnums.js";
+import { removePaymentPlanForExpense, syncPaymentPlanForExpense } from "../paymentPlanSync.js";
 
 const badId = "Invalid id";
 
@@ -111,26 +112,40 @@ expensesRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: renewalErr });
   }
   const { payment_day, payment_month } = paymentMetaFromSpentAt(spent_at);
-  const { rows } = await pool.query(
-    `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-     RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at`,
-    [
-      req.userId,
-      amount,
-      category,
-      financial_institution,
-      frequency,
-      state,
-      payment_day,
-      payment_month,
-      description,
-      website,
-      renewal_kind,
-      spent_at,
-    ]
-  );
-  res.status(201).json(normalizeExpense(rows[0]));
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(
+      `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at`,
+      [
+        req.userId,
+        amount,
+        category,
+        financial_institution,
+        frequency,
+        state,
+        payment_day,
+        payment_month,
+        description,
+        website,
+        renewal_kind,
+        spent_at,
+      ]
+    );
+    const inserted = rows[0];
+    if (inserted.category === "payment_plan") {
+      await syncPaymentPlanForExpense(client, req.userId, inserted);
+    }
+    await client.query("COMMIT");
+    res.status(201).json(normalizeExpense(inserted));
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 });
 
 expensesRouter.patch("/:id", async (req, res) => {
@@ -241,25 +256,58 @@ expensesRouter.patch("/:id", async (req, res) => {
   updates.push(`payment_month = $${i++}`);
   params.push(payment_month);
   params.push(id, req.userId);
-  const { rows } = await pool.query(
-    `UPDATE expenses SET ${updates.join(", ")}
-     WHERE id = $${i++} AND user_id = $${i++}
-     RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at`,
-    params
-  );
-  if (!rows[0]) return res.status(404).json({ error: "Not found" });
-  res.json(normalizeExpense(rows[0]));
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(
+      `UPDATE expenses SET ${updates.join(", ")}
+       WHERE id = $${i++} AND user_id = $${i++}
+       RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at`,
+      params
+    );
+    if (!rows[0]) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Not found" });
+    }
+    const updated = rows[0];
+    if (updated.category === "payment_plan") {
+      await syncPaymentPlanForExpense(client, req.userId, updated);
+    } else if (existingRows[0].category === "payment_plan") {
+      await removePaymentPlanForExpense(client, req.userId, id);
+    }
+    await client.query("COMMIT");
+    res.json(normalizeExpense(updated));
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 });
 
 expensesRouter.delete("/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
-  const { rowCount } = await pool.query(
-    `DELETE FROM expenses WHERE id = $1 AND user_id = $2`,
-    [id, req.userId]
-  );
-  if (!rowCount) return res.status(404).json({ error: "Not found" });
-  res.status(204).send();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rowCount } = await client.query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2`, [
+      id,
+      req.userId,
+    ]);
+    if (!rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Not found" });
+    }
+    await removePaymentPlanForExpense(client, req.userId, id);
+    await client.query("COMMIT");
+    res.status(204).send();
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 });
 
 function normalizeExpense(row) {

@@ -45,8 +45,16 @@ export default function RenewalsPage() {
   const [projectionTarget, setProjectionTarget] = useState(null);
   const [addForm, setAddForm] = useState(() => createRenewalManualForm());
   const [addSaving, setAddSaving] = useState(false);
+  const [addFormOpen, setAddFormOpen] = useState(false);
+  const [noteSearch, setNoteSearch] = useState("");
+  const [tableUpdateFlashToken, setTableUpdateFlashToken] = useState(0);
 
-  const projectionSourceItems = useMemo(() => renewalRowsForProjection(items), [items]);
+  const filteredItems = useMemo(() => {
+    const q = noteSearch.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((r) => String(r.description ?? "").toLowerCase().includes(q));
+  }, [items, noteSearch]);
+  const projectionSourceItems = useMemo(() => renewalRowsForProjection(filteredItems), [filteredItems]);
 
   async function load() {
     setError("");
@@ -65,12 +73,12 @@ export default function RenewalsPage() {
   }, []);
 
   useEffect(() => {
-    if (items.length === 0) {
+    if (filteredItems.length === 0) {
       setExpenseEditId(null);
       setExpenseEditDraft(null);
       setProjectionTarget(null);
     }
-  }, [items.length]);
+  }, [filteredItems.length]);
 
   function openExpenseEdit(row) {
     setError("");
@@ -121,7 +129,8 @@ export default function RenewalsPage() {
       });
       cancelExpenseEdit();
       setProjectionTarget(null);
-      load();
+      await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save changes");
     } finally {
@@ -169,6 +178,7 @@ export default function RenewalsPage() {
       setProjectionTarget(null);
       if (expenseEditId) cancelExpenseEdit();
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save");
     } finally {
@@ -218,26 +228,33 @@ export default function RenewalsPage() {
       )}
 
       {!loading && items.length > 0 && (
-        <details className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 group">
-          <summary className="cursor-pointer text-sm font-medium text-slate-200 list-none [&::-webkit-details-marker]:hidden flex items-center gap-2">
-            <span className="text-slate-500 group-open:rotate-90 transition-transform inline-block">▸</span>
-            Add renewal manually
-          </summary>
-          <div className="mt-4 pt-4 border-t border-slate-800">
-            <ManualExpenseForm
-              form={addForm}
-              setForm={setAddForm}
-              onSubmit={addExpense}
-              submitLabel={addSaving ? "Saving…" : "Add renewal"}
-              disabled={addSaving}
-            />
-          </div>
-        </details>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <button
+            type="button"
+            onClick={() => setAddFormOpen((v) => !v)}
+            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-800/70 text-slate-200"
+            aria-expanded={addFormOpen}
+          >
+            <span className="font-medium text-sm">Add renewal manually</span>
+            <span className="text-slate-500 text-xs">{addFormOpen ? "Hide" : "Show"}</span>
+          </button>
+          {addFormOpen ? (
+            <div className="mt-4 pt-4 border-t border-slate-800">
+              <ManualExpenseForm
+                form={addForm}
+                setForm={setAddForm}
+                onSubmit={addExpense}
+                submitLabel={addSaving ? "Saving…" : "Add renewal"}
+                disabled={addSaving}
+              />
+            </div>
+          ) : null}
+        </div>
       )}
 
       {!loading && items.length > 0 && (
         <ExpenseTable
-          items={items}
+          items={filteredItems}
           expenseEditId={expenseEditId}
           expenseEditDraft={expenseEditDraft}
           setExpenseEditDraft={setExpenseEditDraft}
@@ -250,6 +267,10 @@ export default function RenewalsPage() {
           onRowProjection={(row) => setProjectionTarget({ kind: "row", row })}
           showRenewalColumns
           tableTitle="Renewal items"
+          searchValue={noteSearch}
+          onSearchChange={setNoteSearch}
+          searchPlaceholder="Search notes"
+          updateFlashToken={tableUpdateFlashToken}
         />
       )}
 

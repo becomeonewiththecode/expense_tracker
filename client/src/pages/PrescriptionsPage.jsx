@@ -3,6 +3,7 @@ import api from "../api";
 import ProjectionModal from "../components/ProjectionModal.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
 import RowActionsMenu from "../components/RowActionsMenu.jsx";
+import TableUpdateFlash from "../components/TableUpdateFlash.jsx";
 import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
 import { setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import {
@@ -85,8 +86,10 @@ export default function PrescriptionsPage() {
   const [editDraft, setEditDraft] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const [projectionTarget, setProjectionTarget] = useState(null);
+  const [noteSearch, setNoteSearch] = useState("");
   const rowsPerPage = useTableRowsPerPage();
   const [page, setPage] = useState(1);
+  const [tableUpdateFlashToken, setTableUpdateFlashToken] = useState(0);
 
   const load = useCallback(async () => {
     setError("");
@@ -119,7 +122,12 @@ export default function PrescriptionsPage() {
     setPage(1);
   }, [rowsPerPage]);
 
-  const projectionSourceItems = useMemo(() => prescriptionRowsForProjection(items), [items]);
+  const filteredItems = useMemo(() => {
+    const q = noteSearch.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((r) => String(r.notes ?? "").toLowerCase().includes(q));
+  }, [items, noteSearch]);
+  const projectionSourceItems = useMemo(() => prescriptionRowsForProjection(filteredItems), [filteredItems]);
 
   async function addPrescription(e) {
     e.preventDefault();
@@ -148,6 +156,7 @@ export default function PrescriptionsPage() {
       setAddForm(emptyForm());
       await load();
       setAddFormOpen(false);
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save");
     } finally {
@@ -201,6 +210,7 @@ export default function PrescriptionsPage() {
       });
       cancelEdit();
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save changes");
     } finally {
@@ -229,18 +239,19 @@ export default function PrescriptionsPage() {
     try {
       await api.patch(`/prescriptions/${row.id}`, { next_renewal_date: next });
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not update date");
     }
   }
 
   const sortedItems = useMemo(() => {
-    return [...items].sort((a, b) => {
+    return [...filteredItems].sort((a, b) => {
       const da = String(a.next_renewal_date);
       const db = String(b.next_renewal_date);
       return da.localeCompare(db);
     });
-  }, [items]);
+  }, [filteredItems]);
 
   const totalItems = sortedItems.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / Math.max(1, rowsPerPage)));
@@ -277,7 +288,7 @@ export default function PrescriptionsPage() {
       )}
 
       {!loading && items.length > 0 ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
           <button
             type="button"
             onClick={() => setAddFormOpen((v) => !v)}
@@ -414,14 +425,26 @@ export default function PrescriptionsPage() {
       {!loading && items.length > 0 && (
         <div className={TABLE_CARD}>
           <div className={TABLE_HEADER_BAR}>
-            <h2 className="text-sm font-medium text-slate-200">Your items</h2>
-            <button
-              type="button"
-              onClick={() => setProjectionTarget({ kind: "all" })}
-              className="rounded-lg border border-violet-500/40 bg-violet-950/40 hover:bg-violet-900/35 text-violet-200 text-xs font-medium px-3 py-1.5"
-            >
-              Projection
-            </button>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-medium text-slate-200">Your items</h2>
+              <TableUpdateFlash token={tableUpdateFlashToken} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={noteSearch}
+                onChange={(e) => setNoteSearch(e.target.value)}
+                placeholder="Search notes"
+                className="w-48 rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-slate-200 text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setProjectionTarget({ kind: "all" })}
+                className="rounded-lg border border-violet-500/40 bg-violet-950/40 hover:bg-violet-900/35 text-violet-200 text-xs font-medium px-3 py-1.5"
+              >
+                Projection
+              </button>
+            </div>
           </div>
           <div className={TABLE_SCROLL}>
             <table className={`${TABLE} min-w-[56rem]`}>

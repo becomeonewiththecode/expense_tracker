@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import api from "../api.js";
-import { formatCategory, formatExpenseState, formatFinancialInstitution } from "../expenseOptions.js";
+import {
+  formatCategory,
+  formatExpenseState,
+  formatFinancialInstitution,
+  formatFrequency,
+} from "../expenseOptions.js";
 import { formatProjectionCurrency } from "../projection.js";
 import {
   daysUntilRenewal,
@@ -245,6 +250,8 @@ export default function RenewalReminders({
         amountNum: amountSafe,
         institution: formatFinancialInstitution(row.financial_institution),
         spentAt: row.spent_at,
+        category: row.category,
+        frequency: row.frequency,
         state: row.state === "cancel" ? "cancel" : "active",
       });
     }
@@ -354,7 +361,7 @@ export default function RenewalReminders({
           onDoubleClick={() => onTablesExpandedChange((v) => !v)}
           title="Double-click to show or hide renewal tables"
         >
-          <p className="font-medium text-amber-100 select-none">Upcoming renewals</p>
+          <p className="font-medium text-amber-100 select-none">Upcoming expenses</p>
           <button
             type="button"
             id={renewalHelpTriggerId}
@@ -365,17 +372,27 @@ export default function RenewalReminders({
             aria-controls={renewalHelpPanelId}
             title="How this table works"
           >
-            <span className="sr-only">How upcoming renewals work</span>
+            <span className="sr-only">How upcoming expenses work</span>
             <InfoIcon className="h-5 w-5" />
           </button>
         </div>
-        <button
-          type="button"
-          onClick={dismissAll}
-          className="text-xs text-amber-200/80 hover:text-amber-100 underline-offset-2 hover:underline shrink-0"
-        >
-          Dismiss all
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => onTablesExpandedChange((v) => !v)}
+            className="text-xs text-amber-200/90 hover:text-amber-100 rounded-full border border-amber-700/60 px-2 py-0.5"
+            aria-expanded={tablesExpanded}
+          >
+            {tablesExpanded ? "Hide" : "Show"}
+          </button>
+          <button
+            type="button"
+            onClick={dismissAll}
+            className="text-xs text-amber-200/80 hover:text-amber-100 underline-offset-2 hover:underline"
+          >
+            Dismiss all
+          </button>
+        </div>
       </div>
       {renewalHelpOpen ? (
         <div
@@ -490,7 +507,22 @@ export default function RenewalReminders({
                           <td
                             className={`${TABLE_TD} text-right tabular-nums font-medium whitespace-nowrap ${cancelled ? "text-emerald-50" : "text-white"}`}
                           >
-                            {formatProjectionCurrency(r.amountNum)}
+                            <span className="inline-flex items-center justify-end gap-1.5">
+                              <span>{formatProjectionCurrency(r.amountNum)}</span>
+                              {r.category === "payment_plan" ? (
+                                <span
+                                  className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold leading-none ${
+                                    cancelled
+                                      ? "border-emerald-300/50 text-emerald-100"
+                                      : "border-sky-400/60 text-sky-300"
+                                  }`}
+                                  title={`Payment frequency: ${formatFrequency(r.frequency)}`}
+                                  aria-label={`Payment frequency: ${formatFrequency(r.frequency)}`}
+                                >
+                                  i
+                                </span>
+                              ) : null}
+                            </span>
                           </td>
                           <td
                             className={`${TABLE_TD} whitespace-nowrap text-xs font-medium ${cancelled ? "text-emerald-200" : "text-slate-300"}`}

@@ -13,6 +13,7 @@ import {
   RENEWAL_KIND_ERROR,
   paymentMetaFromSpentAt,
 } from "../expenseEnums.js";
+import { syncPaymentPlanForExpense } from "../paymentPlanSync.js";
 
 export const importsRouter = Router();
 importsRouter.use(authRequired);
@@ -261,9 +262,10 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
     let added = 0;
     for (const t of toInsert) {
       const { payment_day, payment_month } = paymentMetaFromSpentAt(t.spent_at);
-      await client.query(
+      const { rows: inserted } = await client.query(
         `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at)
-         VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8, $9, $10, $11)`,
+         VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8, $9, $10, $11)
+         RETURNING id, amount, category, financial_institution, frequency, state, description`,
         [
           req.userId,
           t.amount,
@@ -278,6 +280,12 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
           t.spent_at,
         ]
       );
+      if (t.category === "payment_plan" && inserted[0]) {
+        await syncPaymentPlanForExpense(client, req.userId, {
+          ...inserted[0],
+          state: "active",
+        });
+      }
       added++;
     }
 
