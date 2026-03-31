@@ -31,6 +31,13 @@ export default function ProfilePage() {
   const [backupOk, setBackupOk] = useState("");
   const [restoreMode, setRestoreMode] = useState("append");
 
+  const [avatarCollapsed, setAvatarCollapsed] = useState(true);
+  const [emailCollapsed, setEmailCollapsed] = useState(true);
+  const [recoveryCollapsed, setRecoveryCollapsed] = useState(true);
+  const [backupCollapsed, setBackupCollapsed] = useState(true);
+  const [backupHelpOpen, setBackupHelpOpen] = useState(false);
+  const [recoveryHelpOpen, setRecoveryHelpOpen] = useState(false);
+
   const hasPassword = Boolean(user?.has_password);
   const hasRecoveryCode = Boolean(user?.has_recovery_code);
 
@@ -367,50 +374,62 @@ export default function ProfilePage() {
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
-        <h2 className="text-sm font-medium text-slate-300">Profile picture</h2>
-        <div className="flex flex-col sm:flex-row gap-4 items-start">
-          <div className="w-24 h-24 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
-            {displaySrc ? (
-              <img src={displaySrc} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-slate-500 text-xs text-center px-2">No picture</span>
-            )}
-          </div>
-          <div className="flex-1 space-y-3 w-full">
-            <input
-              id="avatar-input"
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              onChange={onPickFile}
-              className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700"
-            />
-            <p className="text-xs text-slate-500">JPEG, PNG, GIF, or WebP. Maximum size 2 MB.</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={avatarLoading}
-                onClick={onUploadAvatar}
-                className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
-              >
-                {avatarLoading ? "Saving…" : "Save picture"}
-              </button>
-              {(user?.avatar_url || previewUrl) && (
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-slate-300">Profile picture</h2>
+          <button
+            type="button"
+            onClick={() => setAvatarCollapsed((v) => !v)}
+            className="text-xs text-slate-400 hover:text-slate-200 rounded-full border border-slate-600/70 px-2 py-0.5"
+            aria-expanded={!avatarCollapsed}
+          >
+            {avatarCollapsed ? "Show" : "Hide"}
+          </button>
+        </div>
+        {!avatarCollapsed && (
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            <div className="w-24 h-24 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
+              {displaySrc ? (
+                <img src={displaySrc} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-slate-500 text-xs text-center px-2">No picture</span>
+              )}
+            </div>
+            <div className="flex-1 space-y-3 w-full">
+              <input
+                id="avatar-input"
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={onPickFile}
+                className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700"
+              />
+              <p className="text-xs text-slate-500">JPEG, PNG, GIF, or WebP. Maximum size 2 MB.</p>
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={avatarLoading}
-                  onClick={onRemoveAvatar}
-                  className="rounded-lg border border-slate-600 text-slate-300 text-sm py-2 px-4 hover:bg-slate-800"
+                  onClick={onUploadAvatar}
+                  className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
                 >
-                  Remove picture
+                  {avatarLoading ? "Saving…" : "Save picture"}
                 </button>
+                {(user?.avatar_url || previewUrl) && (
+                  <button
+                    type="button"
+                    disabled={avatarLoading}
+                    onClick={onRemoveAvatar}
+                    className="rounded-lg border border-slate-600 text-slate-300 text-sm py-2 px-4 hover:bg-slate-800"
+                  >
+                    Remove picture
+                  </button>
+                )}
+              </div>
+              {avatarError && (
+                <p className="text-sm text-rose-400">{avatarError}</p>
               )}
+              {avatarOk && <p className="text-sm text-emerald-400">{avatarOk}</p>}
             </div>
-            {avatarError && (
-              <p className="text-sm text-rose-400">{avatarError}</p>
-            )}
-            {avatarOk && <p className="text-sm text-emerald-400">{avatarOk}</p>}
           </div>
-        </div>
+        )}
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
@@ -440,187 +459,253 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <form onSubmit={onSubmitProfile} className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
-        <h2 className="text-sm font-medium text-slate-300">Email and password</h2>
-        {profileError && (
-          <p className="text-sm text-rose-400 bg-rose-950/50 border border-rose-900 rounded-lg px-3 py-2">
-            {profileError}
-          </p>
-        )}
-        {profileOk && <p className="text-sm text-emerald-400">{profileOk}</p>}
-
-        <div>
-          <label htmlFor="profile-email" className="block text-xs font-medium text-slate-400 mb-1">
-            Email
-          </label>
-          <input
-            id="profile-email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-            required
-          />
+      <form
+        onSubmit={onSubmitProfile}
+        className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-slate-300">Email and password</h2>
+          <button
+            type="button"
+            onClick={() => setEmailCollapsed((v) => !v)}
+            className="text-xs text-slate-400 hover:text-slate-200 rounded-full border border-slate-600/70 px-2 py-0.5"
+            aria-expanded={!emailCollapsed}
+          >
+            {emailCollapsed ? "Show" : "Hide"}
+          </button>
         </div>
+        {!emailCollapsed && (
+          <>
+            {profileError && (
+              <p className="text-sm text-rose-400 bg-rose-950/50 border border-rose-900 rounded-lg px-3 py-2">
+                {profileError}
+              </p>
+            )}
+            {profileOk && <p className="text-sm text-emerald-400">{profileOk}</p>}
 
-        {hasPassword && (
-          <div>
-            <label htmlFor="current-password" className="block text-xs font-medium text-slate-400 mb-1">
-              Current password
-            </label>
-            <input
-              id="current-password"
-              type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-              placeholder="Required when changing email or password"
-            />
-          </div>
+            <div>
+              <label htmlFor="profile-email" className="block text-xs font-medium text-slate-400 mb-1">
+                Email
+              </label>
+              <input
+                id="profile-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                required
+              />
+            </div>
+
+            {hasPassword && (
+              <div>
+                <label htmlFor="current-password" className="block text-xs font-medium text-slate-400 mb-1">
+                  Current password
+                </label>
+                <input
+                  id="current-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  placeholder="Required when changing email or password"
+                />
+              </div>
+            )}
+
+            <>
+              <div>
+                <label htmlFor="new-password" className="block text-xs font-medium text-slate-400 mb-1">
+                  {hasPassword ? "New password" : "Set password (optional)"}
+                </label>
+                <input
+                  id="new-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  placeholder={
+                    hasPassword ? "Leave blank to keep current password" : "Add a password for email sign-in"
+                  }
+                />
+              </div>
+              <div>
+                <label htmlFor="confirm-password" className="block text-xs font-medium text-slate-400 mb-1">
+                  {hasPassword ? "Confirm new password" : "Confirm password"}
+                </label>
+                <input
+                  id="confirm-password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  placeholder="Repeat new password"
+                />
+              </div>
+            </>
+
+            {!hasPassword && (
+              <p className="text-sm text-slate-500 border border-slate-800 rounded-lg px-3 py-2">
+                You can still change your email without a password. To use email and password on the sign-in page, set a
+                password above (or keep using Google, GitHub, GitLab, or Microsoft 365).
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={profileLoading}
+              className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium py-2.5 transition-colors"
+            >
+              {profileLoading ? "Saving…" : "Save email and password"}
+            </button>
+          </>
         )}
-
-        <>
-          <div>
-            <label htmlFor="new-password" className="block text-xs font-medium text-slate-400 mb-1">
-              {hasPassword ? "New password" : "Set password (optional)"}
-            </label>
-            <input
-              id="new-password"
-              type="password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-              placeholder={
-                hasPassword ? "Leave blank to keep current password" : "Add a password for email sign-in"
-              }
-            />
-          </div>
-          <div>
-            <label htmlFor="confirm-password" className="block text-xs font-medium text-slate-400 mb-1">
-              {hasPassword ? "Confirm new password" : "Confirm password"}
-            </label>
-            <input
-              id="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-              placeholder="Repeat new password"
-            />
-          </div>
-        </>
-
-        {!hasPassword && (
-          <p className="text-sm text-slate-500 border border-slate-800 rounded-lg px-3 py-2">
-            You can still change your email without a password. To use email and password on the sign-in page, set a
-            password above (or keep using Google, GitHub, GitLab, or Microsoft 365).
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={profileLoading}
-          className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium py-2.5 transition-colors"
-        >
-          {profileLoading ? "Saving…" : "Save email and password"}
-        </button>
       </form>
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
-        <h2 className="text-sm font-medium text-slate-300">Password recovery (no email)</h2>
-        <p className="text-xs text-slate-500 leading-relaxed">
-          Generate a one-time recovery code and keep it offline. If you forget your password, use{" "}
-          <span className="text-slate-400">Forgot password</span> on the sign-in page with this code—nothing is sent by
-          email. After a successful reset, the code stops working and you sign in with your email and new password.
-        </p>
-        {recoveryError && (
-          <p className="text-sm text-rose-400 bg-rose-950/50 border border-rose-900 rounded-lg px-3 py-2">
-            {recoveryError}
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-slate-300">Password recovery (no email)</h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setRecoveryHelpOpen((v) => !v)}
+              className="h-6 w-6 flex items-center justify-center rounded-full border border-slate-600/80 text-[11px] font-semibold text-slate-300 hover:text-white hover:border-slate-400"
+              aria-label={recoveryHelpOpen ? "Hide password and recovery details" : "Show password and recovery details"}
+              aria-expanded={recoveryHelpOpen}
+            >
+              i
+            </button>
+            <button
+              type="button"
+              onClick={() => setRecoveryCollapsed((v) => !v)}
+              className="text-xs text-slate-400 hover:text-slate-200 rounded-full border border-slate-600/70 px-2 py-0.5"
+              aria-expanded={!recoveryCollapsed}
+            >
+              {recoveryCollapsed ? "Show" : "Hide"}
+            </button>
+          </div>
+        </div>
+
+        {recoveryHelpOpen && (
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Generate a one-time recovery code and keep it offline. If you forget your password, use{" "}
+            <span className="text-slate-400">Forgot password</span> on the sign-in page with this code—nothing is sent
+            by email. After a successful reset, the code stops working and you sign in with your email and new
+            password.
           </p>
         )}
-        {recoveryOk && !shownRecoveryCode && (
-          <p className="text-sm text-emerald-400">{recoveryOk}</p>
-        )}
-        {shownRecoveryCode && (
-          <div className="space-y-2">
-            <p className="text-sm text-amber-200/90">{recoveryOk}</p>
-            <div className="rounded-lg bg-slate-950 border border-amber-900/50 p-3 font-mono text-xs text-amber-100 break-all select-all">
-              {shownRecoveryCode}
+
+        {!recoveryCollapsed && (
+          <>
+            {recoveryError && (
+              <p className="text-sm text-rose-400 bg-rose-950/50 border border-rose-900 rounded-lg px-3 py-2">
+                {recoveryError}
+              </p>
+            )}
+            {recoveryOk && !shownRecoveryCode && (
+              <p className="text-sm text-emerald-400">{recoveryOk}</p>
+            )}
+            {shownRecoveryCode && (
+              <div className="space-y-2">
+                <p className="text-sm text-amber-200/90">{recoveryOk}</p>
+                <div className="rounded-lg bg-slate-950 border border-amber-900/50 p-3 font-mono text-xs text-amber-100 break-all select-all">
+                  {shownRecoveryCode}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(shownRecoveryCode);
+                  }}
+                  className="text-xs text-emerald-400 hover:underline"
+                >
+                  Copy to clipboard
+                </button>
+              </div>
+            )}
+
+            {hasRecoveryCode && !shownRecoveryCode && (
+              <div
+                className="min-w-0 max-w-full overflow-hidden rounded-lg bg-slate-950 border border-slate-700 px-3 py-2.5 space-y-1.5"
+                role="status"
+                aria-label="A recovery code is saved on this account"
+              >
+                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Saved recovery code</p>
+                <p
+                  className="w-full min-w-0 max-w-full font-mono text-sm text-slate-500 select-none break-all leading-normal tracking-normal"
+                  aria-hidden="true"
+                >
+                  ••••••••••••••••••••
+                </p>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  The full code was shown only when you created or replaced it. Use{" "}
+                  <span className="text-slate-400">Replace recovery code</span> if you need a new one.
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={recoveryLoading}
+                onClick={onGenerateRecoveryCode}
+                className="rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
+              >
+                {recoveryLoading ? "Working…" : hasRecoveryCode ? "Replace recovery code" : "Generate recovery code"}
+              </button>
+              {hasRecoveryCode && (
+                <button
+                  type="button"
+                  disabled={recoveryLoading}
+                  onClick={onRemoveRecoveryCode}
+                  className="rounded-lg border border-slate-600 text-slate-300 text-sm py-2 px-4 hover:bg-slate-800"
+                >
+                  Remove recovery code
+                </button>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard?.writeText(shownRecoveryCode);
-              }}
-              className="text-xs text-emerald-400 hover:underline"
-            >
-              Copy to clipboard
-            </button>
-          </div>
+          </>
         )}
-        {hasRecoveryCode && !shownRecoveryCode && (
-          <div
-            className="min-w-0 max-w-full overflow-hidden rounded-lg bg-slate-950 border border-slate-700 px-3 py-2.5 space-y-1.5"
-            role="status"
-            aria-label="A recovery code is saved on this account"
-          >
-            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Saved recovery code</p>
-            <p
-              className="w-full min-w-0 max-w-full font-mono text-sm text-slate-500 select-none break-all leading-normal tracking-normal"
-              aria-hidden="true"
-            >
-              ••••••••••••••••••••
-            </p>
-            <p className="text-[11px] text-slate-500 leading-snug">
-              The full code was shown only when you created or replaced it. Use{" "}
-              <span className="text-slate-400">Replace recovery code</span> if you need a new one.
-            </p>
-          </div>
-        )}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={recoveryLoading}
-            onClick={onGenerateRecoveryCode}
-            className="rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
-          >
-            {recoveryLoading ? "Working…" : hasRecoveryCode ? "Replace recovery code" : "Generate recovery code"}
-          </button>
-          {hasRecoveryCode && (
-            <button
-              type="button"
-              disabled={recoveryLoading}
-              onClick={onRemoveRecoveryCode}
-              className="rounded-lg border border-slate-600 text-slate-300 text-sm py-2 px-4 hover:bg-slate-800"
-            >
-              Remove recovery code
-            </button>
-          )}
-        </div>
       </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
-        <h2 className="text-sm font-medium text-slate-300">Backup and restore</h2>
-        <p className="text-xs text-slate-500 leading-relaxed">
-          Download a JSON backup: all expense rows (including renewals—those use{" "}
-          <span className="text-slate-400">category</span> <span className="text-slate-400">renewal</span> in the{" "}
-          <span className="text-slate-400">expenses</span> array) plus, on current exports, prescription rows. Each file
-          includes an <span className="text-slate-400">account</span> block (email, user id, and a short label) so you can
-          tell which user it belongs to—useful when several people or accounts share a machine. The download filename also
-          includes the account email. Restore from a file created by this app.{" "}
-          <span className="text-slate-400">Append</span> adds rows to what you already have.{" "}
-          <span className="text-slate-400">Replace</span> clears expenses and, for version 2 backups, prescriptions,
-          then imports the file into the <strong className="text-slate-400">currently signed-in</strong> account; older
-          (version 1) files replace expenses only and leave prescriptions unchanged. If the file is for another email,
-          you will be asked to confirm before importing. If you use a password recovery code, the backup may also
-          include it under <span className="text-slate-400">account.recoveryCode</span> (regenerate your code once if an
-          older backup omits it). Keep backups private—they contain your spending data and may include your recovery
-          code.
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-slate-300">Backup and restore</h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBackupHelpOpen((v) => !v)}
+              className="h-6 w-6 flex items-center justify-center rounded-full border border-slate-600/80 text-[11px] font-semibold text-slate-300 hover:text-white hover:border-slate-400"
+              aria-label={backupHelpOpen ? "Hide backup and restore details" : "Show backup and restore details"}
+              aria-expanded={backupHelpOpen}
+            >
+              i
+            </button>
+            <button
+              type="button"
+              onClick={() => setBackupCollapsed((v) => !v)}
+              className="text-xs text-slate-400 hover:text-slate-200 rounded-full border border-slate-600/70 px-2 py-0.5"
+              aria-expanded={!backupCollapsed}
+            >
+              {backupCollapsed ? "Show" : "Hide"}
+            </button>
+          </div>
+        </div>
+        {backupHelpOpen && (
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Download a JSON backup with all expenses (including renewals) and, on version 2 files, prescriptions. Each
+            backup includes an <span className="text-slate-400">account</span> block so you can see which user it
+            belongs to. <span className="text-slate-400">Append</span> adds to what you have;{" "}
+            <span className="text-slate-400">Replace</span> clears existing rows (and, for version 2 exports,
+            prescriptions) before importing into the currently signed-in account. Backups may include your recovery code
+            under <span className="text-slate-400">account.recoveryCode</span>—keep them private.
+          </p>
+        )}
+        {!backupCollapsed && (
+          <>
         {backupError && (
           <p className="text-sm text-rose-400 bg-rose-950/50 border border-rose-900 rounded-lg px-3 py-2">
             {backupError}
@@ -671,6 +756,8 @@ export default function ProfilePage() {
             {backupLoading ? "Restoring…" : "Restore from file"}
           </button>
         </form>
+          </>
+        )}
       </div>
     </div>
   );
