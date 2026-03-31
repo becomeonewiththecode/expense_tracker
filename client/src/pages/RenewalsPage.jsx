@@ -34,7 +34,6 @@ export default function RenewalsPage() {
   const [expenseEditId, setExpenseEditId] = useState(null);
   const [expenseEditDraft, setExpenseEditDraft] = useState(null);
   const [expenseSaving, setExpenseSaving] = useState(false);
-  const [expensesModifyMode, setExpensesModifyMode] = useState(false);
   const [projectionOpen, setProjectionOpen] = useState(false);
   const [addForm, setAddForm] = useState(() => createRenewalManualForm());
   const [addSaving, setAddSaving] = useState(false);
@@ -59,7 +58,6 @@ export default function RenewalsPage() {
 
   useEffect(() => {
     if (items.length === 0) {
-      setExpensesModifyMode(false);
       setExpenseEditId(null);
       setExpenseEditDraft(null);
       setProjectionOpen(false);
@@ -67,7 +65,6 @@ export default function RenewalsPage() {
   }, [items.length]);
 
   function openExpenseEdit(row) {
-    if (!expensesModifyMode) return;
     setError("");
     setExpenseEditId(row.id);
     setExpenseEditDraft({
@@ -133,11 +130,6 @@ export default function RenewalsPage() {
     } catch (err) {
       setError(err.response?.data?.error || "Delete failed");
     }
-  }
-
-  function setModifyMode(v) {
-    if (v) setError("");
-    setExpensesModifyMode(v);
   }
 
   async function addExpense(e) {
@@ -238,8 +230,6 @@ export default function RenewalsPage() {
       {!loading && items.length > 0 && (
         <ExpenseTable
           items={items}
-          expensesModifyMode={expensesModifyMode}
-          setExpensesModifyMode={setModifyMode}
           expenseEditId={expenseEditId}
           expenseEditDraft={expenseEditDraft}
           setExpenseEditDraft={setExpenseEditDraft}

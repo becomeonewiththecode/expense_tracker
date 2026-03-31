@@ -245,19 +245,19 @@ flowchart TB
 
 These diagrams show how **React** pages map to backend routes. The HTTP client uses Axios with `baseURL: "/api"`.
 
-**Shell navigation (signed-in `Layout.jsx` header):** **Import** links to **`/expenses`**; **Lists** is a dropdown with **Expenses** (`/expenses/list`), **Renewals** (`/renewals`), **Prescriptions** (`/prescriptions`), and **Reports** (`/reports`) in that order. **Profile** and **Sign out** live in the avatar **account menu**, not in the main nav bar.
+**Shell navigation (signed-in `Layout.jsx` header):** **Import** links to **`/expenses`**. The four list destinations—**Expenses** (`/expenses/list`), **Renewals** (`/renewals`), **Prescriptions** (`/prescriptions`), and **Reports** (`/reports`)—appear as a **Lists** dropdown on **small/medium** viewports (below Tailwind **`lg`**, 1024px) and as **horizontal NavLinks** from **`lg`** and up (laptops and larger). **Profile** and **Sign out** live in the avatar **account menu**, not in the main nav bar.
 
 ```mermaid
 flowchart TB
-  subgraph hdr [Layout header]
+  subgraph hdr ["Layout header (responsive)"]
     IMP[Import]
-    LST[Lists]
+    NAV["Lists dropdown or Expenses / Renewals / Prescriptions / Reports links"]
   end
   IMP -->|"/expenses"| EPn[ExpensesPage]
-  LST --> L1["/expenses/list — YourExpensesPage"]
-  LST --> L2["/renewals — RenewalsPage"]
-  LST --> L3["/prescriptions — PrescriptionsPage"]
-  LST --> L4["/reports — ReportsPage"]
+  NAV --> L1["/expenses/list — YourExpensesPage"]
+  NAV --> L2["/renewals — RenewalsPage"]
+  NAV --> L3["/prescriptions — PrescriptionsPage"]
+  NAV --> L4["/reports — ReportsPage"]
 ```
 
 **Pages and primary API mounts:**
@@ -378,7 +378,7 @@ flowchart TD
 | Expired session prompt | `SessionExpiredModal.jsx` — **Continue session** → **`POST /auth/refresh`** → reload; **Sign out** → **`/login`** |
 | Errors | `apiError.js` — network and proxy error messages |
 | Labels versus server enums | `expenseOptions.js` — categories (including **Renewal**), **`RENEWAL_KIND_OPTIONS`** / **`formatRenewalKind`**, frequencies, institutions, **expense state** (**Active** / **Cancel**; API `active` / `cancel`). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
-| Main navigation (authenticated shell) | **`Layout.jsx`** — **Import**, **Lists** dropdown (**Expenses**, **Renewals**, **Prescriptions**, **Reports** in that order); avatar **account menu** (**Profile**, **Upcoming renewals** when applicable, **Sign out**) |
+| Main navigation (authenticated shell) | **`Layout.jsx`** — **Import**; **Lists** dropdown below **`lg`** or inline **Expenses** / **Renewals** / **Prescriptions** / **Reports** at **`lg`+**; avatar **account menu** (**Profile**, **Upcoming renewals** when applicable, **Sign out**) |
 | Upcoming renewals | **`Layout.jsx`** (avatar menu, **badge** toggles tables, **`renewalTablesExpanded`**) + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** — all main shell routes; see [Renewal reminders (client)](#renewal-reminders-client) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (client confirms when backup **`account.email`** differs from session); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |

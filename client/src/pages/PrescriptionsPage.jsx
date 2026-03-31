@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "../api";
 import ProjectionModal from "../components/ProjectionModal.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
+import RowActionsMenu from "../components/RowActionsMenu.jsx";
 import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
 import { setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import {
@@ -569,44 +570,60 @@ export default function PrescriptionsPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <td className="px-4 py-3 text-right whitespace-nowrap min-w-[10rem]">
                         {editing && d ? (
-                          <div className="flex flex-wrap justify-end gap-2">
-                            <button
-                              type="button"
-                              disabled={editSaving}
-                              onClick={saveEdit}
-                              className="text-emerald-400 hover:text-emerald-300 text-xs"
-                            >
-                              {editSaving ? "Saving…" : "Save"}
-                            </button>
-                            <button type="button" disabled={editSaving} onClick={cancelEdit} className="text-slate-400 text-xs">
-                              Cancel
-                            </button>
+                          <div className="flex justify-end">
+                            <RowActionsMenu
+                              items={[
+                                {
+                                  key: "save",
+                                  label: editSaving ? "Saving…" : "Save",
+                                  disabled: editSaving,
+                                  className: "text-emerald-400",
+                                  onClick: saveEdit,
+                                },
+                                {
+                                  key: "cancel",
+                                  label: "Cancel",
+                                  disabled: editSaving,
+                                  className: "text-slate-400",
+                                  onClick: cancelEdit,
+                                },
+                              ]}
+                            />
                           </div>
                         ) : (
-                          <div className="flex flex-wrap justify-end gap-x-2 gap-y-1">
-                            <button
-                              type="button"
-                              onClick={() => setProjectionTarget({ kind: "row", row: projectionRow })}
-                              className="text-violet-400 hover:text-violet-300 text-xs"
-                            >
-                              Projection
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => markRenewed(row)}
-                              className="text-cyan-400 hover:text-cyan-300 text-xs"
-                              title="Advance next renewal by one cycle"
-                            >
-                              Renewed
-                            </button>
-                            <button type="button" onClick={() => startEdit(row)} className="text-sky-400 hover:text-sky-300 text-xs">
-                              Edit
-                            </button>
-                            <button type="button" onClick={() => remove(row.id)} className="text-rose-400 hover:text-rose-300 text-xs">
-                              Delete
-                            </button>
+                          <div className="flex justify-end">
+                            <RowActionsMenu
+                              items={[
+                                {
+                                  key: "projection",
+                                  label: "Projection",
+                                  className: "text-violet-400",
+                                  onClick: () =>
+                                    setProjectionTarget({ kind: "row", row: projectionRow }),
+                                },
+                                {
+                                  key: "renewed",
+                                  label: "Renewed",
+                                  title: "Advance next renewal by one cycle",
+                                  className: "text-cyan-400",
+                                  onClick: () => markRenewed(row),
+                                },
+                                {
+                                  key: "edit",
+                                  label: "Edit",
+                                  className: "text-sky-400",
+                                  onClick: () => startEdit(row),
+                                },
+                                {
+                                  key: "delete",
+                                  label: "Delete",
+                                  className: "text-rose-400",
+                                  onClick: () => remove(row.id),
+                                },
+                              ]}
+                            />
                           </div>
                         )}
                       </td>
