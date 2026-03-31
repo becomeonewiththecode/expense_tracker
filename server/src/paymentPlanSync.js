@@ -24,7 +24,7 @@ function institutionFromExpenseInstitution(financialInstitution) {
 }
 
 function statusFromExpenseState(state) {
-  return state === "cancel" ? "paused" : "active";
+  return state === "cancel" || state === "cancelled" ? "paused" : "active";
 }
 
 function nameFromExpense(row) {

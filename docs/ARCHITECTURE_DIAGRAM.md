@@ -1,6 +1,6 @@
 # Expense Tracker — Architecture diagrams
 
-This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For the **Renewals** feature (category **`renewal`**, **`renewal_kind`**, **`/renewals`** page, import staging), see [RENEWALS.md](./RENEWALS.md). For **Prescriptions** (**`/prescriptions`**, **`prescriptions`** table, **`renewal_period`** monthly **1–11** or **1–5 years**, 30-day reminders), see [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). For **Payment Plan** (**`/payment-plans`**, **`payment_plans`** table, and **`payment_plan`** expense-category sync), see [ARCHITECTURE.md](./ARCHITECTURE.md#data-model). For **Docker Compose production**, **`ensure-env.mjs`**, **`JWT_SECRET`**, and **`env_file`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
+This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For the **Renewals** feature (category **`renewal`**, **`renewal_kind`**, **`/renewals`** page, import staging), see [RENEWALS.md](./RENEWALS.md). For **Prescriptions** (**`/prescriptions`**, **`prescriptions`** table, **`renewal_period`** monthly **1–11** or **1–5 years**, 30-day reminders), see [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). For **Payment Plan** (**`/payment-plans`**, **`payment_plans`** table, **`payment_plan`** expense-category sync, and **Add payment plan** Show/Hide behavior), see [PAYMENT_PLANS.md](./PAYMENT_PLANS.md) and [ARCHITECTURE.md](./ARCHITECTURE.md#data-model). For **Docker Compose production**, **`ensure-env.mjs`**, **`JWT_SECRET`**, and **`env_file`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
 
 ---
 
@@ -344,6 +344,7 @@ flowchart LR
     direction TB
     PPG2["GET POST PATCH DELETE /payment-plans"]
     PPG2 --- PPGnote["search notes + credit-card institutions"]
+    PPG2 --- PPGadd["Add card: Show/Hide; auto-collapse on first non-empty list"]
     PPG2 --- PPGu["Header flashes update icon after successful save/add"]
   end
   PPPg --> PPX["/payment-plans CRUD"]
@@ -409,7 +410,20 @@ flowchart TD
 | Renewals (odd-interval contracts) | `RenewalsPage` at **`/renewals`** — **`GET /expenses?category=renewal`** (list includes **Cancel** rows); manual add defaults to category **Renewal**; **`ExpenseTable`** with **`showRenewalColumns`** and **`onRowProjection`** (sticky **Actions** column). Combined header **Projection** and per-row **Projection** use **`projection.js`**; combined totals use **Active** rows only—**`state`** **`cancel`** excluded client-side. **Import** (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
 | Prescriptions (health / supplies) | `PrescriptionsPage` at **`/prescriptions`** — **`/api/prescriptions`** CRUD; **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. Header flashes a short update icon on successful add/edit/renew saves. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
 | Expenses list (`/expenses/list`) | **`YourExpensesPage`** — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** and **`category !== payment_plan`** in the table and in **combined Projection**; changing a row’s category to **Renewal** (with a type) or **Payment Plan** on save removes it from this view (it remains queryable on **`/renewals`** or **`/payment-plans`**). Header flashes a short update icon after successful save/add updates. |
-| Payment Plan (`/payment-plans`) | **`PaymentPlansPage`** — **`/api/payment-plans`** CRUD; note search in the table header; credit-card account type narrows institution options to **VISA**, **American Express**, **Mastercard**. Header flashes a short update icon after successful save/add updates. |
+| Payment Plan (`/payment-plans`) | **`PaymentPlansPage`** — **`/api/payment-plans`** CRUD; note search in the table header; credit-card account type narrows institution options to **VISA**, **American Express**, **Mastercard**. **Add payment plan:** **Show** / **Hide** toggles the inline form; first transition to a non-empty list collapses it (**`hadItemsRef`**). Header flashes a short update icon after successful save/add updates. |
+
+### Payment Plan — add section (client)
+
+The **Add payment plan** header row always exposes **Show** / **Hide**. When **`items.length`** goes from **0** to **1+** for the first time in a session (including initial load), **`setAddOpen(false)`** runs once so the form collapses; the user can **Show** again to add another plan. See [PAYMENT_PLANS.md](./PAYMENT_PLANS.md).
+
+```mermaid
+flowchart TD
+  A[items.length effect] --> B{hasItems and not hadItemsRef?}
+  B -->|yes| C[setAddOpen false]
+  B -->|no| D[no auto-collapse]
+  C --> U[hadItemsRef tracks hasItems]
+  D --> U
+```
 
 ### Renewals vs. Expenses list vs. Upcoming expenses (diagram)
 

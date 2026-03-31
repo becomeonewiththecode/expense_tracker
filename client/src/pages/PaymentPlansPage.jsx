@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import api from "../api";
+import ProjectionModal from "../components/ProjectionModal.jsx";
 import RowActionsMenu from "../components/RowActionsMenu.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
 import TableUpdateFlash from "../components/TableUpdateFlash.jsx";
@@ -41,6 +42,10 @@ import {
   TABLE_TH,
   TABLE_TH_STICKY_ACTIONS,
 } from "../tableStyles.js";
+import {
+  computePaymentPlanProjectionPieData,
+  computePaymentPlanSpendingProjection,
+} from "../projection.js";
 
 const CREDIT_CARD_INSTITUTION_VALUES = new Set(["visa", "american_express", "mastercard"]);
 const CREDIT_CARD_INSTITUTION_OPTIONS = PAYMENT_PLAN_INSTITUTION_OPTIONS.filter((o) =>
@@ -110,6 +115,8 @@ export default function PaymentPlansPage() {
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [projectionTarget, setProjectionTarget] = useState(null);
+  const hadItemsRef = useRef(false);
 
   const rowsPerPage = useTableRowsPerPage();
   const [page, setPage] = useState(1);
@@ -152,6 +159,18 @@ export default function PaymentPlansPage() {
   useEffect(() => {
     if (safePage !== page) setPage(safePage);
   }, [safePage, page]);
+
+  useEffect(() => {
+    const hasItems = items.length > 0;
+    if (hasItems && !hadItemsRef.current) {
+      setAddOpen(false);
+    }
+    hadItemsRef.current = hasItems;
+  }, [items.length]);
+
+  useEffect(() => {
+    if (items.length === 0) setProjectionTarget(null);
+  }, [items.length]);
 
   async function onAdd(e) {
     e.preventDefault();
@@ -243,6 +262,11 @@ export default function PaymentPlansPage() {
     });
   }
 
+  function projectionContextLabel(row) {
+    const n = String(row?.name ?? "").trim();
+    return n ? `Payment plan — ${n}` : "Payment plan";
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -260,15 +284,17 @@ export default function PaymentPlansPage() {
       ) : null}
 
       <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-        <button
-          type="button"
-          onClick={() => setAddOpen((v) => !v)}
-          className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-800/70 text-slate-200"
-          aria-expanded={addOpen}
-        >
+        <div className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-slate-200">
           <span className="font-medium text-sm">Add payment plan</span>
-          <span className="text-slate-500 text-xs">{addOpen ? "Hide" : "Show"}</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setAddOpen((v) => !v)}
+            className="text-slate-500 text-xs hover:text-slate-300"
+            aria-expanded={addOpen}
+          >
+            {addOpen ? "Hide" : "Show"}
+          </button>
+        </div>
         {addOpen ? (
           <form onSubmit={onAdd} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="text-xs text-slate-500 block">
@@ -352,13 +378,22 @@ export default function PaymentPlansPage() {
               <h2 className="text-sm font-medium text-slate-200">Your payment plans</h2>
               <TableUpdateFlash token={tableUpdateFlashToken} />
             </div>
-            <input
-              type="text"
-              value={noteSearch}
-              onChange={(e) => setNoteSearch(e.target.value)}
-              placeholder="Search notes"
-              className="w-48 rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-slate-200 text-xs"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={noteSearch}
+                onChange={(e) => setNoteSearch(e.target.value)}
+                placeholder="Search notes"
+                className="w-48 rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-slate-200 text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setProjectionTarget({ kind: "all" })}
+                className="rounded-lg border border-violet-500/40 bg-violet-950/40 hover:bg-violet-900/35 text-violet-200 text-xs font-medium px-3 py-1.5"
+              >
+                Projection
+              </button>
+            </div>
           </div>
           <div className={TABLE_SCROLL}>
             <table className={`${TABLE} min-w-[78rem]`}>
@@ -430,6 +465,7 @@ export default function PaymentPlansPage() {
                       <td className={editing ? TABLE_TD_STICKY_ACTIONS_EDITING : TABLE_TD_STICKY_ACTIONS_DEFAULT}>
                         <div className="flex justify-end">
                           <RowActionsMenu
+                            direction="up"
                             items={
                               editing
                                 ? [
@@ -437,6 +473,12 @@ export default function PaymentPlansPage() {
                                     { key: "cancel", label: "Cancel", className: "text-slate-300", disabled: editSaving, onClick: cancelEdit },
                                   ]
                                 : [
+                                    {
+                                      key: "projection",
+                                      label: "Projection",
+                                      className: "text-violet-400",
+                                      onClick: () => setProjectionTarget({ kind: "row", row }),
+                                    },
                                     { key: "edit", label: "Edit", className: "text-sky-400", onClick: () => startEdit(row) },
                                     { key: "delete", label: "Delete", className: "text-rose-400", onClick: () => remove(row.id) },
                                   ]
@@ -463,6 +505,47 @@ export default function PaymentPlansPage() {
           </div>
         </div>
       ) : null}
+      <ProjectionModal
+        open={projectionTarget != null}
+        onClose={() => setProjectionTarget(null)}
+        projectionKind="payment_plan"
+        projection={
+          projectionTarget
+            ? projectionTarget.kind === "all"
+              ? computePaymentPlanSpendingProjection(filteredItems)
+              : computePaymentPlanSpendingProjection([projectionTarget.row])
+            : null
+        }
+        contextLabel={
+          projectionTarget?.kind === "row"
+            ? projectionContextLabel(projectionTarget.row)
+            : projectionTarget?.kind === "all"
+              ? "Active payment plans (combined)"
+              : undefined
+        }
+        singleItem={projectionTarget?.kind === "row"}
+        pieData={computePaymentPlanProjectionPieData(
+          projectionTarget?.kind === "all"
+            ? filteredItems
+            : projectionTarget?.kind === "row"
+              ? [projectionTarget.row]
+              : []
+        )}
+        projectionItems={
+          projectionTarget?.kind === "all"
+            ? filteredItems
+            : projectionTarget?.kind === "row"
+              ? [projectionTarget.row]
+              : []
+        }
+        projectionScopeKey={
+          projectionTarget == null
+            ? ""
+            : projectionTarget.kind === "all"
+              ? "payment-plans-all"
+              : `payment-plan-${projectionTarget.row.id}`
+        }
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { formatCategory } from "./expenseOptions.js";
+import { formatPaymentPlanCategory } from "./paymentPlanOptions.js";
 import { formatPrescriptionCategory } from "./prescriptionOptions.js";
 
 /** Average days per year for daily rate from annual totals. */
@@ -93,8 +94,10 @@ export function filterItemsForProjectionSlice(items, sliceName) {
 }
 
 export function formatProjectionCurrency(n) {
-  if (n == null || !Number.isFinite(n)) return "$0.00";
-  return `$${Number(n).toFixed(2)}`;
+  if (n == null || n === "") return "$0.00";
+  const x = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(x)) return "$0.00";
+  return `$${x.toFixed(2)}`;
 }
 
 /** Months between refills — matches server `prescriptionEnums` / `prescriptionSchedule.js`. */
@@ -138,7 +141,7 @@ export function prescriptionRenewalsPerYear(renewalPeriod) {
  * @returns {{ recurringAnnual: number, oneTime: number }}
  */
 export function prescriptionRowAnnualParts(row) {
-  if (row.state === "cancel") return { recurringAnnual: 0, oneTime: 0 };
+  if (row.state !== "active") return { recurringAnnual: 0, oneTime: 0 };
   const amt = Number(row.amount);
   if (!Number.isFinite(amt) || amt < 0) return { recurringAnnual: 0, oneTime: 0 };
   const perYear = amt * prescriptionRenewalsPerYear(row.renewal_period);
@@ -189,5 +192,88 @@ export function filterPrescriptionItemsForProjectionSlice(items, sliceName) {
   return items.filter((row) => {
     const { recurringAnnual } = prescriptionRowAnnualParts(row);
     return recurringAnnual > 0 && formatPrescriptionCategory(row.category) === sliceName;
+  });
+}
+
+/**
+ * Payment plan annualization from `payment_schedule`.
+ * `frequency` (1-6) is treated as planned payment count for projection totals.
+ * `one_time` contributes to one-time only when count is not explicitly numeric.
+ * Non-active statuses are excluded.
+ */
+export function paymentPlanRowAnnualParts(row) {
+  if (row.status !== "active") return { recurringAnnual: 0, oneTime: 0 };
+  const amt = Number(row.amount);
+  if (!Number.isFinite(amt) || amt < 0) return { recurringAnnual: 0, oneTime: 0 };
+  const count = Number.parseInt(String(row.frequency ?? ""), 10);
+  if (Number.isInteger(count) && count > 0) {
+    // Explicit payment count overrides schedule cadence for plan totals.
+    return { recurringAnnual: amt * count, oneTime: 0 };
+  }
+  switch (String(row.payment_schedule ?? "").toLowerCase()) {
+    case "one_time":
+      return { recurringAnnual: 0, oneTime: amt };
+    case "weekly":
+      return { recurringAnnual: amt * 52, oneTime: 0 };
+    case "bi_weekly":
+      return { recurringAnnual: amt * 26, oneTime: 0 };
+    case "quarterly":
+      return { recurringAnnual: amt * 4, oneTime: 0 };
+    case "semi_annual":
+      return { recurringAnnual: amt * 2, oneTime: 0 };
+    case "annual":
+      return { recurringAnnual: amt, oneTime: 0 };
+    case "monthly":
+    default:
+      return { recurringAnnual: amt * 12, oneTime: 0 };
+  }
+}
+
+export function computePaymentPlanSpendingProjection(items) {
+  let recurringYearly = 0;
+  let oneTimeTotal = 0;
+  for (const row of items) {
+    const { recurringAnnual, oneTime } = paymentPlanRowAnnualParts(row);
+    recurringYearly += recurringAnnual;
+    oneTimeTotal += oneTime;
+  }
+  return {
+    recurring: {
+      daily: recurringYearly / DAYS_PER_YEAR,
+      monthly: recurringYearly / 12,
+      yearly: recurringYearly,
+    },
+    oneTimeTotal,
+  };
+}
+
+export function computePaymentPlanProjectionPieData(items) {
+  const byCategory = new Map();
+  let oneTimeTotal = 0;
+  for (const row of items) {
+    const { recurringAnnual, oneTime } = paymentPlanRowAnnualParts(row);
+    oneTimeTotal += oneTime;
+    if (recurringAnnual > 0) {
+      const label = formatPaymentPlanCategory(row.category);
+      byCategory.set(label, (byCategory.get(label) || 0) + recurringAnnual);
+    }
+  }
+  const data = [];
+  for (const [name, value] of byCategory) {
+    if (value > 0) data.push({ name, value });
+  }
+  if (oneTimeTotal > 0) data.push({ name: "One-time", value: oneTimeTotal });
+  data.sort((a, b) => b.value - a.value);
+  return data;
+}
+
+export function filterPaymentPlanItemsForProjectionSlice(items, sliceName) {
+  if (sliceName == null || sliceName === "" || !Array.isArray(items)) return [];
+  if (sliceName === "One-time") {
+    return items.filter((row) => paymentPlanRowAnnualParts(row).oneTime > 0);
+  }
+  return items.filter((row) => {
+    const { recurringAnnual } = paymentPlanRowAnnualParts(row);
+    return recurringAnnual > 0 && formatPaymentPlanCategory(row.category) === sliceName;
   });
 }

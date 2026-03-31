@@ -66,9 +66,9 @@ export const FINANCIAL_INSTITUTIONS = new Set([
 
 export const FREQUENCIES = new Set(["once", "weekly", "monthly", "bimonthly", "yearly"]);
 
-export const EXPENSE_STATES = new Set(["active", "cancel"]);
+export const EXPENSE_STATES = new Set(["active", "paused", "cancelled"]);
 
-export const STATE_ERROR = "Invalid state (use active, cancel)";
+export const STATE_ERROR = "Invalid state (use active, paused, cancelled)";
 
 /** Normalize DB or ISO string to `YYYY-MM-DD` for metadata derivation. */
 export function spentAtToIsoDate(v) {
@@ -204,5 +204,6 @@ export function parseExpenseState(value) {
     .toLowerCase()
     .trim();
   if (!s) return null;
-  return EXPENSE_STATES.has(s) ? s : null;
+  const legacy = s === "cancel" ? "cancelled" : s;
+  return EXPENSE_STATES.has(legacy) ? legacy : null;
 }

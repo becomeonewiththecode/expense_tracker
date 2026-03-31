@@ -18,6 +18,17 @@ const listsDropdownItemClass = ({ isActive }) =>
     isActive ? "text-emerald-300 bg-slate-800/50" : "text-slate-200 hover:bg-slate-800",
   ].join(" ");
 
+/** Text before `@`; if that segment contains `.`, use only the part before the first `.`. */
+function avatarLabelFromEmail(email) {
+  if (!email || typeof email !== "string") return "Me";
+  const at = email.indexOf("@");
+  const local = (at >= 0 ? email.slice(0, at) : email).trim();
+  if (!local) return "Me";
+  const dot = local.indexOf(".");
+  const base = dot >= 0 ? local.slice(0, dot).trim() : local;
+  return base || "Me";
+}
+
 function ListsNavDropdown() {
   const { pathname } = useLocation();
   const listsMenuRef = useRef(null);
@@ -100,6 +111,7 @@ function ListsNavDropdown() {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const avatarFallbackLabel = avatarLabelFromEmail(user?.email);
   const [renewalChip, setRenewalChip] = useState(null);
   /** When false, RenewalReminders hides institution tables + total (header + help may remain). */
   const [renewalTablesExpanded, setRenewalTablesExpanded] = useState(false);
@@ -167,13 +179,18 @@ export default function Layout() {
                 aria-haspopup="menu"
               >
                 <span className="inline-flex items-center gap-1.5 flex-shrink-0">
-                  <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                    {user?.avatar_url ? (
+                  {user?.avatar_url ? (
+                    <span className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
                       <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-[10px] text-slate-500">Me</span>
-                    )}
-                  </span>
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center justify-center rounded-full bg-slate-800 border border-slate-700 px-2 py-1.5 min-h-[2rem] flex-shrink-0 text-[10px] text-slate-500 leading-tight whitespace-nowrap"
+                      title={user?.email ?? undefined}
+                    >
+                      {avatarFallbackLabel}
+                    </span>
+                  )}
                   {renewalChip ? (
                     <button
                       type="button"

@@ -103,9 +103,9 @@ function leadTimePhrase(tier, days) {
   return "";
 }
 
-/** Cancelled subscriptions stay visible for reference but do not add to subtotals or the grand total. */
+/** Only active subscriptions count toward subtotals and the grand total. */
 function countsInRenewalSubtotal(r) {
-  return r.state !== "cancel";
+  return r.state === "active";
 }
 
 const RENEWAL_SORT_KEYS = ["title", "spent_at", "amount", "state", "renews"];
@@ -252,7 +252,7 @@ export default function RenewalReminders({
         spentAt: row.spent_at,
         category: row.category,
         frequency: row.frequency,
-        state: row.state === "cancel" ? "cancel" : "active",
+        state: row.state === "cancel" ? "cancelled" : row.state || "active",
       });
     }
     out.sort((a, b) => a.days - b.days || a.tier - b.tier);
@@ -411,12 +411,13 @@ export default function RenewalReminders({
           about two weeks after that date). If Renews looks wrong, fix the transaction date under{" "}
           <strong className="text-amber-200/90">Expenses</strong> → Edit. Rows with{" "}
           <strong className="text-amber-200/90">State</strong> set to{" "}
-          <strong className="text-amber-200/90">Cancel</strong> use a{" "}
+          <strong className="text-amber-200/90">Paused</strong> or{" "}
+          <strong className="text-amber-200/90">Cancelled</strong> use a{" "}
           <strong className="text-emerald-300/90">green</strong> highlight (subscription ended or you do not expect
           another charge). <strong className="text-amber-200/90">Subtotals</strong> and{" "}
           <strong className="text-amber-200/90">Total (all institutions)</strong> include only{" "}
           <strong className="text-amber-200/90">Active</strong> rows—
-          <strong className="text-emerald-300/90">Cancel</strong> amounts are excluded.
+          <strong className="text-emerald-300/90">Paused/Cancelled</strong> amounts are excluded.
         </div>
       ) : null}
       {tablesExpanded ? (
@@ -431,7 +432,7 @@ export default function RenewalReminders({
           const subtotalFooterNote =
             nCancel === 0
               ? `${rows.length} ${rows.length === 1 ? "expense" : "expenses"}`
-              : `${nActive} in subtotal · ${nCancel} Cancel (excluded)`;
+              : `${nActive} in subtotal · ${nCancel} Paused/Cancelled (excluded)`;
           return (
             <section key={institution} aria-label={`Renewals for ${institution}`}>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-200/90 mb-2">
@@ -482,7 +483,7 @@ export default function RenewalReminders({
                   </thead>
                   <tbody className={TABLE_BODY}>
                     {sortedRows.map((r) => {
-                      const cancelled = r.state === "cancel";
+                      const cancelled = r.state !== "active";
                       return (
                         <tr
                           key={r.key}
@@ -591,7 +592,7 @@ export default function RenewalReminders({
             </span>
           </div>
           <p className="text-xs text-amber-200/60 mt-1">
-            Sum of Active rows in every section above (Cancel excluded).
+            Sum of Active rows in every section above (Paused/Cancelled excluded).
           </p>
         </div>
       </div>
