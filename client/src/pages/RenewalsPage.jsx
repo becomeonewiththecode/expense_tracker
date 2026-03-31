@@ -47,6 +47,7 @@ export default function RenewalsPage() {
   const [addSaving, setAddSaving] = useState(false);
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [noteSearch, setNoteSearch] = useState("");
+  const [tableUpdateFlashToken, setTableUpdateFlashToken] = useState(0);
 
   const filteredItems = useMemo(() => {
     const q = noteSearch.trim().toLowerCase();
@@ -128,7 +129,8 @@ export default function RenewalsPage() {
       });
       cancelExpenseEdit();
       setProjectionTarget(null);
-      load();
+      await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save changes");
     } finally {
@@ -176,6 +178,7 @@ export default function RenewalsPage() {
       setProjectionTarget(null);
       if (expenseEditId) cancelExpenseEdit();
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save");
     } finally {
@@ -267,6 +270,7 @@ export default function RenewalsPage() {
           searchValue={noteSearch}
           onSearchChange={setNoteSearch}
           searchPlaceholder="Search notes"
+          updateFlashToken={tableUpdateFlashToken}
         />
       )}
 

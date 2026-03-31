@@ -3,6 +3,7 @@ import api from "../api";
 import ProjectionModal from "../components/ProjectionModal.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
 import RowActionsMenu from "../components/RowActionsMenu.jsx";
+import TableUpdateFlash from "../components/TableUpdateFlash.jsx";
 import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
 import { setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import {
@@ -88,6 +89,7 @@ export default function PrescriptionsPage() {
   const [noteSearch, setNoteSearch] = useState("");
   const rowsPerPage = useTableRowsPerPage();
   const [page, setPage] = useState(1);
+  const [tableUpdateFlashToken, setTableUpdateFlashToken] = useState(0);
 
   const load = useCallback(async () => {
     setError("");
@@ -154,6 +156,7 @@ export default function PrescriptionsPage() {
       setAddForm(emptyForm());
       await load();
       setAddFormOpen(false);
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save");
     } finally {
@@ -207,6 +210,7 @@ export default function PrescriptionsPage() {
       });
       cancelEdit();
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save changes");
     } finally {
@@ -235,6 +239,7 @@ export default function PrescriptionsPage() {
     try {
       await api.patch(`/prescriptions/${row.id}`, { next_renewal_date: next });
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not update date");
     }
@@ -420,7 +425,10 @@ export default function PrescriptionsPage() {
       {!loading && items.length > 0 && (
         <div className={TABLE_CARD}>
           <div className={TABLE_HEADER_BAR}>
-            <h2 className="text-sm font-medium text-slate-200">Your items</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-medium text-slate-200">Your items</h2>
+              <TableUpdateFlash token={tableUpdateFlashToken} />
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="text"

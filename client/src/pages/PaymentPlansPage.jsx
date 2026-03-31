@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import RowActionsMenu from "../components/RowActionsMenu.jsx";
 import PaginationControls from "../components/PaginationControls.jsx";
+import TableUpdateFlash from "../components/TableUpdateFlash.jsx";
 import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
 import { setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import {
@@ -112,6 +113,7 @@ export default function PaymentPlansPage() {
 
   const rowsPerPage = useTableRowsPerPage();
   const [page, setPage] = useState(1);
+  const [tableUpdateFlashToken, setTableUpdateFlashToken] = useState(0);
 
   async function load() {
     setError("");
@@ -170,6 +172,7 @@ export default function PaymentPlansPage() {
       setAddForm(createEmptyForm());
       setNotice("Payment plan added.");
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save payment plan");
     } finally {
@@ -208,6 +211,7 @@ export default function PaymentPlansPage() {
       cancelEdit();
       setNotice("Payment plan updated.");
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not update payment plan");
     } finally {
@@ -344,7 +348,10 @@ export default function PaymentPlansPage() {
       {!loading && items.length > 0 ? (
         <div className={TABLE_CARD}>
           <div className={TABLE_HEADER_BAR}>
-            <h2 className="text-sm font-medium text-slate-200">Your payment plans</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-medium text-slate-200">Your payment plans</h2>
+              <TableUpdateFlash token={tableUpdateFlashToken} />
+            </div>
             <input
               type="text"
               value={noteSearch}

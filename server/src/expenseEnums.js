@@ -51,6 +51,7 @@ export const RENEWAL_KINDS = new Set([
   "water_softener_salt_delivery",
   "propane_tank_refills",
   "air_filter_subscription_services",
+  "ring_doorbell",
   "hoa_fees",
   "pool_maintenance_contracts",
   "septic_tank_pumping_service",

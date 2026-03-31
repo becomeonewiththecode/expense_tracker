@@ -31,6 +31,7 @@ import {
 } from "../tableStyles.js";
 import PaginationControls from "./PaginationControls.jsx";
 import RowActionsMenu from "./RowActionsMenu.jsx";
+import TableUpdateFlash from "./TableUpdateFlash.jsx";
 
 /** Normalize API spent_at to YYYY-MM-DD for date inputs and sorting. */
 function toDateInputValue(spentAt) {
@@ -192,6 +193,7 @@ export default function ExpenseTable({
   searchValue = "",
   onSearchChange = () => {},
   searchPlaceholder = "Search notes",
+  updateFlashToken = 0,
 }) {
   const [sort, setSort] = useState({ key: null, dir: "asc" });
   const rowsPerPage = useTableRowsPerPage();
@@ -243,7 +245,10 @@ export default function ExpenseTable({
   return (
     <div className={TABLE_CARD}>
       <div className={TABLE_HEADER_BAR}>
-        <h2 className="text-sm font-medium text-slate-200">{tableTitle}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-medium text-slate-200">{tableTitle}</h2>
+          <TableUpdateFlash token={updateFlashToken} />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <input
             type="text"

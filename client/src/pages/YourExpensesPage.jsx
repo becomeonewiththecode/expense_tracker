@@ -36,6 +36,7 @@ export default function YourExpensesPage() {
   const [addSaving, setAddSaving] = useState(false);
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [noteSearch, setNoteSearch] = useState("");
+  const [tableUpdateFlashToken, setTableUpdateFlashToken] = useState(0);
 
   /** Renewal and Payment Plan rows live on their own tabs, not this list. */
   const expenseListItems = useMemo(
@@ -131,7 +132,8 @@ export default function YourExpensesPage() {
       });
       cancelExpenseEdit();
       setProjectionTarget(null);
-      load();
+      await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save changes");
     } finally {
@@ -179,6 +181,7 @@ export default function YourExpensesPage() {
       setProjectionTarget(null);
       if (expenseEditId) cancelExpenseEdit();
       await load();
+      setTableUpdateFlashToken((n) => n + 1);
     } catch (err) {
       setError(err.response?.data?.error || "Could not save expense");
     } finally {
@@ -282,6 +285,7 @@ export default function YourExpensesPage() {
             searchValue={noteSearch}
             onSearchChange={setNoteSearch}
             searchPlaceholder="Search notes"
+            updateFlashToken={tableUpdateFlashToken}
           />
         </>
       )}

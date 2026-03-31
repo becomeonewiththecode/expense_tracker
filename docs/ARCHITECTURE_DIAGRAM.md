@@ -319,13 +319,17 @@ flowchart LR
     direction TB
     YG["GET /expenses"]
     YV["Table + combined Projection omit category renewal and payment_plan"]
+    YU["Header flashes update icon after successful save/add"]
     YG --- YV
+    YG --- YU
   end
   subgraph NRP["RenewalsPage — /renewals"]
     direction TB
     NG["GET ?category=renewal + CRUD"]
     NV["Header Projection: Active only omit state cancel"]
+    NU["Header flashes update icon after successful save/add"]
     NG --- NV
+    NG --- NU
   end
   NRP --> EX["/expenses CRUD"]
   YEP --> EX
@@ -333,12 +337,14 @@ flowchart LR
     direction TB
     PG2["GET POST PATCH DELETE /prescriptions"]
     PG2 --- PGnote["next_renewal_date + renewal_period 1-11 mo or 1-5 yr"]
+    PG2 --- PGu["Header flashes update icon after add/edit/renew save"]
   end
   PSPg --> PRX["/prescriptions CRUD"]
   subgraph PPPg["PaymentPlansPage — /payment-plans"]
     direction TB
     PPG2["GET POST PATCH DELETE /payment-plans"]
     PPG2 --- PPGnote["search notes + credit-card institutions"]
+    PPG2 --- PPGu["Header flashes update icon after successful save/add"]
   end
   PPPg --> PPX["/payment-plans CRUD"]
   PP[ProfilePage] --> BK["/backup export · restore"]
@@ -401,9 +407,9 @@ flowchart TD
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (client confirms when backup **`account.email`** differs from session); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
 | Renewals (odd-interval contracts) | `RenewalsPage` at **`/renewals`** — **`GET /expenses?category=renewal`** (list includes **Cancel** rows); manual add defaults to category **Renewal**; **`ExpenseTable`** with **`showRenewalColumns`** and **`onRowProjection`** (sticky **Actions** column). Combined header **Projection** and per-row **Projection** use **`projection.js`**; combined totals use **Active** rows only—**`state`** **`cancel`** excluded client-side. **Import** (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
-| Prescriptions (health / supplies) | `PrescriptionsPage` at **`/prescriptions`** — **`/api/prescriptions`** CRUD; **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
-| Expenses list (`/expenses/list`) | **`YourExpensesPage`** — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** and **`category !== payment_plan`** in the table and in **combined Projection**; changing a row’s category to **Renewal** (with a type) or **Payment Plan** on save removes it from this view (it remains queryable on **`/renewals`** or **`/payment-plans`**). |
-| Payment Plan (`/payment-plans`) | **`PaymentPlansPage`** — **`/api/payment-plans`** CRUD; note search in the table header; credit-card account type narrows institution options to **VISA**, **American Express**, **Mastercard**. |
+| Prescriptions (health / supplies) | `PrescriptionsPage` at **`/prescriptions`** — **`/api/prescriptions`** CRUD; **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. Header flashes a short update icon on successful add/edit/renew saves. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
+| Expenses list (`/expenses/list`) | **`YourExpensesPage`** — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** and **`category !== payment_plan`** in the table and in **combined Projection**; changing a row’s category to **Renewal** (with a type) or **Payment Plan** on save removes it from this view (it remains queryable on **`/renewals`** or **`/payment-plans`**). Header flashes a short update icon after successful save/add updates. |
+| Payment Plan (`/payment-plans`) | **`PaymentPlansPage`** — **`/api/payment-plans`** CRUD; note search in the table header; credit-card account type narrows institution options to **VISA**, **American Express**, **Mastercard**. Header flashes a short update icon after successful save/add updates. |
 
 ### Renewals vs. Expenses list vs. Upcoming expenses (diagram)
 
