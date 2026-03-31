@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import api from "../api.js";
-import { formatCategory, formatExpenseState, formatFinancialInstitution } from "../expenseOptions.js";
+import {
+  formatCategory,
+  formatExpenseState,
+  formatFinancialInstitution,
+  formatFrequency,
+} from "../expenseOptions.js";
 import { formatProjectionCurrency } from "../projection.js";
 import {
   daysUntilRenewal,
@@ -245,6 +250,8 @@ export default function RenewalReminders({
         amountNum: amountSafe,
         institution: formatFinancialInstitution(row.financial_institution),
         spentAt: row.spent_at,
+        category: row.category,
+        frequency: row.frequency,
         state: row.state === "cancel" ? "cancel" : "active",
       });
     }
@@ -500,7 +507,22 @@ export default function RenewalReminders({
                           <td
                             className={`${TABLE_TD} text-right tabular-nums font-medium whitespace-nowrap ${cancelled ? "text-emerald-50" : "text-white"}`}
                           >
-                            {formatProjectionCurrency(r.amountNum)}
+                            <span className="inline-flex items-center justify-end gap-1.5">
+                              <span>{formatProjectionCurrency(r.amountNum)}</span>
+                              {r.category === "payment_plan" ? (
+                                <span
+                                  className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold leading-none ${
+                                    cancelled
+                                      ? "border-emerald-300/50 text-emerald-100"
+                                      : "border-sky-400/60 text-sky-300"
+                                  }`}
+                                  title={`Payment frequency: ${formatFrequency(r.frequency)}`}
+                                  aria-label={`Payment frequency: ${formatFrequency(r.frequency)}`}
+                                >
+                                  i
+                                </span>
+                              ) : null}
+                            </span>
                           </td>
                           <td
                             className={`${TABLE_TD} whitespace-nowrap text-xs font-medium ${cancelled ? "text-emerald-200" : "text-slate-300"}`}
