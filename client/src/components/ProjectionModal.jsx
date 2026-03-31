@@ -8,9 +8,11 @@ import {
   Tooltip,
 } from "recharts";
 import { formatFrequency } from "../expenseOptions.js";
+import { formatPaymentPlanSchedule } from "../paymentPlanOptions.js";
 import { formatRenewalPeriod } from "../prescriptionOptions.js";
 import {
   filterItemsForProjectionSlice,
+  filterPaymentPlanItemsForProjectionSlice,
   filterPrescriptionItemsForProjectionSlice,
   formatProjectionCurrency,
 } from "../projection.js";
@@ -37,7 +39,7 @@ export default function ProjectionModal({
   pieData,
   projectionItems,
   projectionScopeKey,
-  /** `"expense"` (default) or `"prescription"` — copy and slice list differ. */
+  /** `"expense"` (default), `"prescription"`, or `"payment_plan"` — copy and slice list differ. */
   projectionKind = "expense",
 }) {
   const [selectedSlice, setSelectedSlice] = useState(null);
@@ -64,6 +66,8 @@ export default function ProjectionModal({
       ? []
       : projectionKind === "prescription"
         ? filterPrescriptionItemsForProjectionSlice(projectionItems, selectedSlice)
+        : projectionKind === "payment_plan"
+          ? filterPaymentPlanItemsForProjectionSlice(projectionItems, selectedSlice)
         : filterItemsForProjectionSlice(projectionItems, selectedSlice);
 
   const activePieIndex =
@@ -124,6 +128,26 @@ export default function ProjectionModal({
                 <strong className="text-slate-400">Cancel</strong> rows are excluded from combined totals and the pie.
               </>
             )
+          ) : projectionKind === "payment_plan" ? (
+            singleItem ? (
+              <>
+                This row&apos;s <strong className="text-slate-400">amount</strong> and{" "}
+                <strong className="text-slate-400">frequency</strong> are used first: when frequency is{" "}
+                <strong className="text-slate-400">1–6</strong>, projection uses that as the planned payment count
+                (<strong className="text-slate-400">amount × count</strong>). Otherwise, it falls back to payment
+                schedule cadence (weekly × 52, bi-weekly × 26, monthly × 12, quarterly × 4, semi-annual × 2, annual ×
+                1). <strong className="text-slate-400">One-time</strong> appears as one-time total only.
+                Non-active statuses are excluded from run rate.
+              </>
+            ) : (
+              <>
+                Estimates use each plan&apos;s <strong className="text-slate-400">amount</strong> and{" "}
+                <strong className="text-slate-400">frequency</strong> first (1–6 = payment count), then payment schedule
+                cadence when frequency is not numeric.{" "}
+                <strong className="text-slate-400">One-time</strong> appears below and non-active statuses are excluded
+                from combined totals and pie slices.
+              </>
+            )
           ) : singleItem ? (
             <>
               This row&apos;s <strong className="text-slate-400">amount</strong> and{" "}
@@ -175,6 +199,12 @@ export default function ProjectionModal({
                 <>
                   Annualized share by category (same scale as yearly run rate). Click a slice to list prescriptions in
                   that segment; click again to clear.
+                </>
+              ) : projectionKind === "payment_plan" ? (
+                <>
+                  Annualized share by payment-plan category (same scale as yearly run rate). One-time plans are grouped
+                  as <strong className="text-slate-400">One-time</strong>. Click a slice to list plans in that segment;
+                  click again to clear.
                 </>
               ) : (
                 <>
@@ -238,6 +268,8 @@ export default function ProjectionModal({
                     ? sliceItems.length !== 1
                       ? "items"
                       : "item"
+                    : projectionKind === "payment_plan"
+                      ? `plan${sliceItems.length !== 1 ? "s" : ""}`
                     : `expense${sliceItems.length !== 1 ? "s" : ""}`}
                 </p>
                 {sliceItems.length === 0 ? (
@@ -256,6 +288,11 @@ export default function ProjectionModal({
                           {projectionKind === "prescription" ? (
                             <>
                               {formatRenewalPeriod(row.renewal_period)}
+                              {row.name ? ` · ${row.name}` : ""}
+                            </>
+                          ) : projectionKind === "payment_plan" ? (
+                            <>
+                              {formatPaymentPlanSchedule(row.payment_schedule)}
                               {row.name ? ` · ${row.name}` : ""}
                             </>
                           ) : (
@@ -279,6 +316,10 @@ export default function ProjectionModal({
               ? singleItem
                 ? "No recurring run rate for this row (check amount, renewal period, or State Cancel)."
                 : "No amounts to project from your current list."
+              : projectionKind === "payment_plan"
+                ? singleItem
+                  ? "No recurring run rate for this row (check amount, schedule, or status)."
+                  : "No active recurring plan amounts to project from your current list."
               : singleItem
                 ? "No amount to project for this row."
                 : "No amounts to project from your current list."}

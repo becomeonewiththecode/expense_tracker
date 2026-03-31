@@ -74,7 +74,8 @@ export const FINANCIAL_INSTITUTION_OPTIONS = [
 
 export const EXPENSE_STATE_OPTIONS = [
   { value: "active", label: "Active" },
-  { value: "cancel", label: "Cancel" },
+  { value: "paused", label: "Paused" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 const catLabels = Object.fromEntries(CATEGORY_OPTIONS.map((o) => [o.value, o.label]));
@@ -105,5 +106,6 @@ export function formatFrequency(value) {
 
 export function formatExpenseState(value) {
   if (value == null || value === "") return "Active";
-  return stateLabels[value] || (value === "cancel" ? "Cancel" : "Active");
+  if (value === "cancel") return "Cancelled";
+  return stateLabels[value] || "Active";
 }

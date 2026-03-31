@@ -195,9 +195,15 @@ export default function ProfilePage() {
         typeof data.prescriptionCount === "number"
           ? data.prescriptionCount
           : data.prescriptions?.length ?? 0;
+      const ppCount =
+        typeof data.paymentPlanCount === "number"
+          ? data.paymentPlanCount
+          : data.paymentPlans?.length ?? 0;
       const extra =
         Number.isFinite(ver) && ver >= 2
-          ? ` — ${rCount} renewal row(s) (within expenses), ${pCount} prescription(s)`
+          ? Number.isFinite(ver) && ver >= 3
+            ? ` — ${rCount} renewal row(s) (within expenses), ${pCount} prescription(s), ${ppCount} payment plan row(s)`
+            : ` — ${rCount} renewal row(s) (within expenses), ${pCount} prescription(s)`
           : rCount > 0
             ? ` — includes ${rCount} renewal row(s) (category renewal)`
             : "";
@@ -231,10 +237,13 @@ export default function ProfilePage() {
     if (restoreMode === "replace") {
       const v = Number(parsed?.version);
       const wipesPrescriptions = Number.isFinite(v) && v >= 2;
+      const wipesPaymentPlans = Number.isFinite(v) && v >= 3;
       const ok = window.confirm(
-        wipesPrescriptions
-          ? "Replace mode deletes all current expenses and prescriptions, then imports the file. This cannot be undone. Continue?"
-          : "Replace mode deletes all current expenses, then imports the file. Existing prescriptions are left unchanged. This cannot be undone. Continue?"
+        wipesPrescriptions && wipesPaymentPlans
+          ? "Replace mode deletes all current expenses, prescriptions, and payment plans, then imports the file. This cannot be undone. Continue?"
+          : wipesPrescriptions
+            ? "Replace mode deletes all current expenses and prescriptions, then imports the file. Existing payment plans are left unchanged. This cannot be undone. Continue?"
+            : "Replace mode deletes all current expenses, then imports the file. Existing prescriptions and payment plans are left unchanged. This cannot be undone. Continue?"
       );
       if (!ok) return;
     }
@@ -272,7 +281,8 @@ export default function ProfilePage() {
         const expenses = Number(b.expenses) || 0;
         const renewals = Number(b.renewals) || 0;
         const prescriptions = Number(b.prescriptions) || 0;
-        return `Expenses: ${expenses} · Renewals: ${renewals} · Prescriptions: ${prescriptions}`;
+        const paymentPlans = Number(b.paymentPlans) || 0;
+        return `Expenses: ${expenses} · Renewals: ${renewals} · Prescriptions: ${prescriptions} · Payment plans: ${paymentPlans}`;
       }
 
       try {
@@ -696,12 +706,12 @@ export default function ProfilePage() {
         </div>
         {backupHelpOpen && (
           <p className="text-xs text-slate-500 leading-relaxed">
-            Download a JSON backup with all expenses (including renewals) and, on version 2 files, prescriptions. Each
-            backup includes an <span className="text-slate-400">account</span> block so you can see which user it
-            belongs to. <span className="text-slate-400">Append</span> adds to what you have;{" "}
-            <span className="text-slate-400">Replace</span> clears existing rows (and, for version 2 exports,
-            prescriptions) before importing into the currently signed-in account. Backups may include your recovery code
-            under <span className="text-slate-400">account.recoveryCode</span>—keep them private.
+            Download a JSON backup with all expenses (including renewals), prescriptions, and payment plans. Each backup
+            includes an <span className="text-slate-400">account</span> block so you can see which user it belongs to.{" "}
+            <span className="text-slate-400">Append</span> adds to what you have;{" "}
+            <span className="text-slate-400">Replace</span> clears existing rows before importing into the currently
+            signed-in account. Backups may include your recovery code under{" "}
+            <span className="text-slate-400">account.recoveryCode</span>—keep them private.
           </p>
         )}
         {!backupCollapsed && (
@@ -733,8 +743,8 @@ export default function ProfilePage() {
               onChange={(e) => setRestoreMode(e.target.value)}
               className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             >
-              <option value="append">Append (expenses + prescriptions from v2 files)</option>
-              <option value="replace">Replace expenses (and prescriptions for v2 files)</option>
+              <option value="append">Append (expenses + prescriptions + payment plans)</option>
+              <option value="replace">Replace (scope depends on backup file version)</option>
             </select>
           </div>
           <div>

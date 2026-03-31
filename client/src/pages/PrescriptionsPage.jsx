@@ -36,9 +36,9 @@ import {
 import { advanceNextRenewalDate, daysUntilPrescriptionRenewal } from "../prescriptionSchedule.js";
 import { EXPENSE_STATE_OPTIONS, formatExpenseState } from "../expenseOptions.js";
 
-/** Cancel rows stay in the table but are excluded from combined Projection (same idea as Renewals). */
+/** Non-active rows stay in the table but are excluded from combined Projection (same idea as Renewals). */
 function prescriptionRowsForProjection(rows) {
-  return rows.filter((r) => r.state !== "cancel");
+  return rows.filter((r) => r.state === "active");
 }
 
 function prescriptionRowSnapshotForProjection(row, draft) {
@@ -175,7 +175,7 @@ export default function PrescriptionsPage() {
       vendor: row.vendor ?? "",
       notes: row.notes ?? "",
       category: row.category,
-      state: row.state === "cancel" ? "cancel" : "active",
+      state: row.state === "cancel" ? "cancelled" : row.state || "active",
     });
   }
 
@@ -551,7 +551,7 @@ export default function PrescriptionsPage() {
                         ) : (
                           <span className="text-slate-300">
                             {String(row.next_renewal_date).slice(0, 10)}
-                            {days != null && row.state !== "cancel" ? (
+                            {days != null && row.state === "active" ? (
                               <span className="text-slate-500 text-xs ml-1">
                                 (
                                 {days < 0
@@ -607,7 +607,7 @@ export default function PrescriptionsPage() {
                             ))}
                           </select>
                         ) : (
-                          <span className={row.state === "cancel" ? "text-emerald-400/90" : "text-slate-300"}>
+                          <span className={row.state === "active" ? "text-slate-300" : "text-emerald-400/90"}>
                             {formatExpenseState(row.state)}
                           </span>
                         )}

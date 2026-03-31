@@ -143,14 +143,14 @@ Parsing uses **date, amount, and description** from the file; **comma-separated 
 
 **Lists** → **Payment Plan** (**`/payment-plans`**) tracks planned payments in a dedicated table with fields such as category, schedule, priority, status, account type, payment method, institution, tag, frequency, amount, and notes.
 
-- **Add payment plan** — Use the collapsible **Show/Hide** add section in the header card.
+- **Add payment plan** — The header card has **Show** / **Hide** for the inline add form (always available). With **no** plans yet, the form starts **open**; the **first** time you have at least one plan (after load or after saving), the add section **collapses** automatically—you can tap **Show** anytime to open it again.
 - **Edit** / **Delete** — Open the row **Actions** menu.
 - **Credit card account type** — Choosing **Credit Card** switches institution selection to a credit-card subtype list (**VISA**, **American Express**, **Mastercard**).
 - **Note search** — Use **Search notes** in the table header to filter rows by the **Notes** field.
 - **Update indicator** — After successful add/edit saves, a short header flash icon confirms the Payment Plan table was updated.
 - **Expense category integration** — If an expense row uses category **Payment Plan**, it is synced into this page and removed from the main **Expenses** table view.
 
-Technical detail: [RENEWALS.md](./RENEWALS.md).
+Technical detail: [PAYMENT_PLANS.md](./PAYMENT_PLANS.md).
 
 ---
 
@@ -212,6 +212,7 @@ The header shows **Import** and the five list destinations (**Expenses**, **Rene
 
 - **Installation, ports, OAuth, and production Compose:** root `README.md` and [deployment/docker-compose/README.md](../deployment/docker-compose/README.md)  
 - **Renewals feature (API, import, data model):** [RENEWALS.md](./RENEWALS.md)  
+- **Payment plans feature (API, expense sync, add-section behavior):** [PAYMENT_PLANS.md](./PAYMENT_PLANS.md)  
 - **Prescriptions feature (API, reminders, data model):** [PRESCRIPTIONS.md](./PRESCRIPTIONS.md)  
 - **How the system is built (including single sign-on and recovery):** [ARCHITECTURE.md](./ARCHITECTURE.md)  
 - **PM2 process manager:** [HOWTO_CONTROLLING_APPLICATIONS.md](./HOWTO_CONTROLLING_APPLICATIONS.md)  

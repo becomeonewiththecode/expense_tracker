@@ -29,9 +29,9 @@ function createRenewalManualForm() {
   };
 }
 
-/** Cancel rows stay in the table but are excluded from combined Projection (same idea as reminder subtotals). */
+/** Non-active rows stay in the table but are excluded from combined Projection (same idea as reminder subtotals). */
 function renewalRowsForProjection(rows) {
-  return rows.filter((r) => r.state !== "cancel");
+  return rows.filter((r) => r.state === "active");
 }
 
 export default function RenewalsPage() {
@@ -91,7 +91,7 @@ export default function RenewalsPage() {
       website: row.website ?? "",
       frequency: row.frequency,
       financial_institution: row.financial_institution,
-      state: row.state === "cancel" ? "cancel" : "active",
+      state: row.state === "cancel" ? "cancelled" : row.state || "active",
       description: row.description ?? "",
     });
   }

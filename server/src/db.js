@@ -55,8 +55,9 @@ export async function initDb() {
       CHECK (payment_month IS NULL OR (payment_month >= 1 AND payment_month <= 12));
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS state TEXT NOT NULL DEFAULT 'active';
     ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_state_check;
+    UPDATE expenses SET state = 'cancelled' WHERE state = 'cancel';
     ALTER TABLE expenses ADD CONSTRAINT expenses_state_check
-      CHECK (state IN ('active', 'cancel'));
+      CHECK (state IN ('active', 'paused', 'cancelled'));
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS website TEXT NULL;
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS renewal_kind TEXT NULL;
     CREATE TABLE IF NOT EXISTS import_batches (
@@ -114,8 +115,9 @@ export async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
     ALTER TABLE prescriptions DROP CONSTRAINT IF EXISTS prescriptions_state_check;
+    UPDATE prescriptions SET state = 'cancelled' WHERE state = 'cancel';
     ALTER TABLE prescriptions ADD CONSTRAINT prescriptions_state_check
-      CHECK (state IN ('active', 'cancel'));
+      CHECK (state IN ('active', 'paused', 'cancelled'));
     CREATE INDEX IF NOT EXISTS idx_prescriptions_user_next ON prescriptions(user_id, next_renewal_date);
     CREATE TABLE IF NOT EXISTS payment_plans (
       id SERIAL PRIMARY KEY,

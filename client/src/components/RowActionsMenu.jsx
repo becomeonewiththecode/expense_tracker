@@ -4,9 +4,9 @@ import { createPortal } from "react-dom";
 /**
  * Per-row actions as a compact dropdown (Projection / Edit / Delete, etc.).
  * Menu is portaled to `document.body` with fixed positioning so parent `overflow` does not clip it.
- * @param {{ align?: "left" | "right", label?: string, items: Array<{ key: string, label: string, onClick: () => void, className?: string, disabled?: boolean, hidden?: boolean, title?: string }> }} props
+ * @param {{ align?: "left" | "right", direction?: "auto" | "up" | "down", label?: string, items: Array<{ key: string, label: string, onClick: () => void, className?: string, disabled?: boolean, hidden?: boolean, title?: string }> }} props
  */
-export default function RowActionsMenu({ align = "right", label = "Actions", items }) {
+export default function RowActionsMenu({ align = "right", direction = "auto", label = "Actions", items }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
@@ -19,16 +19,35 @@ export default function RowActionsMenu({ align = "right", label = "Actions", ite
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const gap = 4;
+    const viewportPadding = 8;
+    const menuEl = menuRef.current;
+    const menuWidth = menuEl?.offsetWidth ?? 168;
+    const availableBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const availableAbove = rect.top - viewportPadding;
+    const openUp =
+      direction === "up"
+        ? true
+        : direction === "down"
+          ? false
+          : availableBelow < 180 && availableAbove > availableBelow;
+    const leftForAlignRight = rect.right - menuWidth;
+    const unclampedLeft = align === "right" ? leftForAlignRight : rect.left;
+    const left = Math.min(
+      window.innerWidth - viewportPadding - menuWidth,
+      Math.max(viewportPadding, unclampedLeft)
+    );
     setMenuStyle({
       position: "fixed",
-      top: rect.bottom + gap,
-      ...(align === "right"
-        ? { right: window.innerWidth - rect.right }
-        : { left: rect.left }),
+      ...(openUp
+        ? { bottom: Math.max(viewportPadding, window.innerHeight - rect.top + gap) }
+        : { top: Math.max(viewportPadding, rect.bottom + gap) }),
+      left,
       minWidth: "10.5rem",
-      zIndex: 100,
+      maxHeight: "min(18rem, calc(100vh - 1rem))",
+      overflowY: "auto",
+      zIndex: 200,
     });
-  }, [align]);
+  }, [align, direction]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -36,9 +55,11 @@ export default function RowActionsMenu({ align = "right", label = "Actions", ite
       return;
     }
     updatePosition();
+    const raf = window.requestAnimationFrame(updatePosition);
     window.addEventListener("scroll", updatePosition, true);
     window.addEventListener("resize", updatePosition);
     return () => {
+      window.cancelAnimationFrame(raf);
       window.removeEventListener("scroll", updatePosition, true);
       window.removeEventListener("resize", updatePosition);
     };

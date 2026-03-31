@@ -36,6 +36,8 @@ export default function ExpensesPage() {
   const [importNotice, setImportNotice] = useState("");
   const [staging, setStaging] = useState(null);
   const [committing, setCommitting] = useState(false);
+  const [addFormOpen, setAddFormOpen] = useState(false);
+  const [importFormOpen, setImportFormOpen] = useState(true);
 
   const loadStaging = useCallback(async () => {
     try {
@@ -210,6 +212,14 @@ export default function ExpensesPage() {
 
   const hasSavedExpenses = items.length > 0;
   const showOnboarding = !loading && !hasSavedExpenses;
+  const hasLoadedImportRows = !loading && Boolean(staging?.rows?.length);
+  const hideShowControlsVisible = !hasLoadedImportRows;
+
+  useEffect(() => {
+    if (!hasLoadedImportRows) return;
+    setAddFormOpen(true);
+    setImportFormOpen(true);
+  }, [hasLoadedImportRows]);
 
   return (
     <div className="space-y-8">
@@ -239,26 +249,49 @@ export default function ExpensesPage() {
       )}
 
       {!loading && hasSavedExpenses && (
-        <details className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 group">
-          <summary className="cursor-pointer text-sm font-medium text-slate-200 list-none [&::-webkit-details-marker]:hidden flex items-center gap-2">
-            <span className="text-slate-500 group-open:rotate-90 transition-transform inline-block">▸</span>
-            Add expense manually
-          </summary>
-          <div className="mt-4 pt-4 border-t border-slate-800">
-            <ManualExpenseForm form={form} setForm={setForm} onSubmit={addExpense} />
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+          <div className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-slate-200">
+            <span className="font-medium text-sm">Add expense manually</span>
+            {hideShowControlsVisible ? (
+              <button
+                type="button"
+                onClick={() => setAddFormOpen((v) => !v)}
+                className="text-slate-500 text-xs hover:text-slate-300"
+                aria-expanded={addFormOpen}
+              >
+                {addFormOpen ? "Hide" : "Show"}
+              </button>
+            ) : null}
           </div>
-        </details>
+          {addFormOpen ? (
+            <div className="mt-4 pt-4 border-t border-slate-800">
+              <ManualExpenseForm form={form} setForm={setForm} onSubmit={addExpense} />
+            </div>
+          ) : null}
+        </div>
       )}
 
       {!loading && (
       <section className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 space-y-4">
-        <div>
+        <div className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-slate-200">
           <h2 className="text-sm font-semibold text-white">Import from statement</h2>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            Upload a <strong className="text-slate-400">CSV</strong> or <strong className="text-slate-400">PDF</strong>. Parsed rows appear in the <strong className="text-slate-400">review table</strong> below.
-            Set defaults for <strong className="text-slate-400">institution</strong> and <strong className="text-slate-400">frequency</strong> before upload. Each row’s <strong className="text-slate-400">posted date</strong> comes from the statement. In <strong className="text-slate-400">Review import</strong>, set <strong className="text-slate-400">category</strong> (required). For <strong className="text-slate-400">Renewal</strong>, also choose a <strong className="text-slate-400">renewal type</strong> and optionally a <strong className="text-slate-400">website</strong>; those rows appear under <strong className="text-slate-400">Renewals</strong>. Adjust per-row <strong className="text-slate-400">frequency</strong> if needed. Saved expenses derive recurring metadata from each line’s posted date. Only rows with a category (and a renewal type when category is Renewal) are saved when you commit. Credits / payments are skipped during parsing.
-          </p>
+          {hideShowControlsVisible ? (
+            <button
+              type="button"
+              onClick={() => setImportFormOpen((v) => !v)}
+              className="text-slate-500 text-xs hover:text-slate-300"
+              aria-expanded={importFormOpen}
+            >
+              {importFormOpen ? "Hide" : "Show"}
+            </button>
+          ) : null}
         </div>
+        {importFormOpen ? (
+        <>
+        <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+          Upload a <strong className="text-slate-400">CSV</strong> or <strong className="text-slate-400">PDF</strong>. Parsed rows appear in the <strong className="text-slate-400">review table</strong> below.
+          Set defaults for <strong className="text-slate-400">institution</strong> and <strong className="text-slate-400">frequency</strong> before upload. Each row’s <strong className="text-slate-400">posted date</strong> comes from the statement. In <strong className="text-slate-400">Review import</strong>, set <strong className="text-slate-400">category</strong> (required). For <strong className="text-slate-400">Renewal</strong>, also choose a <strong className="text-slate-400">renewal type</strong> and optionally a <strong className="text-slate-400">website</strong>; those rows appear under <strong className="text-slate-400">Renewals</strong>. Adjust per-row <strong className="text-slate-400">frequency</strong> if needed. Saved expenses derive recurring metadata from each line’s posted date. Only rows with a category (and a renewal type when category is Renewal) are saved when you commit. Credits / payments are skipped during parsing.
+        </p>
         <form onSubmit={runImportUpload} className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
           <div className="w-full sm:w-auto">
             <label htmlFor="statement-file-input" className="text-xs text-slate-500 block mb-1">
@@ -312,6 +345,8 @@ export default function ExpensesPage() {
             {importing ? "Uploading…" : "Upload & parse"}
           </button>
         </form>
+        </>
+        ) : null}
       </section>
       )}
 

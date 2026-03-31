@@ -29,9 +29,9 @@ export const PRESCRIPTION_RENEWAL_PERIODS = [
 
 export const PRESCRIPTION_CATEGORY_ERROR = `Invalid category (use ${PRESCRIPTION_CATEGORIES.join(", ")})`;
 export const PRESCRIPTION_RENEWAL_PERIOD_ERROR = `Invalid renewal_period (use ${PRESCRIPTION_RENEWAL_PERIODS.join(", ")})`;
-export const PRESCRIPTION_STATE_ERROR = "Invalid state (use active, cancel)";
+export const PRESCRIPTION_STATE_ERROR = "Invalid state (use active, paused, cancelled)";
 
-const PRESCRIPTION_STATES = ["active", "cancel"];
+const PRESCRIPTION_STATES = ["active", "paused", "cancelled"];
 
 export function parsePrescriptionCategory(value) {
   if (value == null) return null;
@@ -48,7 +48,8 @@ export function parseRenewalPeriod(value) {
 export function parsePrescriptionState(value) {
   if (value == null || value === "") return "active";
   const s = String(value).trim().toLowerCase();
-  return PRESCRIPTION_STATES.includes(s) ? s : null;
+  const legacy = s === "cancel" ? "cancelled" : s;
+  return PRESCRIPTION_STATES.includes(legacy) ? legacy : null;
 }
 
 export function parseIsoDate(value) {

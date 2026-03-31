@@ -29,7 +29,7 @@ export function daysUntilPrescriptionRenewal(nextRenewalIso) {
 
 /** Show in 30-day reminder band: active items due within 30 days or recently overdue (≤14 days past). */
 export function prescriptionNeedsReminder(row) {
-  if (row.state === "cancel") return false;
+  if (row.state !== "active") return false;
   const days = daysUntilPrescriptionRenewal(row.next_renewal_date);
   if (days == null) return false;
   return days <= 30 && days >= -14;

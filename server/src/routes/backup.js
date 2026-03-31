@@ -27,11 +27,32 @@ import {
   PRESCRIPTION_RENEWAL_PERIOD_ERROR,
   PRESCRIPTION_STATE_ERROR,
 } from "../prescriptionEnums.js";
+import {
+  parsePaymentPlanCategory,
+  parsePaymentSchedule,
+  parsePriorityLevel,
+  parsePaymentPlanStatus,
+  parseAccountType,
+  parsePaymentMethod,
+  parseInstitution,
+  parsePaymentPlanTag,
+  parsePaymentPlanFrequency,
+  PAYMENT_PLAN_CATEGORY_ERROR,
+  PAYMENT_SCHEDULE_ERROR,
+  PRIORITY_LEVEL_ERROR,
+  PAYMENT_PLAN_STATUS_ERROR,
+  ACCOUNT_TYPE_ERROR,
+  PAYMENT_METHOD_ERROR,
+  INSTITUTION_ERROR,
+  PAYMENT_PLAN_TAG_ERROR,
+  PAYMENT_PLAN_FREQUENCY_ERROR,
+} from "../paymentPlanEnums.js";
+import { syncPaymentPlanForExpense } from "../paymentPlanSync.js";
 
 export const BACKUP_FORMAT = "expense-tracker-backup";
-/** v1: expenses only. v2: adds `prescriptions`, `renewalCount`, `prescriptionCount`. */
-export const BACKUP_VERSION = 2;
-export const BACKUP_VERSIONS_SUPPORTED = [1, 2];
+/** v1: expenses only. v2: adds prescriptions. v3: adds payment plans. */
+export const BACKUP_VERSION = 3;
+export const BACKUP_VERSIONS_SUPPORTED = [1, 2, 3];
 const MAX_RESTORE_ROWS = 25_000;
 
 export const backupRouter = Router();
@@ -94,12 +115,14 @@ function normalizeExpenseRow(row) {
       }
     }
   }
+  const normalizedState =
+    row.state === "cancel" ? "cancelled" : row.state === "paused" ? "paused" : "active";
   return {
     amount: row.amount != null ? Number(row.amount) : row.amount,
     category: row.category,
     financial_institution: row.financial_institution,
     frequency: row.frequency,
-    state: row.state === "cancel" ? "cancel" : "active",
+    state: normalizedState,
     payment_day: row.payment_day != null ? Number(row.payment_day) : null,
     payment_month: row.payment_month != null ? Number(row.payment_month) : null,
     description: row.description ?? "",
@@ -110,6 +133,8 @@ function normalizeExpenseRow(row) {
 }
 
 function normalizePrescriptionRow(row) {
+  const normalizedState =
+    row.state === "cancel" ? "cancelled" : row.state === "paused" ? "paused" : "active";
   return {
     name: row.name ?? "",
     amount: row.amount != null ? Number(row.amount) : 0,
@@ -118,7 +143,24 @@ function normalizePrescriptionRow(row) {
     vendor: row.vendor ?? "",
     notes: row.notes ?? "",
     category: row.category,
-    state: row.state === "cancel" ? "cancel" : "active",
+    state: normalizedState,
+  };
+}
+
+function normalizePaymentPlanRow(row) {
+  return {
+    name: row.name ?? "",
+    amount: row.amount != null ? Number(row.amount) : 0,
+    category: row.category,
+    payment_schedule: row.payment_schedule,
+    priority_level: row.priority_level,
+    status: row.status,
+    account_type: row.account_type,
+    payment_method: row.payment_method,
+    institution: row.institution,
+    tag: row.tag,
+    frequency: row.frequency,
+    notes: row.notes ?? "",
   };
 }
 
@@ -248,6 +290,62 @@ function validateExpenseForRestore(raw, index) {
   };
 }
 
+/**
+ * @param {unknown} raw
+ * @param {number} index
+ * @returns {{ ok: true, values: object } | { ok: false, error: string }}
+ */
+function validatePaymentPlanForRestore(raw, index) {
+  const label = `Payment plan ${index + 1}`;
+  if (!raw || typeof raw !== "object") {
+    return { ok: false, error: `${label}: invalid object` };
+  }
+  const name = String(raw.name || "").trim().slice(0, 500);
+  if (!name) {
+    return { ok: false, error: `${label}: name is required` };
+  }
+  const amount = Number(raw.amount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return { ok: false, error: `${label}: invalid amount` };
+  }
+  const category = parsePaymentPlanCategory(raw.category);
+  if (!category) return { ok: false, error: `${label}: ${PAYMENT_PLAN_CATEGORY_ERROR}` };
+  const payment_schedule = parsePaymentSchedule(raw.payment_schedule);
+  if (!payment_schedule) return { ok: false, error: `${label}: ${PAYMENT_SCHEDULE_ERROR}` };
+  const priority_level = parsePriorityLevel(raw.priority_level);
+  if (!priority_level) return { ok: false, error: `${label}: ${PRIORITY_LEVEL_ERROR}` };
+  const status = parsePaymentPlanStatus(raw.status);
+  if (!status) return { ok: false, error: `${label}: ${PAYMENT_PLAN_STATUS_ERROR}` };
+  const account_type = parseAccountType(raw.account_type);
+  if (!account_type) return { ok: false, error: `${label}: ${ACCOUNT_TYPE_ERROR}` };
+  const payment_method = parsePaymentMethod(raw.payment_method);
+  if (!payment_method) return { ok: false, error: `${label}: ${PAYMENT_METHOD_ERROR}` };
+  const institution = parseInstitution(raw.institution);
+  if (!institution) return { ok: false, error: `${label}: ${INSTITUTION_ERROR}` };
+  const tag = parsePaymentPlanTag(raw.tag);
+  if (!tag) return { ok: false, error: `${label}: ${PAYMENT_PLAN_TAG_ERROR}` };
+  const frequency = parsePaymentPlanFrequency(raw.frequency);
+  if (!frequency) return { ok: false, error: `${label}: ${PAYMENT_PLAN_FREQUENCY_ERROR}` };
+  const notes = String(raw.notes ?? "").slice(0, 2000);
+  return {
+    ok: true,
+    values: {
+      name,
+      amount,
+      category,
+      payment_schedule,
+      priority_level,
+      status,
+      account_type,
+      payment_method,
+      institution,
+      tag,
+      frequency,
+      notes,
+    },
+  };
+}
+
 function normalizeEmailForCompare(s) {
   return String(s ?? "").trim().toLowerCase();
 }
@@ -285,6 +383,14 @@ backupRouter.get("/export", authRequired, async (req, res) => {
     );
     const prescriptions = prescRows.map(normalizePrescriptionRow);
 
+    const { rows: paymentPlanRows } = await pool.query(
+      `SELECT name, amount, category, payment_schedule, priority_level, status, account_type, payment_method, institution, tag, frequency, notes
+       FROM payment_plans WHERE user_id = $1
+       ORDER BY id ASC`,
+      [req.userId]
+    );
+    const paymentPlans = paymentPlanRows.map(normalizePaymentPlanRow);
+
     const accountLabel = email
       ? `${email} (user id ${userId})`
       : `User id ${userId}`;
@@ -305,6 +411,8 @@ backupRouter.get("/export", authRequired, async (req, res) => {
       expenses,
       prescriptionCount: prescriptions.length,
       prescriptions,
+      paymentPlanCount: paymentPlans.length,
+      paymentPlans,
     };
     const day = new Date().toISOString().slice(0, 10);
     const fileTag = email
@@ -361,6 +469,18 @@ backupRouter.post(
         });
       }
     }
+    let paymentPlansRaw = [];
+    if (fileVersion >= 3) {
+      if (body.paymentPlans !== undefined && !Array.isArray(body.paymentPlans)) {
+        return res.status(400).json({ error: "Backup must contain a paymentPlans array (use [] if none)" });
+      }
+      paymentPlansRaw = Array.isArray(body.paymentPlans) ? body.paymentPlans : [];
+      if (paymentPlansRaw.length > MAX_RESTORE_ROWS) {
+        return res.status(400).json({
+          error: `Too many payment plans in file (max ${MAX_RESTORE_ROWS})`,
+        });
+      }
+    }
 
     const backupEmail = body?.account?.email ?? body?.email ?? null;
     const { rows: meRows } = await pool.query(`SELECT email FROM users WHERE id = $1`, [req.userId]);
@@ -397,10 +517,19 @@ backupRouter.post(
       }
       validatedPrescriptions.push(result.values);
     }
+    const validatedPaymentPlans = [];
+    for (let i = 0; i < paymentPlansRaw.length; i++) {
+      const result = validatePaymentPlanForRestore(paymentPlansRaw[i], i);
+      if (!result.ok) {
+        return res.status(400).json({ error: result.error });
+      }
+      validatedPaymentPlans.push(result.values);
+    }
 
     const restoredRenewals = validated.filter((v) => v.category === "renewal").length;
     const restoredExpenses = validated.length - restoredRenewals;
     const restoredPrescriptions = fileVersion >= 2 ? validatedPrescriptions.length : 0;
+    const restoredPaymentPlans = fileVersion >= 3 ? validatedPaymentPlans.length : 0;
 
     let recoveryPlain = null;
     const rawRecovery = body?.account?.recoveryCode;
@@ -421,11 +550,15 @@ backupRouter.post(
         if (fileVersion >= 2) {
           await client.query(`DELETE FROM prescriptions WHERE user_id = $1`, [req.userId]);
         }
+        if (fileVersion >= 3) {
+          await client.query(`DELETE FROM payment_plans WHERE user_id = $1`, [req.userId]);
+        }
       }
       for (const v of validated) {
-        await client.query(
+        const { rows: insertedRows } = await client.query(
           `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           RETURNING id, amount, category, financial_institution, frequency, state, description`,
           [
             req.userId,
             v.amount,
@@ -441,6 +574,9 @@ backupRouter.post(
             v.spent_at,
           ]
         );
+        if (fileVersion < 3 && insertedRows[0]) {
+          await syncPaymentPlanForExpense(client, req.userId, insertedRows[0]);
+        }
       }
       if (fileVersion >= 2) {
         for (const p of validatedPrescriptions) {
@@ -461,12 +597,38 @@ backupRouter.post(
           );
         }
       }
+      if (fileVersion >= 3) {
+        for (const p of validatedPaymentPlans) {
+          await client.query(
+            `INSERT INTO payment_plans
+              (user_id, name, amount, category, payment_schedule, priority_level, status, account_type, payment_method, institution, tag, frequency, notes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+            [
+              req.userId,
+              p.name,
+              p.amount,
+              p.category,
+              p.payment_schedule,
+              p.priority_level,
+              p.status,
+              p.account_type,
+              p.payment_method,
+              p.institution,
+              p.tag,
+              p.frequency,
+              p.notes,
+            ]
+          );
+        }
+      }
       if (recoveryPlain) {
         await persistRecoveryCodeForUser(client, req.userId, recoveryPlain);
       }
       await client.query("COMMIT");
       const restoredTotal =
-        validated.length + (fileVersion >= 2 ? validatedPrescriptions.length : 0);
+        validated.length +
+        (fileVersion >= 2 ? validatedPrescriptions.length : 0) +
+        (fileVersion >= 3 ? validatedPaymentPlans.length : 0);
       res.json({
         ok: true,
         mode,
@@ -475,6 +637,7 @@ backupRouter.post(
           expenses: restoredExpenses,
           renewals: restoredRenewals,
           prescriptions: restoredPrescriptions,
+          paymentPlans: restoredPaymentPlans,
         },
       });
     } catch (e) {
