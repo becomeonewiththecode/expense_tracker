@@ -30,7 +30,6 @@ export default function YourExpensesPage() {
   const [expenseEditId, setExpenseEditId] = useState(null);
   const [expenseEditDraft, setExpenseEditDraft] = useState(null);
   const [expenseSaving, setExpenseSaving] = useState(false);
-  const [expensesModifyMode, setExpensesModifyMode] = useState(false);
   /** `all` = combined projection for every saved expense; `row` = single expense snapshot. */
   const [projectionTarget, setProjectionTarget] = useState(null);
   const [addForm, setAddForm] = useState(() => createEmptyManualExpenseForm());
@@ -60,7 +59,6 @@ export default function YourExpensesPage() {
 
   useEffect(() => {
     if (expenseListItems.length === 0) {
-      setExpensesModifyMode(false);
       setExpenseEditId(null);
       setExpenseEditDraft(null);
       setProjectionTarget(null);
@@ -76,7 +74,6 @@ export default function YourExpensesPage() {
   }, [items, projectionTarget]);
 
   function openExpenseEdit(row) {
-    if (!expensesModifyMode) return;
     setError("");
     setExpenseEditId(row.id);
     setExpenseEditDraft({
@@ -144,11 +141,6 @@ export default function YourExpensesPage() {
     } catch (err) {
       setError(err.response?.data?.error || "Delete failed");
     }
-  }
-
-  function setModifyMode(v) {
-    if (v) setError("");
-    setExpensesModifyMode(v);
   }
 
   async function addExpense(e) {
@@ -258,8 +250,6 @@ export default function YourExpensesPage() {
           )}
           <ExpenseTable
             items={expenseListItems}
-            expensesModifyMode={expensesModifyMode}
-            setExpensesModifyMode={setModifyMode}
             expenseEditId={expenseEditId}
             expenseEditDraft={expenseEditDraft}
             setExpenseEditDraft={setExpenseEditDraft}

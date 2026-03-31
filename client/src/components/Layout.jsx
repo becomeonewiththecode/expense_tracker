@@ -118,11 +118,27 @@ export default function Layout() {
           <span className="text-lg font-semibold tracking-tight text-white">
             Expense Tracker
           </span>
-          <nav className="flex items-center gap-1 sm:gap-2">
+          <nav className="flex flex-wrap items-center gap-1 sm:gap-2">
             <NavLink to="/expenses" end className={linkClass}>
               Import
             </NavLink>
-            <ListsNavDropdown />
+            <div className="lg:hidden">
+              <ListsNavDropdown />
+            </div>
+            <div className="hidden lg:flex items-center gap-1 sm:gap-2">
+              <NavLink to="/expenses/list" className={linkClass}>
+                Expenses
+              </NavLink>
+              <NavLink to="/renewals" className={linkClass}>
+                Renewals
+              </NavLink>
+              <NavLink to="/prescriptions" className={linkClass}>
+                Prescriptions
+              </NavLink>
+              <NavLink to="/reports" className={linkClass}>
+                Reports
+              </NavLink>
+            </div>
           </nav>
           <div className="flex items-center text-sm text-slate-400 justify-end">
             <details

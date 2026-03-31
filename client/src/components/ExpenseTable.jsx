@@ -14,6 +14,7 @@ import {
 import useTableRowsPerPage from "../hooks/useTableRowsPerPage.js";
 import { setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import PaginationControls from "./PaginationControls.jsx";
+import RowActionsMenu from "./RowActionsMenu.jsx";
 
 /** Normalize API spent_at to YYYY-MM-DD for date inputs and sorting. */
 function toDateInputValue(spentAt) {
@@ -159,8 +160,6 @@ function rowSnapshotForProjection(row, draft) {
 
 export default function ExpenseTable({
   items,
-  expensesModifyMode,
-  setExpensesModifyMode,
   expenseEditId,
   expenseEditDraft,
   setExpenseEditDraft,
@@ -234,26 +233,6 @@ export default function ExpenseTable({
           >
             Projection
           </button>
-          {expensesModifyMode ? (
-            <button
-              type="button"
-              onClick={() => {
-                cancelExpenseEdit();
-                setExpensesModifyMode(false);
-              }}
-              className="rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5"
-            >
-              Exit modification mode
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setExpensesModifyMode(true)}
-              className="rounded-lg bg-sky-700/80 hover:bg-sky-600 text-white text-xs font-medium px-3 py-1.5"
-            >
-              Enter modification mode
-            </button>
-          )}
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -334,7 +313,7 @@ export default function ExpenseTable({
           </thead>
           <tbody className="divide-y divide-slate-800 bg-slate-950/40">
             {pageItems.map((row) => {
-              const editing = expensesModifyMode && expenseEditId === row.id;
+              const editing = expenseEditId === row.id;
               const d = expenseEditDraft;
               const snapshot = rowSnapshotForProjection(row, editing ? d : null);
               return (
@@ -551,62 +530,66 @@ export default function ExpenseTable({
                       <span className="text-slate-500 max-w-xs truncate block">{row.description}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right align-middle min-w-[15rem]">
+                  <td className="px-4 py-3 text-right align-middle min-w-[10rem]">
                     {editing ? (
-                      <div className="flex flex-row flex-wrap gap-x-3 gap-y-1 justify-end items-center">
-                        {onRowProjection && (
-                          <button
-                            type="button"
-                            onClick={() => onRowProjection(snapshot)}
-                            className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
-                          >
-                            Projection
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          disabled={expenseSaving}
-                          onClick={() => saveExpenseEdit()}
-                          className="shrink-0 text-emerald-400 hover:text-emerald-300 text-xs disabled:opacity-50"
-                        >
-                          {expenseSaving ? "Saving…" : "Save"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={expenseSaving}
-                          onClick={cancelExpenseEdit}
-                          className="shrink-0 text-slate-400 hover:text-slate-300 text-xs"
-                        >
-                          Cancel
-                        </button>
+                      <div className="flex justify-end">
+                        <RowActionsMenu
+                          items={[
+                            ...(onRowProjection
+                              ? [
+                                  {
+                                    key: "projection",
+                                    label: "Projection",
+                                    className: "text-violet-400",
+                                    onClick: () => onRowProjection(snapshot),
+                                  },
+                                ]
+                              : []),
+                            {
+                              key: "save",
+                              label: expenseSaving ? "Saving…" : "Save",
+                              disabled: expenseSaving,
+                              className: "text-emerald-400",
+                              onClick: () => saveExpenseEdit(),
+                            },
+                            {
+                              key: "cancel",
+                              label: "Cancel",
+                              disabled: expenseSaving,
+                              className: "text-slate-400",
+                              onClick: cancelExpenseEdit,
+                            },
+                          ]}
+                        />
                       </div>
                     ) : (
-                      <div className="flex flex-row flex-wrap gap-x-3 gap-y-1 justify-end items-center">
-                        {onRowProjection && (
-                          <button
-                            type="button"
-                            onClick={() => onRowProjection(snapshot)}
-                            className="shrink-0 text-violet-400 hover:text-violet-300 text-xs"
-                          >
-                            Projection
-                          </button>
-                        )}
-                        {expensesModifyMode && (
-                          <button
-                            type="button"
-                            onClick={() => openExpenseEdit(row)}
-                            className="shrink-0 text-sky-400 hover:text-sky-300 text-xs"
-                          >
-                            Edit
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => remove(row.id)}
-                          className="shrink-0 text-rose-400 hover:text-rose-300 text-xs"
-                        >
-                          Delete
-                        </button>
+                      <div className="flex justify-end">
+                        <RowActionsMenu
+                          items={[
+                            ...(onRowProjection
+                              ? [
+                                  {
+                                    key: "projection",
+                                    label: "Projection",
+                                    className: "text-violet-400",
+                                    onClick: () => onRowProjection(snapshot),
+                                  },
+                                ]
+                              : []),
+                            {
+                              key: "edit",
+                              label: "Edit",
+                              className: "text-sky-400",
+                              onClick: () => openExpenseEdit(row),
+                            },
+                            {
+                              key: "delete",
+                              label: "Delete",
+                              className: "text-rose-400",
+                              onClick: () => remove(row.id),
+                            },
+                          ]}
+                        />
                       </div>
                     )}
                   </td>
