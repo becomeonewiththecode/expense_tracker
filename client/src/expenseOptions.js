@@ -9,6 +9,7 @@ export const CATEGORY_OPTIONS = [
   { value: "insurance", label: "Insurance" },
   { value: "subscription", label: "Subscription" },
   { value: "renewal", label: "Renewal" },
+  { value: "payment_plan", label: "Payment Plan" },
 ];
 
 /** Shown when category is Renewal (import, expenses, renewals page). */

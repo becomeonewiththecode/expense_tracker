@@ -25,6 +25,7 @@ function ListsNavDropdown() {
     pathname === "/expenses/list" ||
     pathname === "/renewals" ||
     pathname === "/prescriptions" ||
+    pathname === "/payment-plans" ||
     pathname === "/reports";
 
   function closeListsMenu() {
@@ -75,6 +76,14 @@ function ListsNavDropdown() {
           onClick={closeListsMenu}
         >
           Prescriptions
+        </NavLink>
+        <NavLink
+          to="/payment-plans"
+          role="menuitem"
+          className={listsDropdownItemClass}
+          onClick={closeListsMenu}
+        >
+          Payment Plan
         </NavLink>
         <NavLink
           to="/reports"
@@ -135,6 +144,9 @@ export default function Layout() {
               <NavLink to="/prescriptions" className={linkClass}>
                 Prescriptions
               </NavLink>
+              <NavLink to="/payment-plans" className={linkClass}>
+                Payment Plan
+              </NavLink>
               <NavLink to="/reports" className={linkClass}>
                 Reports
               </NavLink>
@@ -149,7 +161,7 @@ export default function Layout() {
                 className="list-none cursor-pointer flex items-center rounded-lg hover:bg-slate-800/80 px-1 py-0.5 -mx-1 [&::-webkit-details-marker]:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
                 aria-label={
                   renewalChip
-                    ? `Account menu, ${renewalChip.count} upcoming renewals`
+                    ? `Account menu, ${renewalChip.count} upcoming expenses`
                     : "Account menu"
                 }
                 aria-haspopup="menu"
@@ -169,18 +181,18 @@ export default function Layout() {
                       className="min-h-[1.125rem] min-w-[1.125rem] px-1 rounded-full border border-amber-600/80 bg-amber-950 text-[10px] font-semibold leading-none text-amber-100 inline-flex items-center justify-center tabular-nums shadow-sm hover:bg-amber-900/90 hover:border-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
                       title={
                         renewalChip.allDismissed
-                          ? `Show ${renewalChip.count} upcoming renewals`
+                          ? `Show ${renewalChip.count} upcoming expenses`
                           : renewalChip.tablesExpanded
-                            ? `Hide upcoming renewals table (${renewalChip.count})`
-                            : `Show upcoming renewals table (${renewalChip.count})`
+                            ? `Hide upcoming expenses table (${renewalChip.count})`
+                            : `Show upcoming expenses table (${renewalChip.count})`
                       }
                       aria-expanded={renewalChip.allDismissed ? undefined : renewalChip.tablesExpanded}
                       aria-label={
                         renewalChip.allDismissed
-                          ? `Show upcoming renewals, ${renewalChip.count} items`
+                          ? `Show upcoming expenses, ${renewalChip.count} items`
                           : renewalChip.tablesExpanded
-                            ? `Hide upcoming renewals table, ${renewalChip.count} items`
-                            : `Show upcoming renewals table, ${renewalChip.count} items`
+                            ? `Hide upcoming expenses table, ${renewalChip.count} items`
+                            : `Show upcoming expenses table, ${renewalChip.count} items`
                       }
                     >
                       {renewalChip.count}
@@ -216,7 +228,7 @@ export default function Layout() {
                       closeAccountMenu();
                     }}
                   >
-                    Upcoming renewals
+                    Upcoming expenses
                   </button>
                 ) : null}
                 <button

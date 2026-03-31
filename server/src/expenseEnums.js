@@ -9,6 +9,7 @@ export const CATEGORIES = new Set([
   "insurance",
   "subscription",
   "renewal",
+  "payment_plan",
 ]);
 
 /** Sub-types for `category === "renewal"` (odd-interval renewals). */
@@ -133,7 +134,7 @@ export function tryParsePaymentMonth(raw) {
 }
 
 export const CATEGORY_ERROR =
-  "Invalid category (use home, entertainment, personal, business, education, rent, mortgage, insurance, subscription, renewal)";
+  "Invalid category (use home, entertainment, personal, business, education, rent, mortgage, insurance, subscription, renewal, payment_plan)";
 
 export const RENEWAL_KIND_ERROR = "Invalid renewal_kind (unknown renewal type)";
 

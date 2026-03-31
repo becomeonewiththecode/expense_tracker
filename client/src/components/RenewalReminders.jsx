@@ -354,7 +354,7 @@ export default function RenewalReminders({
           onDoubleClick={() => onTablesExpandedChange((v) => !v)}
           title="Double-click to show or hide renewal tables"
         >
-          <p className="font-medium text-amber-100 select-none">Upcoming renewals</p>
+          <p className="font-medium text-amber-100 select-none">Upcoming expenses</p>
           <button
             type="button"
             id={renewalHelpTriggerId}
@@ -365,17 +365,27 @@ export default function RenewalReminders({
             aria-controls={renewalHelpPanelId}
             title="How this table works"
           >
-            <span className="sr-only">How upcoming renewals work</span>
+            <span className="sr-only">How upcoming expenses work</span>
             <InfoIcon className="h-5 w-5" />
           </button>
         </div>
-        <button
-          type="button"
-          onClick={dismissAll}
-          className="text-xs text-amber-200/80 hover:text-amber-100 underline-offset-2 hover:underline shrink-0"
-        >
-          Dismiss all
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => onTablesExpandedChange((v) => !v)}
+            className="text-xs text-amber-200/90 hover:text-amber-100 rounded-full border border-amber-700/60 px-2 py-0.5"
+            aria-expanded={tablesExpanded}
+          >
+            {tablesExpanded ? "Hide" : "Show"}
+          </button>
+          <button
+            type="button"
+            onClick={dismissAll}
+            className="text-xs text-amber-200/80 hover:text-amber-100 underline-offset-2 hover:underline"
+          >
+            Dismiss all
+          </button>
+        </div>
       </div>
       {renewalHelpOpen ? (
         <div

@@ -189,6 +189,9 @@ export default function ExpenseTable({
   onRowProjection,
   showRenewalColumns = false,
   tableTitle = "Expenses",
+  searchValue = "",
+  onSearchChange = () => {},
+  searchPlaceholder = "Search notes",
 }) {
   const [sort, setSort] = useState({ key: null, dir: "asc" });
   const rowsPerPage = useTableRowsPerPage();
@@ -242,6 +245,13 @@ export default function ExpenseTable({
       <div className={TABLE_HEADER_BAR}>
         <h2 className="text-sm font-medium text-slate-200">{tableTitle}</h2>
         <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={searchValue}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={searchPlaceholder}
+            className="w-48 rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-slate-200 text-xs"
+          />
           <button
             type="button"
             onClick={onProjection}
