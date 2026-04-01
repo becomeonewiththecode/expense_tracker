@@ -49,6 +49,10 @@ export async function initDb() {
     ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_payment_day_range;
     ALTER TABLE expenses ADD CONSTRAINT expenses_payment_day_range
       CHECK (payment_day IS NULL OR (payment_day >= 1 AND payment_day <= 30));
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS payment_day_2 SMALLINT NULL;
+    ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_payment_day_2_range;
+    ALTER TABLE expenses ADD CONSTRAINT expenses_payment_day_2_range
+      CHECK (payment_day_2 IS NULL OR (payment_day_2 >= 1 AND payment_day_2 <= 30));
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS payment_month SMALLINT NULL;
     ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_payment_month_range;
     ALTER TABLE expenses ADD CONSTRAINT expenses_payment_month_range
@@ -84,6 +88,10 @@ export async function initDb() {
     ALTER TABLE import_staging_rows DROP CONSTRAINT IF EXISTS import_staging_rows_payment_day_range;
     ALTER TABLE import_staging_rows ADD CONSTRAINT import_staging_rows_payment_day_range
       CHECK (payment_day IS NULL OR (payment_day >= 1 AND payment_day <= 30));
+    ALTER TABLE import_staging_rows ADD COLUMN IF NOT EXISTS payment_day_2 SMALLINT NULL;
+    ALTER TABLE import_staging_rows DROP CONSTRAINT IF EXISTS import_staging_rows_payment_day_2_range;
+    ALTER TABLE import_staging_rows ADD CONSTRAINT import_staging_rows_payment_day_2_range
+      CHECK (payment_day_2 IS NULL OR (payment_day_2 >= 1 AND payment_day_2 <= 30));
     ALTER TABLE import_staging_rows ADD COLUMN IF NOT EXISTS payment_month SMALLINT NULL;
     ALTER TABLE import_staging_rows DROP CONSTRAINT IF EXISTS import_staging_rows_payment_month_range;
     ALTER TABLE import_staging_rows ADD CONSTRAINT import_staging_rows_payment_month_range

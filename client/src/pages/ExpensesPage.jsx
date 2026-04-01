@@ -80,6 +80,14 @@ export default function ExpensesPage() {
       setError("Choose a renewal type when category is Renewal.");
       return;
     }
+    if (form.frequency === "bimonthly") {
+      const pd1 = Number(form.payment_day);
+      const pd2 = Number(form.payment_day_2);
+      if (!Number.isInteger(pd1) || pd1 < 1 || pd1 > 30 || !Number.isInteger(pd2) || pd2 < 1 || pd2 > 30) {
+        setError("Bi-monthly requires two payment days (1–30).");
+        return;
+      }
+    }
     const wasEmpty = items.length === 0;
     try {
       await api.post("/expenses", {
@@ -89,6 +97,8 @@ export default function ExpensesPage() {
         website: form.website || undefined,
         financial_institution: form.financial_institution,
         frequency: form.frequency,
+        payment_day: form.frequency === "bimonthly" ? Number(form.payment_day) : undefined,
+        payment_day_2: form.frequency === "bimonthly" ? Number(form.payment_day_2) : undefined,
         state: form.state,
         description: form.description,
         spent_at: form.spent_at,

@@ -10,6 +10,7 @@ export const CATEGORY_OPTIONS = [
   { value: "subscription", label: "Subscription" },
   { value: "renewal", label: "Renewal" },
   { value: "payment_plan", label: "Payment Plan" },
+  { value: "condo_fees", label: "Condo Fees" },
 ];
 
 /** Shown when category is Renewal (import, expenses, renewals page). */
@@ -61,7 +62,7 @@ export const FREQUENCY_OPTIONS = [
   { value: "once", label: "Once" },
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
-  { value: "bimonthly", label: "Bi-monthly" },
+  { value: "bimonthly", label: "Bi-monthly (twice/month)" },
   { value: "yearly", label: "Yearly" },
 ];
 

@@ -91,6 +91,8 @@ export default function YourExpensesPage() {
       renewal_kind: row.renewal_kind ?? "",
       website: row.website ?? "",
       frequency: row.frequency,
+      payment_day: row.payment_day != null ? String(row.payment_day) : "",
+      payment_day_2: row.payment_day_2 != null ? String(row.payment_day_2) : "",
       financial_institution: row.financial_institution,
       state: row.state || "active",
       description: row.description ?? "",
@@ -113,6 +115,14 @@ export default function YourExpensesPage() {
       setError("Choose a renewal type for Renewal category.");
       return;
     }
+    if (expenseEditDraft.frequency === "bimonthly") {
+      const pd1 = Number(expenseEditDraft.payment_day);
+      const pd2 = Number(expenseEditDraft.payment_day_2);
+      if (!Number.isInteger(pd1) || pd1 < 1 || pd1 > 30 || !Number.isInteger(pd2) || pd2 < 1 || pd2 > 30) {
+        setError("Bi-monthly requires two payment days (1–30).");
+        return;
+      }
+    }
     setExpenseSaving(true);
     setError("");
     try {
@@ -126,6 +136,8 @@ export default function YourExpensesPage() {
             : undefined,
         website: expenseEditDraft.website,
         frequency: expenseEditDraft.frequency,
+        payment_day: expenseEditDraft.frequency === "bimonthly" ? Number(expenseEditDraft.payment_day) : undefined,
+        payment_day_2: expenseEditDraft.frequency === "bimonthly" ? Number(expenseEditDraft.payment_day_2) : undefined,
         financial_institution: expenseEditDraft.financial_institution,
         state: expenseEditDraft.state,
         description: expenseEditDraft.description,
@@ -163,6 +175,14 @@ export default function YourExpensesPage() {
       setError("Choose a renewal type for Renewal category.");
       return;
     }
+    if (addForm.frequency === "bimonthly") {
+      const pd1 = Number(addForm.payment_day);
+      const pd2 = Number(addForm.payment_day_2);
+      if (!Number.isInteger(pd1) || pd1 < 1 || pd1 > 30 || !Number.isInteger(pd2) || pd2 < 1 || pd2 > 30) {
+        setError("Bi-monthly requires two payment days (1–30).");
+        return;
+      }
+    }
     setAddSaving(true);
     setError("");
     try {
@@ -173,6 +193,8 @@ export default function YourExpensesPage() {
         website: addForm.website || undefined,
         financial_institution: addForm.financial_institution,
         frequency: addForm.frequency,
+        payment_day: addForm.frequency === "bimonthly" ? Number(addForm.payment_day) : undefined,
+        payment_day_2: addForm.frequency === "bimonthly" ? Number(addForm.payment_day_2) : undefined,
         state: addForm.state,
         description: addForm.description,
         spent_at: addForm.spent_at,

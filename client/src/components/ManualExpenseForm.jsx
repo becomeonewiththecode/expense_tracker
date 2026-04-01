@@ -16,6 +16,8 @@ export function createEmptyManualExpenseForm() {
     category: "personal",
     financial_institution: "bank",
     frequency: "monthly",
+    payment_day: "",
+    payment_day_2: "",
     state: "active",
     description: "",
     renewal_kind: "",
@@ -104,7 +106,15 @@ export default function ManualExpenseForm({
         <label className="text-xs text-slate-500 block mb-1">Frequency</label>
         <select
           value={form.frequency}
-          onChange={(e) => setForm((f) => ({ ...f, frequency: e.target.value }))}
+          onChange={(e) => {
+            const frequency = e.target.value;
+            setForm((f) => ({
+              ...f,
+              frequency,
+              payment_day: frequency === "bimonthly" ? f.payment_day : "",
+              payment_day_2: frequency === "bimonthly" ? f.payment_day_2 : "",
+            }));
+          }}
           className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
         >
           {FREQUENCY_OPTIONS.map((o) => (
@@ -114,6 +124,36 @@ export default function ManualExpenseForm({
           ))}
         </select>
       </div>
+      {form.frequency === "bimonthly" && (
+        <>
+          <div>
+            <label className="text-xs text-slate-500 block mb-1">1st payment day</label>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              value={form.payment_day}
+              onChange={(e) => setForm((f) => ({ ...f, payment_day: e.target.value }))}
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+              placeholder="1–30"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 block mb-1">2nd payment day</label>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              value={form.payment_day_2}
+              onChange={(e) => setForm((f) => ({ ...f, payment_day_2: e.target.value }))}
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+              placeholder="1–30"
+              required
+            />
+          </div>
+        </>
+      )}
       <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
         <label className="text-xs text-slate-500 block mb-1">Financial institution</label>
         <select

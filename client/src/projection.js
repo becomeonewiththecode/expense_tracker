@@ -23,7 +23,7 @@ export function rowAnnualParts(row) {
   const norm = normalizeFrequency(row.frequency);
   if (norm === "once") return { recurringAnnual: 0, oneTime: amt };
   if (norm === "weekly") return { recurringAnnual: amt * 52, oneTime: 0 };
-  if (norm === "bimonthly") return { recurringAnnual: amt * 6, oneTime: 0 };
+  if (norm === "bimonthly") return { recurringAnnual: amt * 24, oneTime: 0 };
   if (norm === "yearly") return { recurringAnnual: amt, oneTime: 0 };
   return { recurringAnnual: amt * 12, oneTime: 0 };
 }

@@ -10,6 +10,7 @@ export const CATEGORIES = new Set([
   "subscription",
   "renewal",
   "payment_plan",
+  "condo_fees",
 ]);
 
 /** Sub-types for `category === "renewal"` (odd-interval renewals). */
@@ -100,6 +101,12 @@ export function paymentMetaFromSpentAt(spentAt) {
 export const PAYMENT_DAY_ERROR =
   "Payment day must be a whole number from 1 to 30, or empty for not set";
 
+export const PAYMENT_DAY_2_ERROR =
+  "Second payment day must be a whole number from 1 to 30, or empty for not set";
+
+export const BIMONTHLY_PAYMENT_DAYS_REQUIRED =
+  "Bi-monthly frequency requires two payment days (payment_day and payment_day_2)";
+
 /** @param {unknown} raw */
 export function tryParsePaymentDay(raw) {
   if (raw === undefined || raw === null) {
@@ -135,7 +142,7 @@ export function tryParsePaymentMonth(raw) {
 }
 
 export const CATEGORY_ERROR =
-  "Invalid category (use home, entertainment, personal, business, education, rent, mortgage, insurance, subscription, renewal, payment_plan)";
+  "Invalid category (use home, entertainment, personal, business, education, rent, mortgage, insurance, subscription, renewal, payment_plan, condo_fees)";
 
 export const RENEWAL_KIND_ERROR = "Invalid renewal_kind (unknown renewal type)";
 

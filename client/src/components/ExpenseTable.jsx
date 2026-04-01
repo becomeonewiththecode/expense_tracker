@@ -166,6 +166,8 @@ function rowSnapshotForProjection(row, draft) {
       renewal_kind: draft.renewal_kind,
       website: draft.website,
       frequency: draft.frequency,
+      payment_day: draft.payment_day ? Number(draft.payment_day) : row.payment_day,
+      payment_day_2: draft.payment_day_2 ? Number(draft.payment_day_2) : row.payment_day_2,
       financial_institution: draft.financial_institution,
       state: draft.state,
       description: draft.description,
@@ -420,23 +422,72 @@ export default function ExpenseTable({
                     className={`px-4 py-3 text-slate-300 align-middle ${editing ? "" : "hidden lg:table-cell"}`}
                   >
                     {editing && d ? (
-                      <select
-                        value={d.frequency}
-                        onChange={(e) =>
-                          setExpenseEditDraft((prev) =>
-                            prev ? { ...prev, frequency: e.target.value } : prev
-                          )
-                        }
-                        className="w-full max-w-[8rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
-                      >
-                        {FREQUENCY_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex flex-col gap-1">
+                        <select
+                          value={d.frequency}
+                          onChange={(e) => {
+                            const frequency = e.target.value;
+                            setExpenseEditDraft((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    frequency,
+                                    payment_day: frequency === "bimonthly" ? (prev.payment_day || "") : prev.payment_day,
+                                    payment_day_2: frequency === "bimonthly" ? (prev.payment_day_2 || "") : "",
+                                  }
+                                : prev
+                            );
+                          }}
+                          className="w-full max-w-[8rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        >
+                          {FREQUENCY_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                        {d.frequency === "bimonthly" && (
+                          <div className="flex gap-1">
+                            <input
+                              type="number"
+                              min="1"
+                              max="30"
+                              value={d.payment_day || ""}
+                              onChange={(e) =>
+                                setExpenseEditDraft((prev) =>
+                                  prev ? { ...prev, payment_day: e.target.value } : prev
+                                )
+                              }
+                              className="w-14 rounded-lg bg-slate-950 border border-slate-600 px-1 py-1 text-white text-xs"
+                              placeholder="Day 1"
+                              title="1st payment day (1–30)"
+                            />
+                            <input
+                              type="number"
+                              min="1"
+                              max="30"
+                              value={d.payment_day_2 || ""}
+                              onChange={(e) =>
+                                setExpenseEditDraft((prev) =>
+                                  prev ? { ...prev, payment_day_2: e.target.value } : prev
+                                )
+                              }
+                              className="w-14 rounded-lg bg-slate-950 border border-slate-600 px-1 py-1 text-white text-xs"
+                              placeholder="Day 2"
+                              title="2nd payment day (1–30)"
+                            />
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      formatFrequency(row.frequency)
+                      <span>
+                        {formatFrequency(row.frequency)}
+                        {row.frequency === "bimonthly" && row.payment_day != null && row.payment_day_2 != null && (
+                          <span className="text-slate-500 text-xs block">
+                            Days {row.payment_day} &amp; {row.payment_day_2}
+                          </span>
+                        )}
+                      </span>
                     )}
                   </td>
                   <td
