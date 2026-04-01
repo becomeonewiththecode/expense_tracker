@@ -15,6 +15,10 @@ import {
   STATE_ERROR,
   paymentMetaFromSpentAt,
   spentAtToIsoDate,
+  tryParsePaymentDay,
+  PAYMENT_DAY_ERROR,
+  PAYMENT_DAY_2_ERROR,
+  BIMONTHLY_PAYMENT_DAYS_REQUIRED,
 } from "../expenseEnums.js";
 import { removePaymentPlanForExpense, syncPaymentPlanForExpense } from "../paymentPlanSync.js";
 
@@ -35,7 +39,7 @@ function parseDate(d) {
 expensesRouter.get("/", async (req, res) => {
   const { from, to, limit = "100", offset = "0", category: categoryQ } = req.query;
   const params = [req.userId];
-  let sql = `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at
+  let sql = `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at
     FROM expenses WHERE user_id = $1`;
   let i = 2;
   if (categoryQ != null && String(categoryQ).trim() !== "") {
@@ -64,7 +68,7 @@ expensesRouter.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
   const { rows } = await pool.query(
-    `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at FROM expenses
+    `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at FROM expenses
      WHERE id = $1 AND user_id = $2`,
     [id, req.userId]
   );
@@ -111,14 +115,32 @@ expensesRouter.post("/", async (req, res) => {
   if (renewalErr) {
     return res.status(400).json({ error: renewalErr });
   }
-  const { payment_day, payment_month } = paymentMetaFromSpentAt(spent_at);
+  let payment_day, payment_day_2, payment_month;
+  if (frequency === "bimonthly") {
+    const pd1 = tryParsePaymentDay(req.body?.payment_day);
+    if (!pd1.ok) return res.status(400).json({ error: PAYMENT_DAY_ERROR });
+    const pd2 = tryParsePaymentDay(req.body?.payment_day_2);
+    if (!pd2.ok) return res.status(400).json({ error: PAYMENT_DAY_2_ERROR });
+    if (pd1.value == null || pd2.value == null) {
+      return res.status(400).json({ error: BIMONTHLY_PAYMENT_DAYS_REQUIRED });
+    }
+    payment_day = pd1.value;
+    payment_day_2 = pd2.value;
+    const meta = paymentMetaFromSpentAt(spent_at);
+    payment_month = meta.payment_month;
+  } else {
+    const meta = paymentMetaFromSpentAt(spent_at);
+    payment_day = meta.payment_day;
+    payment_day_2 = null;
+    payment_month = meta.payment_month;
+  }
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const { rows } = await client.query(
-      `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at`,
+      `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at`,
       [
         req.userId,
         amount,
@@ -127,6 +149,7 @@ expensesRouter.post("/", async (req, res) => {
         frequency,
         state,
         payment_day,
+        payment_day_2,
         payment_month,
         description,
         website,
@@ -153,7 +176,7 @@ expensesRouter.patch("/:id", async (req, res) => {
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
 
   const { rows: existingRows } = await pool.query(
-    `SELECT spent_at, category, renewal_kind FROM expenses WHERE id = $1 AND user_id = $2`,
+    `SELECT spent_at, category, renewal_kind, frequency FROM expenses WHERE id = $1 AND user_id = $2`,
     [id, req.userId]
   );
   if (!existingRows[0]) return res.status(404).json({ error: "Not found" });
@@ -244,17 +267,52 @@ expensesRouter.patch("/:id", async (req, res) => {
     params.push(null);
   }
 
-  if (!updates.length) return res.status(400).json({ error: "No fields to update" });
+  if (!updates.length && req.body.payment_day === undefined && req.body.payment_day_2 === undefined) {
+    return res.status(400).json({ error: "No fields to update" });
+  }
 
+  const effectiveFrequency = req.body.frequency !== undefined
+    ? parseFrequency(req.body.frequency)
+    : existingRows[0].frequency;
   const effectiveSpent =
     req.body.spent_at !== undefined
       ? parseDate(req.body.spent_at)
       : spentAtToIsoDate(existingRows[0].spent_at);
-  const { payment_day, payment_month } = paymentMetaFromSpentAt(effectiveSpent);
-  updates.push(`payment_day = $${i++}`);
-  params.push(payment_day);
-  updates.push(`payment_month = $${i++}`);
-  params.push(payment_month);
+
+  if (effectiveFrequency === "bimonthly") {
+    if (req.body.payment_day !== undefined || req.body.payment_day_2 !== undefined) {
+      const pd1 = req.body.payment_day !== undefined
+        ? tryParsePaymentDay(req.body.payment_day)
+        : { ok: true, value: null };
+      if (!pd1.ok) return res.status(400).json({ error: PAYMENT_DAY_ERROR });
+      const pd2 = req.body.payment_day_2 !== undefined
+        ? tryParsePaymentDay(req.body.payment_day_2)
+        : { ok: true, value: null };
+      if (!pd2.ok) return res.status(400).json({ error: PAYMENT_DAY_2_ERROR });
+      if (pd1.value != null) {
+        updates.push(`payment_day = $${i++}`);
+        params.push(pd1.value);
+      }
+      if (pd2.value != null) {
+        updates.push(`payment_day_2 = $${i++}`);
+        params.push(pd2.value);
+      }
+    }
+    const meta = paymentMetaFromSpentAt(effectiveSpent);
+    updates.push(`payment_month = $${i++}`);
+    params.push(meta.payment_month);
+  } else {
+    const { payment_day, payment_month } = paymentMetaFromSpentAt(effectiveSpent);
+    updates.push(`payment_day = $${i++}`);
+    params.push(payment_day);
+    updates.push(`payment_day_2 = $${i++}`);
+    params.push(null);
+    updates.push(`payment_month = $${i++}`);
+    params.push(payment_month);
+  }
+
+  if (!updates.length) return res.status(400).json({ error: "No fields to update" });
+
   params.push(id, req.userId);
   const client = await pool.connect();
   try {
@@ -262,7 +320,7 @@ expensesRouter.patch("/:id", async (req, res) => {
     const { rows } = await client.query(
       `UPDATE expenses SET ${updates.join(", ")}
        WHERE id = $${i++} AND user_id = $${i++}
-       RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at, created_at`,
+       RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at`,
       params
     );
     if (!rows[0]) {
@@ -330,6 +388,7 @@ function normalizeExpense(row) {
     spent_at,
     amount: row.amount != null ? Number(row.amount) : row.amount,
     payment_day: row.payment_day != null ? Number(row.payment_day) : null,
+    payment_day_2: row.payment_day_2 != null ? Number(row.payment_day_2) : null,
     payment_month: row.payment_month != null ? Number(row.payment_month) : null,
   };
 }

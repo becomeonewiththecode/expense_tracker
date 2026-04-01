@@ -3,6 +3,8 @@ import api from "../api";
 import { getApiErrorMessage } from "../apiError.js";
 import { useAuth } from "../auth.jsx";
 import { getRowsPerPage, setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
+import { useTheme } from "../ThemeContext.jsx";
+import { THEME_OPTIONS } from "../themePreferences.js";
 
 export default function ProfilePage() {
   const { user, setSession, token, refreshUser } = useAuth();
@@ -20,6 +22,7 @@ export default function ProfilePage() {
   const [previewUrl, setPreviewUrl] = useState(null);
 
   const [rowsPerPage, setRowsPerPageUi] = useState(() => getRowsPerPage());
+  const { theme, setTheme } = useTheme();
 
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryError, setRecoveryError] = useState("");
@@ -364,13 +367,13 @@ export default function ProfilePage() {
     <div className="max-w-lg mx-auto space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-white">Profile</h1>
-        <p className="text-slate-400 text-sm mt-1">Update your email, password, and profile picture.</p>
-        <p className="text-slate-500 text-xs mt-2 max-w-prose">
+        <p className="text-th-subtle text-sm mt-1">Update your email, password, and profile picture.</p>
+        <p className="text-th-muted text-xs mt-2 max-w-prose">
           Imports and saved expenses belong to the account you are signed in as
           {user?.email ? (
             <>
               {" "}
-              (<span className="text-slate-400">{user.email}</span>
+              (<span className="text-th-subtle">{user.email}</span>
               {user?.id != null ? (
                 <>
                   , user #{user.id}
@@ -383,13 +386,13 @@ export default function ProfilePage() {
         </p>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
+      <div className="bg-th-surface border border-th-border rounded-xl p-6 shadow-xl space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-slate-300">Profile picture</h2>
+          <h2 className="text-sm font-medium text-th-tertiary">Profile picture</h2>
           <button
             type="button"
             onClick={() => setAvatarCollapsed((v) => !v)}
-            className="text-xs text-slate-400 hover:text-slate-200 rounded-full border border-slate-600/70 px-2 py-0.5"
+            className="text-xs text-th-subtle hover:text-th-secondary rounded-full border border-th-border-bright/70 px-2 py-0.5"
             aria-expanded={!avatarCollapsed}
           >
             {avatarCollapsed ? "Show" : "Hide"}
@@ -397,11 +400,11 @@ export default function ProfilePage() {
         </div>
         {!avatarCollapsed && (
           <div className="flex flex-col sm:flex-row gap-4 items-start">
-            <div className="w-24 h-24 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
+            <div className="w-24 h-24 rounded-full bg-th-surface-alt border border-th-border-bright overflow-hidden flex-shrink-0 flex items-center justify-center">
               {displaySrc ? (
                 <img src={displaySrc} alt="" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-slate-500 text-xs text-center px-2">No picture</span>
+                <span className="text-th-muted text-xs text-center px-2">No picture</span>
               )}
             </div>
             <div className="flex-1 space-y-3 w-full">
@@ -410,9 +413,9 @@ export default function ProfilePage() {
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp"
                 onChange={onPickFile}
-                className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700"
+                className="block w-full text-sm text-th-subtle file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-th-surface-alt file:text-th-secondary hover:file:bg-th-border-bright"
               />
-              <p className="text-xs text-slate-500">JPEG, PNG, GIF, or WebP. Maximum size 2 MB.</p>
+              <p className="text-xs text-th-muted">JPEG, PNG, GIF, or WebP. Maximum size 2 MB.</p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -427,7 +430,7 @@ export default function ProfilePage() {
                     type="button"
                     disabled={avatarLoading}
                     onClick={onRemoveAvatar}
-                    className="rounded-lg border border-slate-600 text-slate-300 text-sm py-2 px-4 hover:bg-slate-800"
+                    className="rounded-lg border border-th-border-bright text-th-tertiary text-sm py-2 px-4 hover:bg-th-surface-alt"
                   >
                     Remove picture
                   </button>
@@ -442,10 +445,35 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
-        <h2 className="text-sm font-medium text-slate-300">Table display</h2>
+      <div className="bg-th-surface border border-th-border rounded-xl p-6 shadow-xl space-y-4">
+        <h2 className="text-sm font-medium text-th-tertiary">Appearance</h2>
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">
+          <label className="block text-xs font-medium text-th-subtle mb-1">
+            Color theme
+          </label>
+          <div className="flex gap-2">
+            {THEME_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => setTheme(o.value)}
+                className={[
+                  "flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors border",
+                  theme === o.value
+                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                    : "bg-th-input border-th-border-bright text-th-secondary hover:bg-th-surface-alt",
+                ].join(" ")}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-th-muted mt-2">
+            Theme is saved in your browser and applies immediately.
+          </p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-th-subtle mb-1">
             Rows per page (Expenses / Renewals / Prescriptions)
           </label>
           <select
@@ -455,7 +483,7 @@ export default function ProfilePage() {
               setRowsPerPageUi(next);
               setRowsPerPage(next);
             }}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
           >
             {TABLE_ROWS_PER_PAGE_OPTIONS.map((n) => (
               <option key={n} value={n}>
@@ -463,7 +491,7 @@ export default function ProfilePage() {
               </option>
             ))}
           </select>
-          <p className="text-[10px] text-slate-500 mt-2">
+          <p className="text-[10px] text-th-muted mt-2">
             Default is 10. Tables will page at the bottom of the list.
           </p>
         </div>
@@ -471,14 +499,14 @@ export default function ProfilePage() {
 
       <form
         onSubmit={onSubmitProfile}
-        className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4"
+        className="bg-th-surface border border-th-border rounded-xl p-6 shadow-xl space-y-4"
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-slate-300">Email and password</h2>
+          <h2 className="text-sm font-medium text-th-tertiary">Email and password</h2>
           <button
             type="button"
             onClick={() => setEmailCollapsed((v) => !v)}
-            className="text-xs text-slate-400 hover:text-slate-200 rounded-full border border-slate-600/70 px-2 py-0.5"
+            className="text-xs text-th-subtle hover:text-th-secondary rounded-full border border-th-border-bright/70 px-2 py-0.5"
             aria-expanded={!emailCollapsed}
           >
             {emailCollapsed ? "Show" : "Hide"}
@@ -494,7 +522,7 @@ export default function ProfilePage() {
             {profileOk && <p className="text-sm text-emerald-400">{profileOk}</p>}
 
             <div>
-              <label htmlFor="profile-email" className="block text-xs font-medium text-slate-400 mb-1">
+              <label htmlFor="profile-email" className="block text-xs font-medium text-th-subtle mb-1">
                 Email
               </label>
               <input
@@ -503,14 +531,14 @@ export default function ProfilePage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 required
               />
             </div>
 
             {hasPassword && (
               <div>
-                <label htmlFor="current-password" className="block text-xs font-medium text-slate-400 mb-1">
+                <label htmlFor="current-password" className="block text-xs font-medium text-th-subtle mb-1">
                   Current password
                 </label>
                 <input
@@ -519,7 +547,7 @@ export default function ProfilePage() {
                   autoComplete="current-password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   placeholder="Required when changing email or password"
                 />
               </div>
@@ -527,7 +555,7 @@ export default function ProfilePage() {
 
             <>
               <div>
-                <label htmlFor="new-password" className="block text-xs font-medium text-slate-400 mb-1">
+                <label htmlFor="new-password" className="block text-xs font-medium text-th-subtle mb-1">
                   {hasPassword ? "New password" : "Set password (optional)"}
                 </label>
                 <input
@@ -536,14 +564,14 @@ export default function ProfilePage() {
                   autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   placeholder={
                     hasPassword ? "Leave blank to keep current password" : "Add a password for email sign-in"
                   }
                 />
               </div>
               <div>
-                <label htmlFor="confirm-password" className="block text-xs font-medium text-slate-400 mb-1">
+                <label htmlFor="confirm-password" className="block text-xs font-medium text-th-subtle mb-1">
                   {hasPassword ? "Confirm new password" : "Confirm password"}
                 </label>
                 <input
@@ -552,14 +580,14 @@ export default function ProfilePage() {
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   placeholder="Repeat new password"
                 />
               </div>
             </>
 
             {!hasPassword && (
-              <p className="text-sm text-slate-500 border border-slate-800 rounded-lg px-3 py-2">
+              <p className="text-sm text-th-muted border border-th-border rounded-lg px-3 py-2">
                 You can still change your email without a password. To use email and password on the sign-in page, set a
                 password above (or keep using Google, GitHub, GitLab, or Microsoft 365).
               </p>
@@ -576,14 +604,14 @@ export default function ProfilePage() {
         )}
       </form>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
+      <div className="bg-th-surface border border-th-border rounded-xl p-6 shadow-xl space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-slate-300">Password recovery (no email)</h2>
+          <h2 className="text-sm font-medium text-th-tertiary">Password recovery (no email)</h2>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setRecoveryHelpOpen((v) => !v)}
-              className="h-6 w-6 flex items-center justify-center rounded-full border border-slate-600/80 text-[11px] font-semibold text-slate-300 hover:text-white hover:border-slate-400"
+              className="h-6 w-6 flex items-center justify-center rounded-full border border-th-border-bright/80 text-[11px] font-semibold text-th-tertiary hover:text-white hover:border-th-subtle"
               aria-label={recoveryHelpOpen ? "Hide password and recovery details" : "Show password and recovery details"}
               aria-expanded={recoveryHelpOpen}
             >
@@ -592,7 +620,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => setRecoveryCollapsed((v) => !v)}
-              className="text-xs text-slate-400 hover:text-slate-200 rounded-full border border-slate-600/70 px-2 py-0.5"
+              className="text-xs text-th-subtle hover:text-th-secondary rounded-full border border-th-border-bright/70 px-2 py-0.5"
               aria-expanded={!recoveryCollapsed}
             >
               {recoveryCollapsed ? "Show" : "Hide"}
@@ -601,9 +629,9 @@ export default function ProfilePage() {
         </div>
 
         {recoveryHelpOpen && (
-          <p className="text-xs text-slate-500 leading-relaxed">
+          <p className="text-xs text-th-muted leading-relaxed">
             Generate a one-time recovery code and keep it offline. If you forget your password, use{" "}
-            <span className="text-slate-400">Forgot password</span> on the sign-in page with this code—nothing is sent
+            <span className="text-th-subtle">Forgot password</span> on the sign-in page with this code—nothing is sent
             by email. After a successful reset, the code stops working and you sign in with your email and new
             password.
           </p>
@@ -622,7 +650,7 @@ export default function ProfilePage() {
             {shownRecoveryCode && (
               <div className="space-y-2">
                 <p className="text-sm text-amber-200/90">{recoveryOk}</p>
-                <div className="rounded-lg bg-slate-950 border border-amber-900/50 p-3 font-mono text-xs text-amber-100 break-all select-all">
+                <div className="rounded-lg bg-th-base border border-amber-900/50 p-3 font-mono text-xs text-amber-100 break-all select-all">
                   {shownRecoveryCode}
                 </div>
                 <button
@@ -639,20 +667,20 @@ export default function ProfilePage() {
 
             {hasRecoveryCode && !shownRecoveryCode && (
               <div
-                className="min-w-0 max-w-full overflow-hidden rounded-lg bg-slate-950 border border-slate-700 px-3 py-2.5 space-y-1.5"
+                className="min-w-0 max-w-full overflow-hidden rounded-lg bg-th-input border border-th-border-bright px-3 py-2.5 space-y-1.5"
                 role="status"
                 aria-label="A recovery code is saved on this account"
               >
-                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Saved recovery code</p>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-th-muted">Saved recovery code</p>
                 <p
-                  className="w-full min-w-0 max-w-full font-mono text-sm text-slate-500 select-none break-all leading-normal tracking-normal"
+                  className="w-full min-w-0 max-w-full font-mono text-sm text-th-muted select-none break-all leading-normal tracking-normal"
                   aria-hidden="true"
                 >
                   ••••••••••••••••••••
                 </p>
-                <p className="text-[11px] text-slate-500 leading-snug">
+                <p className="text-[11px] text-th-muted leading-snug">
                   The full code was shown only when you created or replaced it. Use{" "}
-                  <span className="text-slate-400">Replace recovery code</span> if you need a new one.
+                  <span className="text-th-subtle">Replace recovery code</span> if you need a new one.
                 </p>
               </div>
             )}
@@ -662,7 +690,7 @@ export default function ProfilePage() {
                 type="button"
                 disabled={recoveryLoading}
                 onClick={onGenerateRecoveryCode}
-                className="rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
+                className="rounded-lg bg-th-border-bright hover:bg-th-muted disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
               >
                 {recoveryLoading ? "Working…" : hasRecoveryCode ? "Replace recovery code" : "Generate recovery code"}
               </button>
@@ -671,7 +699,7 @@ export default function ProfilePage() {
                   type="button"
                   disabled={recoveryLoading}
                   onClick={onRemoveRecoveryCode}
-                  className="rounded-lg border border-slate-600 text-slate-300 text-sm py-2 px-4 hover:bg-slate-800"
+                  className="rounded-lg border border-th-border-bright text-th-tertiary text-sm py-2 px-4 hover:bg-th-surface-alt"
                 >
                   Remove recovery code
                 </button>
@@ -681,14 +709,14 @@ export default function ProfilePage() {
         )}
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
+      <div className="bg-th-surface border border-th-border rounded-xl p-6 shadow-xl space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-medium text-slate-300">Backup and restore</h2>
+          <h2 className="text-sm font-medium text-th-tertiary">Backup and restore</h2>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setBackupHelpOpen((v) => !v)}
-              className="h-6 w-6 flex items-center justify-center rounded-full border border-slate-600/80 text-[11px] font-semibold text-slate-300 hover:text-white hover:border-slate-400"
+              className="h-6 w-6 flex items-center justify-center rounded-full border border-th-border-bright/80 text-[11px] font-semibold text-th-tertiary hover:text-white hover:border-th-subtle"
               aria-label={backupHelpOpen ? "Hide backup and restore details" : "Show backup and restore details"}
               aria-expanded={backupHelpOpen}
             >
@@ -697,7 +725,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => setBackupCollapsed((v) => !v)}
-              className="text-xs text-slate-400 hover:text-slate-200 rounded-full border border-slate-600/70 px-2 py-0.5"
+              className="text-xs text-th-subtle hover:text-th-secondary rounded-full border border-th-border-bright/70 px-2 py-0.5"
               aria-expanded={!backupCollapsed}
             >
               {backupCollapsed ? "Show" : "Hide"}
@@ -705,13 +733,13 @@ export default function ProfilePage() {
           </div>
         </div>
         {backupHelpOpen && (
-          <p className="text-xs text-slate-500 leading-relaxed">
+          <p className="text-xs text-th-muted leading-relaxed">
             Download a JSON backup with all expenses (including renewals), prescriptions, and payment plans. Each backup
-            includes an <span className="text-slate-400">account</span> block so you can see which user it belongs to.{" "}
-            <span className="text-slate-400">Append</span> adds to what you have;{" "}
-            <span className="text-slate-400">Replace</span> clears existing rows before importing into the currently
+            includes an <span className="text-th-subtle">account</span> block so you can see which user it belongs to.{" "}
+            <span className="text-th-subtle">Append</span> adds to what you have;{" "}
+            <span className="text-th-subtle">Replace</span> clears existing rows before importing into the currently
             signed-in account. Backups may include your recovery code under{" "}
-            <span className="text-slate-400">account.recoveryCode</span>—keep them private.
+            <span className="text-th-subtle">account.recoveryCode</span>—keep them private.
           </p>
         )}
         {!backupCollapsed && (
@@ -727,35 +755,35 @@ export default function ProfilePage() {
             type="button"
             disabled={backupLoading}
             onClick={onDownloadBackup}
-            className="rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
+            className="rounded-lg bg-th-border-bright hover:bg-th-muted disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
           >
             {backupLoading ? "Working…" : "Download backup"}
           </button>
         </div>
-        <form onSubmit={onRestoreBackup} className="space-y-3 pt-2 border-t border-slate-800">
+        <form onSubmit={onRestoreBackup} className="space-y-3 pt-2 border-t border-th-border">
           <div>
-            <label htmlFor="restore-mode" className="block text-xs font-medium text-slate-400 mb-1">
+            <label htmlFor="restore-mode" className="block text-xs font-medium text-th-subtle mb-1">
               Restore mode
             </label>
             <select
               id="restore-mode"
               value={restoreMode}
               onChange={(e) => setRestoreMode(e.target.value)}
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             >
               <option value="append">Append (expenses + prescriptions + payment plans)</option>
               <option value="replace">Replace (scope depends on backup file version)</option>
             </select>
           </div>
           <div>
-            <label htmlFor="backup-file-input" className="block text-xs font-medium text-slate-400 mb-1">
+            <label htmlFor="backup-file-input" className="block text-xs font-medium text-th-subtle mb-1">
               Backup file
             </label>
             <input
               id="backup-file-input"
               type="file"
               accept="application/json,.json"
-              className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700"
+              className="block w-full text-sm text-th-subtle file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-th-surface-alt file:text-th-secondary hover:file:bg-th-border-bright"
             />
           </div>
           <button

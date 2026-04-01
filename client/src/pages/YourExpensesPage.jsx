@@ -91,6 +91,8 @@ export default function YourExpensesPage() {
       renewal_kind: row.renewal_kind ?? "",
       website: row.website ?? "",
       frequency: row.frequency,
+      payment_day: row.payment_day != null ? String(row.payment_day) : "",
+      payment_day_2: row.payment_day_2 != null ? String(row.payment_day_2) : "",
       financial_institution: row.financial_institution,
       state: row.state || "active",
       description: row.description ?? "",
@@ -113,6 +115,14 @@ export default function YourExpensesPage() {
       setError("Choose a renewal type for Renewal category.");
       return;
     }
+    if (expenseEditDraft.frequency === "bimonthly") {
+      const pd1 = Number(expenseEditDraft.payment_day);
+      const pd2 = Number(expenseEditDraft.payment_day_2);
+      if (!Number.isInteger(pd1) || pd1 < 1 || pd1 > 30 || !Number.isInteger(pd2) || pd2 < 1 || pd2 > 30) {
+        setError("Bi-monthly requires two payment days (1–30).");
+        return;
+      }
+    }
     setExpenseSaving(true);
     setError("");
     try {
@@ -126,6 +136,8 @@ export default function YourExpensesPage() {
             : undefined,
         website: expenseEditDraft.website,
         frequency: expenseEditDraft.frequency,
+        payment_day: expenseEditDraft.frequency === "bimonthly" ? Number(expenseEditDraft.payment_day) : undefined,
+        payment_day_2: expenseEditDraft.frequency === "bimonthly" ? Number(expenseEditDraft.payment_day_2) : undefined,
         financial_institution: expenseEditDraft.financial_institution,
         state: expenseEditDraft.state,
         description: expenseEditDraft.description,
@@ -163,6 +175,14 @@ export default function YourExpensesPage() {
       setError("Choose a renewal type for Renewal category.");
       return;
     }
+    if (addForm.frequency === "bimonthly") {
+      const pd1 = Number(addForm.payment_day);
+      const pd2 = Number(addForm.payment_day_2);
+      if (!Number.isInteger(pd1) || pd1 < 1 || pd1 > 30 || !Number.isInteger(pd2) || pd2 < 1 || pd2 > 30) {
+        setError("Bi-monthly requires two payment days (1–30).");
+        return;
+      }
+    }
     setAddSaving(true);
     setError("");
     try {
@@ -173,6 +193,8 @@ export default function YourExpensesPage() {
         website: addForm.website || undefined,
         financial_institution: addForm.financial_institution,
         frequency: addForm.frequency,
+        payment_day: addForm.frequency === "bimonthly" ? Number(addForm.payment_day) : undefined,
+        payment_day_2: addForm.frequency === "bimonthly" ? Number(addForm.payment_day_2) : undefined,
         state: addForm.state,
         description: addForm.description,
         spent_at: addForm.spent_at,
@@ -193,7 +215,7 @@ export default function YourExpensesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-white">Expenses</h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-th-subtle mt-1">
           {loading
             ? "Loading…"
             : "Add expenses here or on Import; review, edit, or delete. Items with category Renewal appear under Renewals, and Payment Plan items appear under Payment Plan. Default order is newest first—click a column heading to sort."}
@@ -215,13 +237,13 @@ export default function YourExpensesPage() {
             submitLabel={addSaving ? "Saving…" : "Add expense"}
             disabled={addSaving}
           />
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-center space-y-3">
-            <p className="text-slate-400 text-sm">
+          <div className="rounded-xl border border-th-border bg-th-surface/40 px-4 py-6 text-center space-y-3">
+            <p className="text-th-subtle text-sm">
               No saved expenses yet. Use the form above or import a statement.
             </p>
             <Link
               to="/expenses"
-              className="inline-block rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2 px-4"
+              className="inline-block rounded-lg border border-th-border-bright bg-th-surface-alt hover:bg-th-border-bright text-th-secondary text-sm font-medium py-2 px-4"
             >
               Go to Import
             </Link>
@@ -230,18 +252,18 @@ export default function YourExpensesPage() {
       )}
 
       {!loading && items.length > 0 && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <div className="rounded-xl border border-th-border bg-th-surface/40 p-4">
           <button
             type="button"
             onClick={() => setAddFormOpen((v) => !v)}
-            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-800/70 text-slate-200"
+            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-th-surface-alt/70 text-th-secondary"
             aria-expanded={addFormOpen}
           >
             <span className="font-medium text-sm">Add expense manually</span>
-            <span className="text-slate-500 text-xs">{addFormOpen ? "Hide" : "Show"}</span>
+            <span className="text-th-muted text-xs">{addFormOpen ? "Hide" : "Show"}</span>
           </button>
           {addFormOpen ? (
-            <div className="mt-4 pt-4 border-t border-slate-800">
+            <div className="mt-4 pt-4 border-t border-th-border">
               <ManualExpenseForm
                 form={addForm}
                 setForm={setAddForm}
@@ -257,7 +279,7 @@ export default function YourExpensesPage() {
       {!loading && items.length > 0 && (
         <>
           {filteredExpenseListItems.length === 0 && (
-            <p className="text-sm text-slate-400 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2">
+            <p className="text-sm text-th-subtle rounded-lg border border-th-border bg-th-surface/40 px-3 py-2">
               You only have renewal or payment plan items right now—they are listed under{" "}
               <Link to="/renewals" className="text-sky-400 hover:text-sky-300">
                 Renewals

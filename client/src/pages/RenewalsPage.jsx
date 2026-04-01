@@ -90,6 +90,8 @@ export default function RenewalsPage() {
       renewal_kind: row.renewal_kind ?? "",
       website: row.website ?? "",
       frequency: row.frequency,
+      payment_day: row.payment_day != null ? String(row.payment_day) : "",
+      payment_day_2: row.payment_day_2 != null ? String(row.payment_day_2) : "",
       financial_institution: row.financial_institution,
       state: row.state || "active",
       description: row.description ?? "",
@@ -112,6 +114,14 @@ export default function RenewalsPage() {
       setError("Choose a renewal type.");
       return;
     }
+    if (expenseEditDraft.frequency === "bimonthly") {
+      const pd1 = Number(expenseEditDraft.payment_day);
+      const pd2 = Number(expenseEditDraft.payment_day_2);
+      if (!Number.isInteger(pd1) || pd1 < 1 || pd1 > 30 || !Number.isInteger(pd2) || pd2 < 1 || pd2 > 30) {
+        setError("Bi-monthly requires two payment days (1–30).");
+        return;
+      }
+    }
     setExpenseSaving(true);
     setError("");
     try {
@@ -123,6 +133,8 @@ export default function RenewalsPage() {
           expenseEditDraft.category === "renewal" ? expenseEditDraft.renewal_kind : undefined,
         website: expenseEditDraft.website,
         frequency: expenseEditDraft.frequency,
+        payment_day: expenseEditDraft.frequency === "bimonthly" ? Number(expenseEditDraft.payment_day) : undefined,
+        payment_day_2: expenseEditDraft.frequency === "bimonthly" ? Number(expenseEditDraft.payment_day_2) : undefined,
         financial_institution: expenseEditDraft.financial_institution,
         state: expenseEditDraft.state,
         description: expenseEditDraft.description,
@@ -160,6 +172,14 @@ export default function RenewalsPage() {
       setError("Choose a renewal type.");
       return;
     }
+    if (addForm.frequency === "bimonthly") {
+      const pd1 = Number(addForm.payment_day);
+      const pd2 = Number(addForm.payment_day_2);
+      if (!Number.isInteger(pd1) || pd1 < 1 || pd1 > 30 || !Number.isInteger(pd2) || pd2 < 1 || pd2 > 30) {
+        setError("Bi-monthly requires two payment days (1–30).");
+        return;
+      }
+    }
     setAddSaving(true);
     setError("");
     try {
@@ -170,6 +190,8 @@ export default function RenewalsPage() {
         website: addForm.website || undefined,
         financial_institution: addForm.financial_institution,
         frequency: addForm.frequency,
+        payment_day: addForm.frequency === "bimonthly" ? Number(addForm.payment_day) : undefined,
+        payment_day_2: addForm.frequency === "bimonthly" ? Number(addForm.payment_day_2) : undefined,
         state: addForm.state,
         description: addForm.description,
         spent_at: addForm.spent_at,
@@ -190,7 +212,7 @@ export default function RenewalsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-white">Renewals</h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-th-subtle mt-1">
           {loading
             ? "Loading…"
             : "Track renewals on unusual schedules (annual, multi-year, and other frequencies). Each row is an expense with category Renewal, a renewal type, and an optional website. On Import, choose category Renewal and pick a type for each line you want listed here."}
@@ -212,14 +234,14 @@ export default function RenewalsPage() {
             submitLabel={addSaving ? "Saving…" : "Add renewal"}
             disabled={addSaving}
           />
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-center space-y-3">
-            <p className="text-slate-400 text-sm">
+          <div className="rounded-xl border border-th-border bg-th-surface/40 px-4 py-6 text-center space-y-3">
+            <p className="text-th-subtle text-sm">
               No renewal items yet. Add one above, or import a statement and set category to{" "}
-              <strong className="text-slate-300">Renewal</strong> plus a renewal type for each row.
+              <strong className="text-th-tertiary">Renewal</strong> plus a renewal type for each row.
             </p>
             <Link
               to="/expenses"
-              className="inline-block rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2 px-4"
+              className="inline-block rounded-lg border border-th-border-bright bg-th-surface-alt hover:bg-th-border-bright text-th-secondary text-sm font-medium py-2 px-4"
             >
               Go to Import
             </Link>
@@ -228,18 +250,18 @@ export default function RenewalsPage() {
       )}
 
       {!loading && items.length > 0 && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <div className="rounded-xl border border-th-border bg-th-surface/40 p-4">
           <button
             type="button"
             onClick={() => setAddFormOpen((v) => !v)}
-            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-800/70 text-slate-200"
+            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-th-surface-alt/70 text-th-secondary"
             aria-expanded={addFormOpen}
           >
             <span className="font-medium text-sm">Add renewal manually</span>
-            <span className="text-slate-500 text-xs">{addFormOpen ? "Hide" : "Show"}</span>
+            <span className="text-th-muted text-xs">{addFormOpen ? "Hide" : "Show"}</span>
           </button>
           {addFormOpen ? (
-            <div className="mt-4 pt-4 border-t border-slate-800">
+            <div className="mt-4 pt-4 border-t border-th-border">
               <ManualExpenseForm
                 form={addForm}
                 setForm={setAddForm}

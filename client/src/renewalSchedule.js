@@ -100,17 +100,22 @@ export function nextRenewalDate(expense, from = new Date()) {
   }
 
   if (freq === "bimonthly") {
-    let cur = startOfLocalDay(spent);
-    cur = new Date(
-      cur.getFullYear(),
-      cur.getMonth(),
-      clampDayInMonth(cur.getFullYear(), cur.getMonth(), day)
-    );
-    let guard = 0;
-    while (cur < fromS && guard++ < 5000) {
-      cur = addMonthsClamped(cur, 2);
+    const day2 = expense.payment_day_2 != null ? Math.min(30, Math.max(1, Number(expense.payment_day_2))) : null;
+    const days = [day];
+    if (day2 != null && day2 !== day) days.push(day2);
+    days.sort((a, b) => a - b);
+
+    let y = fromS.getFullYear();
+    let m = fromS.getMonth();
+    for (let guard = 0; guard < 60; guard++) {
+      for (const d of days) {
+        const cand = new Date(y, m, clampDayInMonth(y, m, d));
+        if (cand >= fromS) return cand;
+      }
+      m++;
+      if (m > 11) { m = 0; y++; }
     }
-    return cur;
+    return null;
   }
 
   if (freq === "yearly") {
@@ -175,7 +180,24 @@ function stepRenewalBackOnePeriod(expense, anchorStartOfDay) {
     return startOfLocalDay(new Date(s.getFullYear(), s.getMonth(), s.getDate() - 7));
   }
   if (freq === "monthly") return addMonthsClamped(s, -1);
-  if (freq === "bimonthly") return addMonthsClamped(s, -2);
+  if (freq === "bimonthly") {
+    const day1 = expense.payment_day != null ? Math.min(30, Math.max(1, Number(expense.payment_day))) : s.getDate();
+    const day2 = expense.payment_day_2 != null ? Math.min(30, Math.max(1, Number(expense.payment_day_2))) : null;
+    const days = [day1];
+    if (day2 != null && day2 !== day1) days.push(day2);
+    days.sort((a, b) => b - a);
+    let y = s.getFullYear();
+    let m = s.getMonth();
+    for (let guard = 0; guard < 60; guard++) {
+      for (const d of days) {
+        const cand = new Date(y, m, clampDayInMonth(y, m, d));
+        if (cand < s) return cand;
+      }
+      m--;
+      if (m < 0) { m = 11; y--; }
+    }
+    return addMonthsClamped(s, -1);
+  }
   if (freq === "yearly") return addMonthsClamped(s, -12);
   return null;
 }

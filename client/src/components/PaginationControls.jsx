@@ -28,10 +28,10 @@ export default function PaginationControls({
   })();
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-slate-800">
-      <div className="text-xs text-slate-400">
-        Page <span className="text-slate-200">{page}</span> of{" "}
-        <span className="text-slate-200">{totalPages}</span>
+    <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-th-border">
+      <div className="text-xs text-th-subtle">
+        Page <span className="text-th-secondary">{page}</span> of{" "}
+        <span className="text-th-secondary">{totalPages}</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-1">
@@ -39,7 +39,7 @@ export default function PaginationControls({
           type="button"
           onClick={() => canPrev && onPageChange(page - 1)}
           disabled={!canPrev}
-          className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+          className="rounded-lg border border-th-border-bright px-3 py-1.5 text-xs text-th-tertiary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-th-surface-alt"
         >
           Prev
         </button>
@@ -49,7 +49,7 @@ export default function PaginationControls({
           const showGap = idx > 0 && prevNum != null && p - prevNum > 1;
           return (
             <span key={`pg-${p}`}>
-              {showGap ? <span className="px-1 text-slate-500">...</span> : null}
+              {showGap ? <span className="px-1 text-th-muted">...</span> : null}
               <button
                 type="button"
                 onClick={() => onPageChange(p)}
@@ -57,7 +57,7 @@ export default function PaginationControls({
                 className={`rounded-lg px-3 py-1.5 text-xs ${
                   p === page
                     ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
-                    : "border border-slate-700 text-slate-300 hover:bg-slate-800"
+                    : "border border-th-border-bright text-th-tertiary hover:bg-th-surface-alt"
                 }`}
               >
                 {p}
@@ -70,20 +70,20 @@ export default function PaginationControls({
           type="button"
           onClick={() => canNext && onPageChange(page + 1)}
           disabled={!canNext}
-          className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+          className="rounded-lg border border-th-border-bright px-3 py-1.5 text-xs text-th-tertiary disabled:opacity-40 disabled:cursor-not-allowed hover:bg-th-surface-alt"
         >
           Next
         </button>
       </div>
 
-      <div className="flex items-center gap-3 text-xs text-slate-400">
+      <div className="flex items-center gap-3 text-xs text-th-subtle">
         {onPageSizeChange && pageSizeOptions.length > 0 ? (
           <label className="inline-flex items-center gap-1.5">
             <span>Rows</span>
             <select
               value={safePageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="rounded-md bg-slate-950 border border-slate-700 px-1.5 py-1 text-xs text-slate-200"
+              className="rounded-md bg-th-input border border-th-border-bright px-1.5 py-1 text-xs text-th-secondary"
             >
               {pageSizeOptions.map((n) => (
                 <option key={n} value={n}>
@@ -95,11 +95,11 @@ export default function PaginationControls({
         ) : null}
         <span>
           Showing{" "}
-          <span className="text-slate-200">
+          <span className="text-th-secondary">
             {Math.min(totalItems ?? 0, (page - 1) * safePageSize + 1)}–
             {Math.min(totalItems ?? 0, page * safePageSize)}
           </span>{" "}
-          of <span className="text-slate-200">{totalItems ?? 0}</span>
+          of <span className="text-th-secondary">{totalItems ?? 0}</span>
         </span>
       </div>
     </div>

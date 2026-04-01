@@ -66,7 +66,7 @@ export default function OAuthCallbackPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center text-slate-500 text-sm">
+    <div className="min-h-screen flex items-center justify-center text-th-muted text-sm">
       Completing sign-in…
     </div>
   );

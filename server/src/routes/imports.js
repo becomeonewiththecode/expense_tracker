@@ -88,9 +88,9 @@ importsRouter.post("/", uploadMiddleware, async (req, res) => {
     for (const t of transactions) {
       const { payment_day, payment_month } = paymentMetaFromSpentAt(t.spent_at);
       const { rows } = await client.query(
-        `INSERT INTO import_staging_rows (batch_id, user_id, spent_at, amount, description, category, frequency, payment_day, payment_month, website, renewal_kind)
-         VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, NULL, NULL)
-         RETURNING id, spent_at, amount, description, category, frequency, payment_day, payment_month, website, renewal_kind`,
+        `INSERT INTO import_staging_rows (batch_id, user_id, spent_at, amount, description, category, frequency, payment_day, payment_day_2, payment_month, website, renewal_kind)
+         VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, NULL, $8, NULL, NULL)
+         RETURNING id, spent_at, amount, description, category, frequency, payment_day, payment_day_2, payment_month, website, renewal_kind`,
         [batch.id, req.userId, t.spent_at, t.amount, t.description, frequency, payment_day, payment_month]
       );
       inserted.push(normalizeStagingRow(rows[0]));
@@ -128,7 +128,7 @@ importsRouter.get("/latest", async (req, res) => {
   }
   const batch = batches[0];
   const { rows } = await pool.query(
-    `SELECT id, spent_at, amount, description, category, frequency, payment_day, payment_month, website, renewal_kind
+    `SELECT id, spent_at, amount, description, category, frequency, payment_day, payment_day_2, payment_month, website, renewal_kind
      FROM import_staging_rows WHERE batch_id = $1 AND user_id = $2 ORDER BY id`,
     [batch.id, req.userId]
   );
@@ -211,7 +211,7 @@ importsRouter.patch("/rows/:rowId", async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE import_staging_rows SET ${sets.join(", ")}
      WHERE id = $${next++} AND user_id = $${next}
-     RETURNING id, spent_at, amount, description, category, frequency, payment_day, payment_month, website, renewal_kind`,
+     RETURNING id, spent_at, amount, description, category, frequency, payment_day, payment_day_2, payment_month, website, renewal_kind`,
     params
   );
   if (!rows[0]) {
@@ -263,8 +263,8 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
     for (const t of toInsert) {
       const { payment_day, payment_month } = paymentMetaFromSpentAt(t.spent_at);
       const { rows: inserted } = await client.query(
-        `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_month, description, website, renewal_kind, spent_at)
-         VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8, $9, $10, $11)
+        `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at)
+         VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8, $9, $10, $11, $12)
          RETURNING id, amount, category, financial_institution, frequency, state, description`,
         [
           req.userId,
@@ -273,6 +273,7 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
           default_financial_institution,
           t.frequency,
           payment_day,
+          null,
           payment_month,
           t.description,
           t.category === "renewal" ? t.website ?? null : null,
@@ -327,6 +328,7 @@ function normalizeStagingRow(row) {
     category: row.category ?? null,
     frequency: row.frequency ?? null,
     payment_day: row.payment_day != null ? Number(row.payment_day) : null,
+    payment_day_2: row.payment_day_2 != null ? Number(row.payment_day_2) : null,
     payment_month: row.payment_month != null ? Number(row.payment_month) : null,
     website: row.website ?? null,
     renewal_kind: row.renewal_kind ?? null,

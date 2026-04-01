@@ -91,14 +91,14 @@ export default function ProjectionModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-lg rounded-xl border border-th-border-bright bg-th-surface shadow-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 id="projection-title" className="text-lg font-semibold text-white">
               Projection
             </h2>
             {contextLabel ? (
-              <p className="text-xs text-slate-500 mt-1 truncate" title={contextLabel}>
+              <p className="text-xs text-th-muted mt-1 truncate" title={contextLabel}>
                 {contextLabel}
               </p>
             ) : null}
@@ -106,86 +106,86 @@ export default function ProjectionModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-slate-400 hover:text-white hover:bg-slate-800 text-sm shrink-0"
+            className="rounded-lg px-2 py-1 text-th-subtle hover:text-white hover:bg-th-surface-alt text-sm shrink-0"
             aria-label="Close"
           >
             ✕
           </button>
         </div>
-        <p className="text-xs text-slate-500 leading-relaxed">
+        <p className="text-xs text-th-muted leading-relaxed">
           {projectionKind === "prescription" ? (
             singleItem ? (
               <>
-                This row&apos;s <strong className="text-slate-400">amount</strong> (per renewal) and{" "}
-                <strong className="text-slate-400">renewal period</strong> are annualized: N-month cycles use{" "}
-                <strong className="text-slate-400">12 ÷ N</strong> charges per year; multi-year cycles divide the charge
-                across years. <strong className="text-slate-400">Cancel</strong> rows do not contribute to run rate.
+                This row&apos;s <strong className="text-th-subtle">amount</strong> (per renewal) and{" "}
+                <strong className="text-th-subtle">renewal period</strong> are annualized: N-month cycles use{" "}
+                <strong className="text-th-subtle">12 ÷ N</strong> charges per year; multi-year cycles divide the charge
+                across years. <strong className="text-th-subtle">Cancel</strong> rows do not contribute to run rate.
               </>
             ) : (
               <>
-                Estimates use each item&apos;s <strong className="text-slate-400">amount</strong> (per renewal) and{" "}
-                <strong className="text-slate-400">renewal period</strong> the same way.{" "}
-                <strong className="text-slate-400">Cancel</strong> rows are excluded from combined totals and the pie.
+                Estimates use each item&apos;s <strong className="text-th-subtle">amount</strong> (per renewal) and{" "}
+                <strong className="text-th-subtle">renewal period</strong> the same way.{" "}
+                <strong className="text-th-subtle">Cancel</strong> rows are excluded from combined totals and the pie.
               </>
             )
           ) : projectionKind === "payment_plan" ? (
             singleItem ? (
               <>
-                This row&apos;s <strong className="text-slate-400">amount</strong> and{" "}
-                <strong className="text-slate-400">frequency</strong> are used first: when frequency is{" "}
-                <strong className="text-slate-400">1–6</strong>, projection uses that as the planned payment count
-                (<strong className="text-slate-400">amount × count</strong>). Otherwise, it falls back to payment
+                This row&apos;s <strong className="text-th-subtle">amount</strong> and{" "}
+                <strong className="text-th-subtle">frequency</strong> are used first: when frequency is{" "}
+                <strong className="text-th-subtle">1–6</strong>, projection uses that as the planned payment count
+                (<strong className="text-th-subtle">amount × count</strong>). Otherwise, it falls back to payment
                 schedule cadence (weekly × 52, bi-weekly × 26, monthly × 12, quarterly × 4, semi-annual × 2, annual ×
-                1). <strong className="text-slate-400">One-time</strong> appears as one-time total only.
+                1). <strong className="text-th-subtle">One-time</strong> appears as one-time total only.
                 Non-active statuses are excluded from run rate.
               </>
             ) : (
               <>
-                Estimates use each plan&apos;s <strong className="text-slate-400">amount</strong> and{" "}
-                <strong className="text-slate-400">frequency</strong> first (1–6 = payment count), then payment schedule
+                Estimates use each plan&apos;s <strong className="text-th-subtle">amount</strong> and{" "}
+                <strong className="text-th-subtle">frequency</strong> first (1–6 = payment count), then payment schedule
                 cadence when frequency is not numeric.{" "}
-                <strong className="text-slate-400">One-time</strong> appears below and non-active statuses are excluded
+                <strong className="text-th-subtle">One-time</strong> appears below and non-active statuses are excluded
                 from combined totals and pie slices.
               </>
             )
           ) : singleItem ? (
             <>
-              This row&apos;s <strong className="text-slate-400">amount</strong> and{" "}
-              <strong className="text-slate-400">frequency</strong> are annualized: weekly × 52, monthly × 12,
-              bi-monthly × 6, yearly × 1 per year. <strong className="text-slate-400">Once</strong> is not included in the
+              This row&apos;s <strong className="text-th-subtle">amount</strong> and{" "}
+              <strong className="text-th-subtle">frequency</strong> are annualized: weekly × 52, monthly × 12,
+              bi-monthly × 6, yearly × 1 per year. <strong className="text-th-subtle">Once</strong> is not included in the
               daily / monthly / yearly run rate; it appears as a one-time total below.
             </>
           ) : (
             <>
-              Estimates use each expense&apos;s <strong className="text-slate-400">amount</strong> and{" "}
-              <strong className="text-slate-400">frequency</strong>: weekly × 52, monthly × 12, bi-monthly × 6,
-              yearly × 1 per year. <strong className="text-slate-400">Once</strong> is not included in the daily / monthly /
+              Estimates use each expense&apos;s <strong className="text-th-subtle">amount</strong> and{" "}
+              <strong className="text-th-subtle">frequency</strong>: weekly × 52, monthly × 12, bi-monthly × 6,
+              yearly × 1 per year. <strong className="text-th-subtle">Once</strong> is not included in the daily / monthly /
               yearly run rate; it appears as a one-time total below.
             </>
           )}
         </p>
-        <div className="rounded-lg border border-slate-800 bg-slate-950/50 divide-y divide-slate-800">
+        <div className="rounded-lg border border-th-border bg-th-base/50 divide-y divide-th-border">
           <div className="flex justify-between gap-4 px-4 py-3">
-            <span className="text-sm text-slate-400">Daily (run rate)</span>
+            <span className="text-sm text-th-subtle">Daily (run rate)</span>
             <span className="text-sm font-medium text-white tabular-nums">
               {hasRecurring ? formatProjectionCurrency(recurring.daily) : "—"}
             </span>
           </div>
           <div className="flex justify-between gap-4 px-4 py-3">
-            <span className="text-sm text-slate-400">Monthly (run rate)</span>
+            <span className="text-sm text-th-subtle">Monthly (run rate)</span>
             <span className="text-sm font-medium text-white tabular-nums">
               {hasRecurring ? formatProjectionCurrency(recurring.monthly) : "—"}
             </span>
           </div>
           <div className="flex justify-between gap-4 px-4 py-3">
-            <span className="text-sm text-slate-400">Yearly (run rate)</span>
+            <span className="text-sm text-th-subtle">Yearly (run rate)</span>
             <span className="text-sm font-medium text-white tabular-nums">
               {hasRecurring ? formatProjectionCurrency(recurring.yearly) : "—"}
             </span>
           </div>
           {oneTimeTotal > 0 && (
             <div className="flex justify-between gap-4 px-4 py-3">
-              <span className="text-sm text-slate-400">{oneTimeLabel}</span>
+              <span className="text-sm text-th-subtle">{oneTimeLabel}</span>
               <span className="text-sm font-medium text-amber-200/90 tabular-nums">
                 {formatProjectionCurrency(oneTimeTotal)}
               </span>
@@ -193,8 +193,8 @@ export default function ProjectionModal({
           )}
         </div>
         {Array.isArray(pieData) && pieData.length > 0 && (
-          <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
-            <p className="text-xs text-slate-500 mb-1">
+          <div className="rounded-lg border border-th-border bg-th-base/50 p-3">
+            <p className="text-xs text-th-muted mb-1">
               {projectionKind === "prescription" ? (
                 <>
                   Annualized share by category (same scale as yearly run rate). Click a slice to list prescriptions in
@@ -203,13 +203,13 @@ export default function ProjectionModal({
               ) : projectionKind === "payment_plan" ? (
                 <>
                   Annualized share by payment-plan category (same scale as yearly run rate). One-time plans are grouped
-                  as <strong className="text-slate-400">One-time</strong>. Click a slice to list plans in that segment;
+                  as <strong className="text-th-subtle">One-time</strong>. Click a slice to list plans in that segment;
                   click again to clear.
                 </>
               ) : (
                 <>
                   Annualized share — recurring by category; one-time amounts grouped as{" "}
-                  <strong className="text-slate-400">One-time</strong> (same scale as yearly run rate). Click a slice
+                  <strong className="text-th-subtle">One-time</strong> (same scale as yearly run rate). Click a slice
                   to list expenses in that segment; click again to clear.
                 </>
               )}
@@ -253,16 +253,16 @@ export default function ProjectionModal({
                   />
                   <Legend
                     wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }}
-                    formatter={(value) => <span className="text-slate-300">{value}</span>}
+                    formatter={(value) => <span className="text-th-tertiary">{value}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             {selectedSlice != null && (
-              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-900/80 p-3">
-                <p className="text-xs font-medium text-slate-300 mb-2">
+              <div className="mt-3 rounded-lg border border-th-border-bright bg-th-surface/80 p-3">
+                <p className="text-xs font-medium text-th-tertiary mb-2">
                   <span className="text-violet-300">{selectedSlice}</span>
-                  <span className="text-slate-500"> · </span>
+                  <span className="text-th-muted"> · </span>
                   {sliceItems.length}{" "}
                   {projectionKind === "prescription"
                     ? sliceItems.length !== 1
@@ -273,18 +273,18 @@ export default function ProjectionModal({
                     : `expense${sliceItems.length !== 1 ? "s" : ""}`}
                 </p>
                 {sliceItems.length === 0 ? (
-                  <p className="text-xs text-slate-500">No line items match this slice.</p>
+                  <p className="text-xs text-th-muted">No line items match this slice.</p>
                 ) : (
                   <ul className="space-y-2 max-h-52 overflow-y-auto text-xs">
                     {sliceItems.map((row) => (
                       <li
                         key={row.id}
-                        className="flex flex-col gap-0.5 border-b border-slate-800/80 pb-2 last:border-0 last:pb-0"
+                        className="flex flex-col gap-0.5 border-b border-th-border/80 pb-2 last:border-0 last:pb-0"
                       >
                         <span className="text-white font-medium tabular-nums">
                           {formatProjectionCurrency(row.amount)}
                         </span>
-                        <span className="text-slate-400">
+                        <span className="text-th-subtle">
                           {projectionKind === "prescription" ? (
                             <>
                               {formatRenewalPeriod(row.renewal_period)}
@@ -311,7 +311,7 @@ export default function ProjectionModal({
           </div>
         )}
         {!hasRecurring && oneTimeTotal === 0 && (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-th-muted">
             {projectionKind === "prescription"
               ? singleItem
                 ? "No recurring run rate for this row (check amount, renewal period, or State Cancel)."
@@ -326,7 +326,7 @@ export default function ProjectionModal({
           </p>
         )}
         {!hasRecurring && oneTimeTotal > 0 && projectionKind !== "prescription" && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-th-muted">
             {singleItem
               ? "This expense is one-time only, so there is no recurring daily, monthly, or yearly run rate."
               : "Run rate is empty because all listed expenses are one-time. Add recurring items (weekly / monthly / etc.) to see daily, monthly, and yearly projections."}
@@ -335,7 +335,7 @@ export default function ProjectionModal({
         <button
           type="button"
           onClick={onClose}
-          className="w-full rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2"
+          className="w-full rounded-lg bg-th-surface-alt hover:bg-th-border-bright text-white text-sm font-medium py-2"
         >
           Close
         </button>

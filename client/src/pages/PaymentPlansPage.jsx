@@ -271,7 +271,7 @@ export default function PaymentPlansPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-white">Payment Plan</h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-th-subtle mt-1">
           Track planned payments with schedule, priority, account, method, institution, tags, and frequency.
         </p>
       </div>
@@ -283,13 +283,13 @@ export default function PaymentPlansPage() {
         <p className="text-sm text-emerald-400 bg-emerald-950/30 border border-emerald-900/50 rounded-lg px-3 py-2">{notice}</p>
       ) : null}
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-        <div className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-slate-200">
+      <div className="rounded-xl border border-th-border bg-th-surface/40 p-4">
+        <div className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-th-secondary">
           <span className="font-medium text-sm">Add payment plan</span>
           <button
             type="button"
             onClick={() => setAddOpen((v) => !v)}
-            className="text-slate-500 text-xs hover:text-slate-300"
+            className="text-th-muted text-xs hover:text-th-tertiary"
             aria-expanded={addOpen}
           >
             {addOpen ? "Hide" : "Show"}
@@ -297,7 +297,7 @@ export default function PaymentPlansPage() {
         </div>
         {addOpen ? (
           <form onSubmit={onAdd} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label className="text-xs text-slate-500 block">
+            <label className="text-xs text-th-muted block">
               Name
               <input
                 value={addForm.name}
@@ -306,7 +306,7 @@ export default function PaymentPlansPage() {
                 placeholder="Plan name"
               />
             </label>
-            <label className="text-xs text-slate-500 block">
+            <label className="text-xs text-th-muted block">
               Amount
               <input
                 type="number"
@@ -343,12 +343,12 @@ export default function PaymentPlansPage() {
             />
             <SelectField label="Tag" value={addForm.tag} options={PAYMENT_PLAN_TAG_OPTIONS} onChange={(v) => setAddForm((f) => ({ ...f, tag: v }))} />
             <SelectField label="Frequency" value={addForm.frequency} options={PAYMENT_PLAN_FREQUENCY_OPTIONS} onChange={(v) => setAddForm((f) => ({ ...f, frequency: v }))} />
-            <label className="text-xs text-slate-500 block sm:col-span-2 lg:col-span-3">
+            <label className="text-xs text-th-muted block sm:col-span-2 lg:col-span-3">
               Notes
               <textarea
                 value={addForm.notes}
                 onChange={(e) => setAddForm((f) => ({ ...f, notes: e.target.value }))}
-                className={`mt-1 w-full ${TABLE_FIELD_INPUT} text-slate-300 min-h-[5rem]`}
+                className={`mt-1 w-full ${TABLE_FIELD_INPUT} text-th-tertiary min-h-[5rem]`}
                 placeholder="Optional notes"
               />
             </label>
@@ -366,7 +366,7 @@ export default function PaymentPlansPage() {
       </div>
 
       {!loading && items.length === 0 ? (
-        <p className="text-sm text-slate-500 text-center py-8 border border-dashed border-slate-700 rounded-xl">
+        <p className="text-sm text-th-muted text-center py-8 border border-dashed border-th-border-bright rounded-xl">
           No payment plans yet. Add one above.
         </p>
       ) : null}
@@ -375,7 +375,7 @@ export default function PaymentPlansPage() {
         <div className={TABLE_CARD}>
           <div className={TABLE_HEADER_BAR}>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-medium text-slate-200">Your payment plans</h2>
+              <h2 className="text-sm font-medium text-th-secondary">Your payment plans</h2>
               <TableUpdateFlash token={tableUpdateFlashToken} />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -384,7 +384,7 @@ export default function PaymentPlansPage() {
                 value={noteSearch}
                 onChange={(e) => setNoteSearch(e.target.value)}
                 placeholder="Search notes"
-                className="w-48 rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-slate-200 text-xs"
+                className="w-48 rounded-lg bg-th-input border border-th-border-bright px-3 py-1.5 text-th-secondary text-xs"
               />
               <button
                 type="button"
@@ -424,7 +424,7 @@ export default function PaymentPlansPage() {
                         {editing && d ? (
                           <input value={d.name} onChange={(e) => updateDraft("name", e.target.value)} className={`w-full min-w-[9rem] ${TABLE_FIELD_INPUT}`} />
                         ) : (
-                          <span className="text-slate-200">{row.name}</span>
+                          <span className="text-th-secondary">{row.name}</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -434,30 +434,30 @@ export default function PaymentPlansPage() {
                           <span className="font-medium text-white tabular-nums">${Number(row.amount).toFixed(2)}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-300">{editing && d ? <InlineSelect value={d.category} options={PAYMENT_PLAN_CATEGORY_OPTIONS} onChange={(v) => updateDraft("category", v)} /> : formatPaymentPlanCategory(row.category)}</td>
-                      <td className="px-4 py-3 text-slate-300">{editing && d ? <InlineSelect value={d.payment_schedule} options={PAYMENT_PLAN_SCHEDULE_OPTIONS} onChange={(v) => updateDraft("payment_schedule", v)} /> : formatPaymentPlanSchedule(row.payment_schedule)}</td>
-                      <td className="px-4 py-3 text-slate-300">{editing && d ? <InlineSelect value={d.priority_level} options={PAYMENT_PLAN_PRIORITY_OPTIONS} onChange={(v) => updateDraft("priority_level", v)} /> : formatPaymentPlanPriority(row.priority_level)}</td>
-                      <td className="px-4 py-3 text-slate-300">{editing && d ? <InlineSelect value={d.status} options={PAYMENT_PLAN_STATUS_OPTIONS} onChange={(v) => updateDraft("status", v)} /> : formatPaymentPlanStatus(row.status)}</td>
-                      <td className="px-4 py-3 text-slate-300 hidden lg:table-cell">
+                      <td className="px-4 py-3 text-th-tertiary">{editing && d ? <InlineSelect value={d.category} options={PAYMENT_PLAN_CATEGORY_OPTIONS} onChange={(v) => updateDraft("category", v)} /> : formatPaymentPlanCategory(row.category)}</td>
+                      <td className="px-4 py-3 text-th-tertiary">{editing && d ? <InlineSelect value={d.payment_schedule} options={PAYMENT_PLAN_SCHEDULE_OPTIONS} onChange={(v) => updateDraft("payment_schedule", v)} /> : formatPaymentPlanSchedule(row.payment_schedule)}</td>
+                      <td className="px-4 py-3 text-th-tertiary">{editing && d ? <InlineSelect value={d.priority_level} options={PAYMENT_PLAN_PRIORITY_OPTIONS} onChange={(v) => updateDraft("priority_level", v)} /> : formatPaymentPlanPriority(row.priority_level)}</td>
+                      <td className="px-4 py-3 text-th-tertiary">{editing && d ? <InlineSelect value={d.status} options={PAYMENT_PLAN_STATUS_OPTIONS} onChange={(v) => updateDraft("status", v)} /> : formatPaymentPlanStatus(row.status)}</td>
+                      <td className="px-4 py-3 text-th-tertiary hidden lg:table-cell">
                         {editing && d ? (
                           <InlineSelect value={d.account_type} options={PAYMENT_PLAN_ACCOUNT_TYPE_OPTIONS} onChange={(v) => updateDraft("account_type", v)} />
                         ) : (
                           formatPaymentPlanAccountType(row.account_type)
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-300 hidden lg:table-cell">{editing && d ? <InlineSelect value={d.payment_method} options={PAYMENT_PLAN_METHOD_OPTIONS} onChange={(v) => updateDraft("payment_method", v)} /> : formatPaymentPlanMethod(row.payment_method)}</td>
-                      <td className="px-4 py-3 text-slate-300 hidden xl:table-cell">
+                      <td className="px-4 py-3 text-th-tertiary hidden lg:table-cell">{editing && d ? <InlineSelect value={d.payment_method} options={PAYMENT_PLAN_METHOD_OPTIONS} onChange={(v) => updateDraft("payment_method", v)} /> : formatPaymentPlanMethod(row.payment_method)}</td>
+                      <td className="px-4 py-3 text-th-tertiary hidden xl:table-cell">
                         {editing && d ? (
                           <InlineSelect value={d.institution} options={institutionOptionsForAccountType(d.account_type)} onChange={(v) => updateDraft("institution", v)} />
                         ) : (
                           formatPaymentPlanInstitution(row.institution)
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-300 hidden xl:table-cell">{editing && d ? <InlineSelect value={d.tag} options={PAYMENT_PLAN_TAG_OPTIONS} onChange={(v) => updateDraft("tag", v)} /> : formatPaymentPlanTag(row.tag)}</td>
-                      <td className="px-4 py-3 text-slate-300 hidden xl:table-cell">{editing && d ? <InlineSelect value={d.frequency} options={PAYMENT_PLAN_FREQUENCY_OPTIONS} onChange={(v) => updateDraft("frequency", v)} /> : formatPaymentPlanFrequency(row.frequency)}</td>
-                      <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
+                      <td className="px-4 py-3 text-th-tertiary hidden xl:table-cell">{editing && d ? <InlineSelect value={d.tag} options={PAYMENT_PLAN_TAG_OPTIONS} onChange={(v) => updateDraft("tag", v)} /> : formatPaymentPlanTag(row.tag)}</td>
+                      <td className="px-4 py-3 text-th-tertiary hidden xl:table-cell">{editing && d ? <InlineSelect value={d.frequency} options={PAYMENT_PLAN_FREQUENCY_OPTIONS} onChange={(v) => updateDraft("frequency", v)} /> : formatPaymentPlanFrequency(row.frequency)}</td>
+                      <td className="px-4 py-3 text-th-subtle hidden md:table-cell">
                         {editing && d ? (
-                          <input value={d.notes} onChange={(e) => updateDraft("notes", e.target.value)} className={`w-full max-w-[16rem] ${TABLE_FIELD_INPUT} text-slate-300`} />
+                          <input value={d.notes} onChange={(e) => updateDraft("notes", e.target.value)} className={`w-full max-w-[16rem] ${TABLE_FIELD_INPUT} text-th-tertiary`} />
                         ) : (
                           <span className="block max-w-[16rem] truncate">{row.notes || "—"}</span>
                         )}
@@ -470,7 +470,7 @@ export default function PaymentPlansPage() {
                               editing
                                 ? [
                                     { key: "save", label: editSaving ? "Saving…" : "Save", className: "text-emerald-400", disabled: editSaving, onClick: saveEdit },
-                                    { key: "cancel", label: "Cancel", className: "text-slate-300", disabled: editSaving, onClick: cancelEdit },
+                                    { key: "cancel", label: "Cancel", className: "text-th-tertiary", disabled: editSaving, onClick: cancelEdit },
                                   ]
                                 : [
                                     {
@@ -564,7 +564,7 @@ function InlineSelect({ value, options, onChange }) {
 
 function SelectField({ label, value, options, onChange }) {
   return (
-    <label className="text-xs text-slate-500 block">
+    <label className="text-xs text-th-muted block">
       {label}
       <select value={value} onChange={(e) => onChange(e.target.value)} className={`mt-1 w-full ${TABLE_FIELD_INPUT}`}>
         {options.map((o) => (
