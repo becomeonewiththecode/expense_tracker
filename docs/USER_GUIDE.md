@@ -110,11 +110,105 @@ Fill in the form and click **Add expense**:
 | **Transaction date** | The **spent** date for this line item. The server stores **day-of-month** and **calendar-month** metadata derived from this date (for renewals, exports, and imports)—you do not enter them separately. |
 | **Note** | Optional free text. |
 
-On the **Expenses** page (`/expenses/list`), you can **add an expense manually** (same fields as on **Import**) when you have no saved rows at all, or expand **Add expense manually** when you already have rows. The table lists expenses whose category is **not** **Renewal** and **not** **Payment Plan**: rows with category **Renewal** live on the **Renewals** screen, and rows with category **Payment Plan** live on the **Payment Plan** screen (if you change a row to either category and save, it leaves this table and appears on that destination). If you only have renewal/payment-plan items, you see links to those screens above an empty table. **Click a column heading** to sort by that column (click again to reverse direction). **Renewal type** and **Website** columns appear while you are **editing** a row and choose category **Renewal** (so you can set the type before saving). Open a row’s **Actions** menu and choose **Edit** to change **transaction date**, amount, category, frequency, institution, **State**, and note (and renewal fields when the draft category is **Renewal**). While editing, **Save** and **Cancel** replace **Edit** and **Delete** in that menu. The table header also includes **Search notes** to filter by the row’s **Note** text. After successful save/add updates, the table header briefly flashes an update icon so you can confirm that this table was updated.
+### Expenses page (`/expenses/list`)
 
-**Renewal reminders** (the **Upcoming expenses** banner): For recurring expenses (**Weekly**, **Monthly**, **Bi-monthly**, **Yearly**), the app estimates the next renewal from **frequency** and **transaction date** (day and month of year come from that date). While you are signed in, an **Upcoming expenses** panel may appear at the top of the main content on **Import**, any **Lists** destination (**Expenses**, **Renewals**, **Prescriptions**, **Payment Plan**, **Reports**), and on **Profile** (open **Profile** from the avatar **account menu**), when the next renewal is **25–40**, **15–24**, or **0–14** whole calendar days away (roughly a month, a couple of weeks, or the final two weeks—the wording may say “about 30 days,” “about 15 days,” or an exact count such as “in 12 days”). Reminders are **grouped by financial institution** (Bank, VISA, and so on): each group has its own **sortable** table (expense, transaction date, amount, **State**, renewal date), a **Subtotal** for that institution (**Active** rows only), and a **Total (all institutions)** line at the bottom (also **Active** only—the same per-line amounts as on your expense list, excluding **Cancel** from the sums). For rows whose category is **Payment Plan**, the amount cell includes an **info glyph (i)** that shows the row frequency on hover/focus. Those **tables** start **collapsed** when the panel appears; expand or collapse them with the **amber badge** (see below), the panel **Show/Hide** control, or **double-click** the title row (same toggle). Lines marked **Cancel** in **State** are shown with a **green** background so you can spot subscriptions you have cancelled while still seeing the computed renewal date. After a renewal date has passed, a line is hidden for a short period until the next occurrence is nearer (the earliest &quot;about a month out&quot; window does not apply for about two weeks after that date, so the list does not immediately show the following cycle). **One-time** rows are ignored. Use **Dismiss** to hide a line for this browser session, or **Dismiss all** to hide every visible reminder. While any qualifying renewals exist, a **count** appears in an **amber badge** to the **right** of the avatar (**Me**); **click the badge** to **hide** or **show** the reminder tables and **Total (all institutions)** (click again to toggle). The **(i)** control next to **Upcoming expenses** toggles the long explanatory text (how bands, subtotals, and **Cancel** rows work). Renewal tables have **sortable column headings** (Expense, Transaction, Amount, State, Renews). If you dismiss **all** rows but qualifying renewals still exist, **click the badge** or open the **account menu** (avatar) and choose **Upcoming expenses** to show the panel again and clear those dismissals for this session. **Sign out** is in the same menu. The badge stays visible as you navigate between pages while renewals qualify (until you **sign out** or no rows qualify). Reminders are **in-app only**—not email or push notifications.
+#### Adding and viewing expenses
 
-**Projection** in the table header opens a **combined** report: **daily**, **monthly**, and **yearly** run-rate totals across **all expenses shown in this table** (renewal-category rows are excluded here; on **Renewals**, combined projection counts **Active** renewal rows only—**Cancelled** and **Paused** are excluded there too), plus a **pie chart** of annualized share by category (and a **One-time** slice when applicable). Click a slice to list the expenses in that segment; click the same slice again to clear. Each row’s **Actions** menu includes **Projection** for **that expense only** (same numbers plus a single-slice or small pie); if you are editing a row, row **Projection** uses your unsaved values in the form. **Edit** opens inline editing; **Delete** asks for confirmation. If you have no expenses yet, that page shows the manual form and a link to **Import** for import or additional entry.
+- When you have **no saved rows**, the manual add form is shown directly.
+- When you **already have rows**, expand **Add expense manually** to reveal the form.
+- The table lists expenses whose category is **not** Renewal and **not** Payment Plan.
+  - **Renewal** rows live on the [Renewals screen](#renewals-screen).
+  - **Payment Plan** rows live on the [Payment Plan screen](#payment-plan-screen).
+  - Changing a row to either category and saving moves it to that destination.
+- If you only have renewal or payment-plan items, links to those screens appear above an empty table.
+
+#### Sorting and searching
+
+- **Click a column heading** to sort by that column; click again to reverse direction.
+- **Search notes** in the table header filters rows by the Note text.
+
+#### Editing a row
+
+1. Open a row’s **Actions** menu and choose **Edit**.
+2. You can change: transaction date, amount, category, frequency, institution, State, and note.
+3. When the draft category is **Renewal**, extra columns appear for **Renewal type** and **Website**.
+4. While editing, **Save** and **Cancel** replace **Edit** and **Delete** in the Actions menu.
+5. After a successful save or add, the table header briefly flashes an update icon as confirmation.
+
+---
+
+### Renewal reminders (Upcoming expenses banner)
+
+For recurring expenses (Weekly, Monthly, Bi-monthly, Yearly), the app estimates the next renewal from the expense’s **frequency** and **transaction date**.
+
+#### When reminders appear
+
+The **Upcoming expenses** panel shows at the top of: Import, all Lists destinations (Expenses, Renewals, Prescriptions, Payment Plan, Reports), and Profile.
+
+| Days until renewal | Reminder tier | Wording example |
+|---|---|---|
+| **0 -- 14** | Final two weeks | Exact count, e.g. “in 12 days” |
+| **15 -- 24** | About two weeks | “about 15 days” |
+| **25 -- 40** | About a month | “about 30 days” |
+
+- **One-time** expenses are ignored.
+- After a renewal date passes, the line is hidden for about two weeks so the list does not immediately show the next cycle.
+
+#### How reminders are organized
+
+- Reminders are **grouped by financial institution** (Bank, VISA, etc.).
+- Each group has a **sortable table** with columns: Expense, Transaction, Amount, State, Renews.
+- A **Subtotal** per institution sums **Active** rows only.
+- A **Total (all institutions)** line at the bottom also sums Active rows only (Cancelled and Paused amounts are excluded).
+- Payment Plan rows show an **info glyph (i)** on the amount that reveals the row frequency on hover/focus.
+
+#### Cancelled rows
+
+Lines marked **Cancelled** in State are shown with a **green background** so you can spot subscriptions you have cancelled while still seeing the computed renewal date.
+
+#### Expanding, collapsing, and dismissing
+
+- Reminder tables start **collapsed**. Expand or collapse them with:
+  - The **amber badge** next to the avatar
+  - The panel’s **Show/Hide** control
+  - **Double-clicking** the title row
+- **Dismiss** hides a single line for this browser session.
+- **Dismiss all** hides every visible reminder.
+- If you dismiss all rows but qualifying renewals still exist, click the **amber badge** or open the **account menu** (avatar) and choose **Upcoming expenses** to restore them.
+
+#### Amber badge
+
+- While any qualifying renewals exist, a **count** appears in an **amber badge** to the right of the avatar.
+- **Click the badge** to toggle the reminder tables and total on or off.
+- The badge stays visible as you navigate between pages until you sign out or no rows qualify.
+- The **(i)** control next to “Upcoming expenses” toggles a detailed explanation of how bands, subtotals, and Cancelled rows work.
+
+Reminders are **in-app only** -- not email or push notifications.
+
+---
+
+### Projection
+
+#### Combined projection
+
+Click **Projection** in the table header to see a combined report:
+
+- **Daily**, **monthly**, and **yearly** run-rate totals across all expenses shown in the table.
+- A **pie chart** of annualized share by category (with a **One-time** slice when applicable).
+- Click a pie slice to list the expenses in that segment; click the same slice again to clear.
+
+> On the Expenses page, renewal-category rows are excluded. On Renewals, combined projection counts **Active** rows only (Cancelled and Paused are excluded).
+
+#### Per-row projection
+
+- Each row’s **Actions** menu includes **Projection** for that expense only (same numbers, single slice or small pie).
+- If you are editing a row, the per-row Projection uses your **unsaved draft values**.
+
+#### Other actions
+
+- **Edit** opens inline editing.
+- **Delete** asks for confirmation.
+- If you have no expenses yet, the page shows the manual form and a link to Import.
 
 ### Import from a statement (comma-separated values or PDF)
 
@@ -180,7 +274,7 @@ Use the tabs:
 - **Yearly** — totals by month for a year.  
 - **Custom range** — start and end dates.  
 
-Each view shows a **bar chart** (Recharts library) and a **total** for the period. **Click the trend chart** (or focus it and press Enter or Space) to open the same **Projection** modal as on **Expenses** — combined daily, monthly, and yearly run rates, pie chart, and slice drill-down — using your **saved expenses** (up to 500 rows). **Projection** annualizes recurring amounts from **frequency** (for example weekly × 52, monthly × 12, bi-monthly × 6, yearly × 1; **Once** counts only toward one-time totals). The bar chart reflects the **selected report period**; the projection is always **all saved expenses**, not filtered to that period.
+Each view shows a **bar chart** (Recharts library) and a **total** for the period. **Click the trend chart** (or focus it and press Enter or Space) to open the same **Projection** modal as on **Expenses** — combined daily, monthly, and yearly run rates, pie chart, and slice drill-down — using your **saved expenses** (up to 500 rows). **Projection** annualizes recurring amounts from **frequency** (for example weekly × 52, monthly × 12, bi-monthly × 24 since it is paid twice per month, yearly × 1; **Once** counts only toward one-time totals). The bar chart reflects the **selected report period**; the projection is always **all saved expenses**, not filtered to that period.
 
 ### Stored monthly summaries
 
