@@ -276,7 +276,7 @@ export default function PrescriptionsPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-xl font-semibold text-white">Prescriptions</h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-th-subtle mt-1">
           {loading
             ? "Loading…"
             : "Track medical, dental, vision, supplements, and equipment on irregular renewal cycles (1–11 months in monthly steps, or 1–5 years). Reminders appear here and at the top of the app when the next renewal is within 30 days or up to 14 days overdue."}
@@ -288,16 +288,16 @@ export default function PrescriptionsPage() {
       )}
 
       {!loading && items.length > 0 ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <div className="rounded-xl border border-th-border bg-th-surface/40 p-4">
           <button
             type="button"
             onClick={() => setAddFormOpen((v) => !v)}
-            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-slate-800/70 text-slate-200"
+            className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-th-surface-alt/70 text-th-secondary"
             aria-expanded={addFormOpen}
             aria-controls="prescriptions-add-form"
           >
             <span className="text-sm font-medium">Add prescription</span>
-            <span className="text-xs text-slate-400">{addFormOpen ? "Hide" : "Show"}</span>
+            <span className="text-xs text-th-subtle">{addFormOpen ? "Hide" : "Show"}</span>
           </button>
         </div>
       ) : null}
@@ -306,38 +306,38 @@ export default function PrescriptionsPage() {
       <form
         id="prescriptions-add-form"
         onSubmit={addPrescription}
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-end bg-slate-900/50 border border-slate-800 rounded-xl p-4"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-end bg-th-surface/50 border border-th-border rounded-xl p-4"
       >
         <div className="sm:col-span-2">
-          <label className="text-xs text-slate-500 block mb-1">Name</label>
+          <label className="text-xs text-th-muted block mb-1">Name</label>
           <input
             type="text"
             value={addForm.name}
             onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
             placeholder="e.g. Contact lenses, maintenance medication"
             required
           />
         </div>
         <div>
-          <label className="text-xs text-slate-500 block mb-1">Amount</label>
+          <label className="text-xs text-th-muted block mb-1">Amount</label>
           <input
             type="number"
             step="0.01"
             min="0"
             value={addForm.amount}
             onChange={(e) => setAddForm((f) => ({ ...f, amount: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
             placeholder="0.00"
             required
           />
         </div>
         <div>
-          <label className="text-xs text-slate-500 block mb-1">Category</label>
+          <label className="text-xs text-th-muted block mb-1">Category</label>
           <select
             value={addForm.category}
             onChange={(e) => setAddForm((f) => ({ ...f, category: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
           >
             {PRESCRIPTION_CATEGORY_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -347,11 +347,11 @@ export default function PrescriptionsPage() {
           </select>
         </div>
         <div>
-          <label className="text-xs text-slate-500 block mb-1">Renewal period</label>
+          <label className="text-xs text-th-muted block mb-1">Renewal period</label>
           <select
             value={addForm.renewal_period}
             onChange={(e) => setAddForm((f) => ({ ...f, renewal_period: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
           >
             {PRESCRIPTION_RENEWAL_PERIOD_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -361,41 +361,41 @@ export default function PrescriptionsPage() {
           </select>
         </div>
         <div>
-          <label className="text-xs text-slate-500 block mb-1">Next renewal date</label>
+          <label className="text-xs text-th-muted block mb-1">Next renewal date</label>
           <input
             type="date"
             value={addForm.next_renewal_date}
             onChange={(e) => setAddForm((f) => ({ ...f, next_renewal_date: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
             required
           />
         </div>
         <div>
-          <label className="text-xs text-slate-500 block mb-1">Vendor</label>
+          <label className="text-xs text-th-muted block mb-1">Vendor</label>
           <input
             type="text"
             value={addForm.vendor}
             onChange={(e) => setAddForm((f) => ({ ...f, vendor: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
             placeholder="Pharmacy, clinic, supplier"
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-xs text-slate-500 block mb-1">Notes</label>
+          <label className="text-xs text-th-muted block mb-1">Notes</label>
           <input
             type="text"
             value={addForm.notes}
             onChange={(e) => setAddForm((f) => ({ ...f, notes: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
             placeholder="Optional"
           />
         </div>
         <div>
-          <label className="text-xs text-slate-500 block mb-1">State</label>
+          <label className="text-xs text-th-muted block mb-1">State</label>
           <select
             value={addForm.state}
             onChange={(e) => setAddForm((f) => ({ ...f, state: e.target.value }))}
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
           >
             {EXPENSE_STATE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -417,7 +417,7 @@ export default function PrescriptionsPage() {
       ) : null}
 
       {!loading && items.length === 0 && (
-        <p className="text-sm text-slate-500 text-center py-8 border border-dashed border-slate-700 rounded-xl">
+        <p className="text-sm text-th-muted text-center py-8 border border-dashed border-th-border-bright rounded-xl">
           No entries yet. Add one above.
         </p>
       )}
@@ -426,7 +426,7 @@ export default function PrescriptionsPage() {
         <div className={TABLE_CARD}>
           <div className={TABLE_HEADER_BAR}>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-medium text-slate-200">Your items</h2>
+              <h2 className="text-sm font-medium text-th-secondary">Your items</h2>
               <TableUpdateFlash token={tableUpdateFlashToken} />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -435,7 +435,7 @@ export default function PrescriptionsPage() {
                 value={noteSearch}
                 onChange={(e) => setNoteSearch(e.target.value)}
                 placeholder="Search notes"
-                className="w-48 rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-slate-200 text-xs"
+                className="w-48 rounded-lg bg-th-input border border-th-border-bright px-3 py-1.5 text-th-secondary text-xs"
               />
               <button
                 type="button"
@@ -469,7 +469,7 @@ export default function PrescriptionsPage() {
                   const days = daysUntilPrescriptionRenewal(row.next_renewal_date);
                   return (
                     <tr key={row.id} className={editing ? TABLE_ROW_EDITING : TABLE_ROW}>
-                      <td className={`${TABLE_TD} text-slate-200`}>
+                      <td className={`${TABLE_TD} text-th-secondary`}>
                         {editing && d ? (
                           <input
                             value={d.name}
@@ -480,7 +480,7 @@ export default function PrescriptionsPage() {
                           row.name
                         )}
                       </td>
-                      <td className={`${TABLE_TD} text-slate-300`}>
+                      <td className={`${TABLE_TD} text-th-tertiary`}>
                         {editing && d ? (
                           <input
                             type="number"
@@ -514,7 +514,7 @@ export default function PrescriptionsPage() {
                             ))}
                           </select>
                         ) : (
-                          <span className="text-slate-300">{formatPrescriptionCategory(row.category)}</span>
+                          <span className="text-th-tertiary">{formatPrescriptionCategory(row.category)}</span>
                         )}
                       </td>
                       <td className={TABLE_TD}>
@@ -533,7 +533,7 @@ export default function PrescriptionsPage() {
                             ))}
                           </select>
                         ) : (
-                          <span className="text-slate-300">{formatRenewalPeriod(row.renewal_period)}</span>
+                          <span className="text-th-tertiary">{formatRenewalPeriod(row.renewal_period)}</span>
                         )}
                       </td>
                       <td className={TABLE_TD}>
@@ -549,10 +549,10 @@ export default function PrescriptionsPage() {
                             className={TABLE_FIELD_INPUT}
                           />
                         ) : (
-                          <span className="text-slate-300">
+                          <span className="text-th-tertiary">
                             {String(row.next_renewal_date).slice(0, 10)}
                             {days != null && row.state === "active" ? (
-                              <span className="text-slate-500 text-xs ml-1">
+                              <span className="text-th-muted text-xs ml-1">
                                 (
                                 {days < 0
                                   ? `${-days}d overdue`
@@ -565,7 +565,7 @@ export default function PrescriptionsPage() {
                           </span>
                         )}
                       </td>
-                      <td className={`${TABLE_TD} text-slate-400 hidden md:table-cell`}>
+                      <td className={`${TABLE_TD} text-th-subtle hidden md:table-cell`}>
                         {editing && d ? (
                           <input
                             value={d.vendor}
@@ -578,14 +578,14 @@ export default function PrescriptionsPage() {
                           row.vendor || "—"
                         )}
                       </td>
-                      <td className={`${TABLE_TD} text-slate-500 hidden lg:table-cell max-w-[12rem] truncate`}>
+                      <td className={`${TABLE_TD} text-th-muted hidden lg:table-cell max-w-[12rem] truncate`}>
                         {editing && d ? (
                           <input
                             value={d.notes}
                             onChange={(e) =>
                               setEditDraft((prev) => (prev ? { ...prev, notes: e.target.value } : prev))
                             }
-                            className={`w-full ${TABLE_FIELD_INPUT} text-slate-300`}
+                            className={`w-full ${TABLE_FIELD_INPUT} text-th-tertiary`}
                           />
                         ) : (
                           row.notes || "—"
@@ -607,7 +607,7 @@ export default function PrescriptionsPage() {
                             ))}
                           </select>
                         ) : (
-                          <span className={row.state === "active" ? "text-slate-300" : "text-emerald-400/90"}>
+                          <span className={row.state === "active" ? "text-th-tertiary" : "text-emerald-400/90"}>
                             {formatExpenseState(row.state)}
                           </span>
                         )}
@@ -632,7 +632,7 @@ export default function PrescriptionsPage() {
                                   key: "cancel",
                                   label: "Cancel",
                                   disabled: editSaving,
-                                  className: "text-slate-400",
+                                  className: "text-th-subtle",
                                   onClick: cancelEdit,
                                 },
                               ]}

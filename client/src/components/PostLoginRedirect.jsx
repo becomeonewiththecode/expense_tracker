@@ -20,7 +20,7 @@ export default function PostLoginRedirect() {
 
   if (path === null) {
     return (
-      <div className="flex min-h-[30vh] items-center justify-center text-sm text-slate-500">
+      <div className="flex min-h-[30vh] items-center justify-center text-sm text-th-muted">
         Loading…
       </div>
     );

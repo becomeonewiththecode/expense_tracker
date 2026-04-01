@@ -127,7 +127,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-white">Reports</h1>
-        <p className="text-sm text-slate-400 mt-1">Spending trends by period.</p>
+        <p className="text-sm text-th-subtle mt-1">Spending trends by period.</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -140,7 +140,7 @@ export default function ReportsPage() {
               "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
               tab === t.id
                 ? "bg-emerald-600 text-white"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700",
+                : "bg-th-surface-alt text-th-tertiary hover:bg-th-border-bright",
             ].join(" ")}
           >
             {t.label}
@@ -148,71 +148,71 @@ export default function ReportsPage() {
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-4 items-end bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+      <div className="flex flex-wrap gap-4 items-end bg-th-surface/40 border border-th-border rounded-xl p-4">
         {tab === "daily" && (
           <div>
-            <label className="text-xs text-slate-500 block mb-1">Date</label>
+            <label className="text-xs text-th-muted block mb-1">Date</label>
             <input
               type="date"
               value={dailyDate}
               onChange={(e) => setDailyDate(e.target.value)}
-              className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
+              className="rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white"
             />
           </div>
         )}
         {tab === "monthly" && (
           <>
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Year</label>
+              <label className="text-xs text-th-muted block mb-1">Year</label>
               <input
                 type="number"
                 value={monthYear}
                 onChange={(e) => setMonthYear(Number(e.target.value))}
-                className="w-28 rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
+                className="w-28 rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Month</label>
+              <label className="text-xs text-th-muted block mb-1">Month</label>
               <input
                 type="number"
                 min="1"
                 max="12"
                 value={monthNum}
                 onChange={(e) => setMonthNum(Number(e.target.value))}
-                className="w-24 rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
+                className="w-24 rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white"
               />
             </div>
           </>
         )}
         {tab === "yearly" && (
           <div>
-            <label className="text-xs text-slate-500 block mb-1">Year</label>
+            <label className="text-xs text-th-muted block mb-1">Year</label>
             <input
               type="number"
               value={yearNum}
               onChange={(e) => setYearNum(Number(e.target.value))}
-              className="w-28 rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
+              className="w-28 rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white"
             />
           </div>
         )}
         {tab === "custom" && (
           <>
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Start</label>
+              <label className="text-xs text-th-muted block mb-1">Start</label>
               <input
                 type="date"
                 value={rangeStart}
                 onChange={(e) => setRangeStart(e.target.value)}
-                className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
+                className="rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white"
               />
             </div>
             <div>
-              <label className="text-xs text-slate-500 block mb-1">End</label>
+              <label className="text-xs text-th-muted block mb-1">End</label>
               <input
                 type="date"
                 value={rangeEnd}
                 onChange={(e) => setRangeEnd(e.target.value)}
-                className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
+                className="rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white"
               />
             </div>
           </>
@@ -226,15 +226,15 @@ export default function ReportsPage() {
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-900/30 p-4 min-h-[280px]">
-          <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Trend</p>
-          <p className="text-xs text-slate-600 mb-2">
+        <div className="lg:col-span-2 rounded-xl border border-th-border bg-th-surface/30 p-4 min-h-[280px]">
+          <p className="text-xs uppercase tracking-wide text-th-muted mb-2">Trend</p>
+          <p className="text-xs text-th-muted mb-2">
             Click the chart to open the projection view (daily / monthly / yearly run rates and pie chart from your saved expenses).
           </p>
           {loading ? (
-            <p className="text-slate-500 py-12 text-center">Loading chart…</p>
+            <p className="text-th-muted py-12 text-center">Loading chart…</p>
           ) : chartData.length === 0 ? (
-            <p className="text-slate-500 py-12 text-center">No data for this period.</p>
+            <p className="text-th-muted py-12 text-center">No data for this period.</p>
           ) : (
             <div
               className="h-64 w-full cursor-pointer rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
@@ -269,19 +269,19 @@ export default function ReportsPage() {
             </div>
           )}
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 space-y-3">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
+        <div className="rounded-xl border border-th-border bg-th-surface/30 p-4 space-y-3">
+          <p className="text-xs uppercase tracking-wide text-th-muted">Total</p>
           <p className="text-3xl font-semibold text-white tabular-nums">{totalFmt}</p>
-          <div className="text-xs text-slate-500 leading-relaxed space-y-2 pt-1 border-t border-slate-800/80">
+          <div className="text-xs text-th-muted leading-relaxed space-y-2 pt-1 border-t border-th-border/80">
             <p>{TOTAL_HELP[tab]}</p>
-            <p className="text-slate-600">{TOTAL_HELP_FOOTNOTE}</p>
+            <p className="text-th-muted">{TOTAL_HELP_FOOTNOTE}</p>
           </div>
           {tab === "daily" && data?.byCategory?.length > 0 && (
             <div>
-              <p className="text-xs text-slate-500 mb-2">By category</p>
+              <p className="text-xs text-th-muted mb-2">By category</p>
               <ul className="text-sm space-y-1">
                 {data.byCategory.map((c) => (
-                  <li key={c.category} className="flex justify-between text-slate-300">
+                  <li key={c.category} className="flex justify-between text-th-tertiary">
                     <span>{c.category}</span>
                     <span className="tabular-nums">${Number(c.total).toFixed(2)}</span>
                   </li>
@@ -292,17 +292,17 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-4">
+      <div className="rounded-xl border border-th-border bg-th-surface/20 p-4">
         <p className="text-sm font-medium text-white mb-2">Stored monthly summaries</p>
-        <p className="text-xs text-slate-500 mb-3">
+        <p className="text-xs text-th-muted mb-3">
           Generated automatically on the 1st of each month (previous month totals).
         </p>
         {summaries.length === 0 ? (
-          <p className="text-sm text-slate-500">None yet — data appears after the scheduled job runs.</p>
+          <p className="text-sm text-th-muted">None yet — data appears after the scheduled job runs.</p>
         ) : (
-          <ul className="text-sm divide-y divide-slate-800 max-h-48 overflow-y-auto">
+          <ul className="text-sm divide-y divide-th-border max-h-48 overflow-y-auto">
             {summaries.map((s) => (
-              <li key={`${s.year}-${s.month}`} className="py-2 flex justify-between text-slate-300">
+              <li key={`${s.year}-${s.month}`} className="py-2 flex justify-between text-th-tertiary">
                 <span>
                   {s.year}-{padMonth(s.month)}
                 </span>

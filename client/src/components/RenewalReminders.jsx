@@ -399,7 +399,7 @@ export default function RenewalReminders({
           id={renewalHelpPanelId}
           role="region"
           aria-labelledby={renewalHelpTriggerId}
-          className="mt-2 mb-3 rounded-lg border border-amber-800/50 bg-slate-950/70 px-3 py-2.5 text-xs text-amber-200/80 leading-relaxed"
+          className="mt-2 mb-3 rounded-lg border border-amber-800/50 bg-th-base/70 px-3 py-2.5 text-xs text-amber-200/80 leading-relaxed"
         >
           Based on each expense&apos;s <strong className="text-amber-200/90">frequency</strong> and{" "}
           <strong className="text-amber-200/90">transaction date</strong>. We surface renewals roughly a month out, a
@@ -494,14 +494,14 @@ export default function RenewalReminders({
                           }
                         >
                           <td
-                            className={`${TABLE_TD} max-w-[14rem] ${cancelled ? "text-emerald-50" : "text-slate-200"}`}
+                            className={`${TABLE_TD} max-w-[14rem] ${cancelled ? "text-emerald-50" : "text-th-secondary"}`}
                           >
                             <span className="font-medium line-clamp-2" title={r.title}>
                               {r.title}
                             </span>
                           </td>
                           <td
-                            className={`${TABLE_TD} whitespace-nowrap text-xs ${cancelled ? "text-emerald-200/90" : "text-slate-400"}`}
+                            className={`${TABLE_TD} whitespace-nowrap text-xs ${cancelled ? "text-emerald-200/90" : "text-th-subtle"}`}
                           >
                             {formatTransactionAnchor(r.spentAt)}
                           </td>
@@ -526,17 +526,17 @@ export default function RenewalReminders({
                             </span>
                           </td>
                           <td
-                            className={`${TABLE_TD} whitespace-nowrap text-xs font-medium ${cancelled ? "text-emerald-200" : "text-slate-300"}`}
+                            className={`${TABLE_TD} whitespace-nowrap text-xs font-medium ${cancelled ? "text-emerald-200" : "text-th-tertiary"}`}
                           >
                             {formatExpenseState(r.state)}
                           </td>
                           <td
-                            className={`${TABLE_TD} text-xs ${cancelled ? "text-emerald-200/85" : "text-slate-400"}`}
+                            className={`${TABLE_TD} text-xs ${cancelled ? "text-emerald-200/85" : "text-th-subtle"}`}
                           >
-                            <span className={cancelled ? "text-emerald-100" : "text-slate-200"}>
+                            <span className={cancelled ? "text-emerald-100" : "text-th-secondary"}>
                               {formatRenewalDate(r.next)}
                             </span>
-                            <span className={cancelled ? "text-emerald-300/80" : "text-slate-500"}>
+                            <span className={cancelled ? "text-emerald-300/80" : "text-th-muted"}>
                               {" "}
                               ({leadTimePhrase(r.tier, r.days)})
                             </span>
@@ -554,7 +554,7 @@ export default function RenewalReminders({
                               className={
                                 cancelled
                                   ? "text-xs text-emerald-200/90 hover:text-white px-2 py-1 rounded-md hover:bg-emerald-950/80"
-                                  : "text-xs text-slate-400 hover:text-white px-2 py-1 rounded-md hover:bg-slate-800"
+                                  : "text-xs text-th-subtle hover:text-white px-2 py-1 rounded-md hover:bg-th-surface-alt"
                               }
                               aria-label={`Dismiss reminder for ${r.title}`}
                             >
@@ -566,15 +566,15 @@ export default function RenewalReminders({
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-slate-800 bg-slate-900/50">
-                      <th scope="row" className={`${TABLE_TD} text-left font-semibold text-slate-200`}>
+                    <tr className="border-t border-th-border bg-th-surface/50">
+                      <th scope="row" className={`${TABLE_TD} text-left font-semibold text-th-secondary`}>
                         Subtotal
                       </th>
-                      <td className={`${TABLE_TD} text-slate-500 text-xs`}>—</td>
+                      <td className={`${TABLE_TD} text-th-muted text-xs`}>—</td>
                       <td className={`${TABLE_TD} text-right tabular-nums font-semibold text-white whitespace-nowrap`}>
                         {formatProjectionCurrency(sectionTotal)}
                       </td>
-                      <td className={`${TABLE_TD} text-slate-500 text-xs`} colSpan={3}>
+                      <td className={`${TABLE_TD} text-th-muted text-xs`} colSpan={3}>
                         {subtotalFooterNote}
                       </td>
                     </tr>

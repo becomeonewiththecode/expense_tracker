@@ -236,7 +236,7 @@ export default function ExpensesPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Import</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-th-subtle mt-1">
             {loading
               ? "Loading…"
               : showOnboarding
@@ -247,7 +247,7 @@ export default function ExpensesPage() {
         {!loading && hasSavedExpenses && (
           <NavLink
             to="/expenses/list"
-            className="shrink-0 rounded-lg border border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium px-3 py-2"
+            className="shrink-0 rounded-lg border border-th-border-bright bg-th-surface-alt hover:bg-th-border-bright text-th-secondary text-sm font-medium px-3 py-2"
           >
             Expenses
           </NavLink>
@@ -259,14 +259,14 @@ export default function ExpensesPage() {
       )}
 
       {!loading && hasSavedExpenses && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-          <div className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-slate-200">
+        <div className="rounded-xl border border-th-border bg-th-surface/40 p-4">
+          <div className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-th-secondary">
             <span className="font-medium text-sm">Add expense manually</span>
             {hideShowControlsVisible ? (
               <button
                 type="button"
                 onClick={() => setAddFormOpen((v) => !v)}
-                className="text-slate-500 text-xs hover:text-slate-300"
+                className="text-th-muted text-xs hover:text-th-tertiary"
                 aria-expanded={addFormOpen}
               >
                 {addFormOpen ? "Hide" : "Show"}
@@ -274,7 +274,7 @@ export default function ExpensesPage() {
             ) : null}
           </div>
           {addFormOpen ? (
-            <div className="mt-4 pt-4 border-t border-slate-800">
+            <div className="mt-4 pt-4 border-t border-th-border">
               <ManualExpenseForm form={form} setForm={setForm} onSubmit={addExpense} />
             </div>
           ) : null}
@@ -282,14 +282,14 @@ export default function ExpensesPage() {
       )}
 
       {!loading && (
-      <section className="rounded-xl border border-slate-800 bg-slate-900/30 p-4 space-y-4">
-        <div className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-slate-200">
+      <section className="rounded-xl border border-th-border bg-th-surface/30 p-4 space-y-4">
+        <div className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-th-secondary">
           <h2 className="text-sm font-semibold text-white">Import from statement</h2>
           {hideShowControlsVisible ? (
             <button
               type="button"
               onClick={() => setImportFormOpen((v) => !v)}
-              className="text-slate-500 text-xs hover:text-slate-300"
+              className="text-th-muted text-xs hover:text-th-tertiary"
               aria-expanded={importFormOpen}
             >
               {importFormOpen ? "Hide" : "Show"}
@@ -298,13 +298,13 @@ export default function ExpensesPage() {
         </div>
         {importFormOpen ? (
         <>
-        <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-          Upload a <strong className="text-slate-400">CSV</strong> or <strong className="text-slate-400">PDF</strong>. Parsed rows appear in the <strong className="text-slate-400">review table</strong> below.
-          Set defaults for <strong className="text-slate-400">institution</strong> and <strong className="text-slate-400">frequency</strong> before upload. Each row’s <strong className="text-slate-400">posted date</strong> comes from the statement. In <strong className="text-slate-400">Review import</strong>, set <strong className="text-slate-400">category</strong> (required). For <strong className="text-slate-400">Renewal</strong>, also choose a <strong className="text-slate-400">renewal type</strong> and optionally a <strong className="text-slate-400">website</strong>; those rows appear under <strong className="text-slate-400">Renewals</strong>. Adjust per-row <strong className="text-slate-400">frequency</strong> if needed. Saved expenses derive recurring metadata from each line’s posted date. Only rows with a category (and a renewal type when category is Renewal) are saved when you commit. Credits / payments are skipped during parsing.
+        <p className="text-xs text-th-muted mt-1 max-w-2xl">
+          Upload a <strong className="text-th-subtle">CSV</strong> or <strong className="text-th-subtle">PDF</strong>. Parsed rows appear in the <strong className="text-th-subtle">review table</strong> below.
+          Set defaults for <strong className="text-th-subtle">institution</strong> and <strong className="text-th-subtle">frequency</strong> before upload. Each row’s <strong className="text-th-subtle">posted date</strong> comes from the statement. In <strong className="text-th-subtle">Review import</strong>, set <strong className="text-th-subtle">category</strong> (required). For <strong className="text-th-subtle">Renewal</strong>, also choose a <strong className="text-th-subtle">renewal type</strong> and optionally a <strong className="text-th-subtle">website</strong>; those rows appear under <strong className="text-th-subtle">Renewals</strong>. Adjust per-row <strong className="text-th-subtle">frequency</strong> if needed. Saved expenses derive recurring metadata from each line’s posted date. Only rows with a category (and a renewal type when category is Renewal) are saved when you commit. Credits / payments are skipped during parsing.
         </p>
         <form onSubmit={runImportUpload} className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
           <div className="w-full sm:w-auto">
-            <label htmlFor="statement-file-input" className="text-xs text-slate-500 block mb-1">
+            <label htmlFor="statement-file-input" className="text-xs text-th-muted block mb-1">
               Statement file (.csv / .pdf)
             </label>
             <input
@@ -312,17 +312,17 @@ export default function ExpensesPage() {
               type="file"
               accept=".csv,.pdf,text/csv,application/pdf"
               onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-white file:text-xs"
+              className="block w-full text-sm text-th-tertiary file:mr-3 file:rounded-lg file:border-0 file:bg-th-border-bright file:px-3 file:py-1.5 file:text-white file:text-xs"
             />
           </div>
           <div>
-            <label className="text-xs text-slate-500 block mb-1">Institution (for import)</label>
+            <label className="text-xs text-th-muted block mb-1">Institution (for import)</label>
             <select
               value={importDefaults.financial_institution}
               onChange={(e) =>
                 setImportDefaults((d) => ({ ...d, financial_institution: e.target.value }))
               }
-              className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+              className="rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
             >
               {FINANCIAL_INSTITUTION_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -332,13 +332,13 @@ export default function ExpensesPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-slate-500 block mb-1">Frequency (for import)</label>
+            <label className="text-xs text-th-muted block mb-1">Frequency (for import)</label>
             <select
               value={importDefaults.frequency}
               onChange={(e) =>
                 setImportDefaults((d) => ({ ...d, frequency: e.target.value }))
               }
-              className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white text-sm"
+              className="rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
             >
               {FREQUENCY_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -350,7 +350,7 @@ export default function ExpensesPage() {
           <button
             type="submit"
             disabled={importing}
-            className="rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
+            className="rounded-lg bg-th-border-bright hover:bg-th-muted disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
           >
             {importing ? "Uploading…" : "Upload & parse"}
           </button>
@@ -376,7 +376,7 @@ export default function ExpensesPage() {
               <button
                 type="button"
                 onClick={discardStaging}
-                className="rounded-lg border border-slate-600 bg-transparent text-slate-300 text-sm px-3 py-1.5 hover:bg-slate-800"
+                className="rounded-lg border border-th-border-bright bg-transparent text-th-tertiary text-sm px-3 py-1.5 hover:bg-th-surface-alt"
               >
                 Discard import
               </button>
@@ -406,7 +406,7 @@ export default function ExpensesPage() {
               <tbody className={TABLE_BODY}>
                 {staging.rows.map((row) => (
                   <tr key={row.id} className={TABLE_ROW}>
-                    <td className={`${TABLE_TD} text-slate-300 whitespace-nowrap`}>{row.spent_at}</td>
+                    <td className={`${TABLE_TD} text-th-tertiary whitespace-nowrap`}>{row.spent_at}</td>
                     <td className={`${TABLE_TD} font-medium text-white tabular-nums`}>
                       ${Number(row.amount).toFixed(2)}
                     </td>
@@ -443,7 +443,7 @@ export default function ExpensesPage() {
                           ))}
                         </select>
                       ) : (
-                        <span className="text-slate-600 text-xs">—</span>
+                        <span className="text-th-muted text-xs">—</span>
                       )}
                     </td>
                     <td className={TABLE_TD}>
@@ -458,11 +458,11 @@ export default function ExpensesPage() {
                               patchImportStagingRow(row.id, { website: v || null });
                             }
                           }}
-                          className={`w-full max-w-[14rem] ${TABLE_FIELD_INPUT} text-slate-300`}
+                          className={`w-full max-w-[14rem] ${TABLE_FIELD_INPUT} text-th-tertiary`}
                           placeholder="Optional"
                         />
                       ) : (
-                        <span className="text-slate-600 text-xs">—</span>
+                        <span className="text-th-muted text-xs">—</span>
                       )}
                     </td>
                     <td className={TABLE_TD}>
@@ -484,7 +484,7 @@ export default function ExpensesPage() {
                         ))}
                       </select>
                     </td>
-                    <td className={`${TABLE_TD} text-slate-400 max-w-md truncate`}>{row.description}</td>
+                    <td className={`${TABLE_TD} text-th-subtle max-w-md truncate`}>{row.description}</td>
                   </tr>
                 ))}
               </tbody>

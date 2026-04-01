@@ -91,7 +91,7 @@ export default function RowActionsMenu({ align = "right", direction = "auto", la
       ref={menuRef}
       role="menu"
       style={menuStyle}
-      className="rounded-lg border border-slate-700 bg-slate-950 py-1 shadow-xl"
+      className="rounded-lg border border-th-border-bright bg-th-base py-1 shadow-xl"
     >
       {visible.map((item) => (
         <button
@@ -100,7 +100,7 @@ export default function RowActionsMenu({ align = "right", direction = "auto", la
           role="menuitem"
           title={item.title}
           disabled={item.disabled}
-          className={`block w-full text-left px-3 py-2 text-xs hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed ${item.className ?? "text-slate-200"}`}
+          className={`block w-full text-left px-3 py-2 text-xs hover:bg-th-surface-alt disabled:opacity-50 disabled:cursor-not-allowed ${item.className ?? "text-th-secondary"}`}
           onClick={() => {
             setOpen(false);
             item.onClick();
@@ -119,10 +119,10 @@ export default function RowActionsMenu({ align = "right", direction = "auto", la
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md border border-slate-600 bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs font-medium px-2.5 py-1"
+        className="rounded-md border border-th-border-bright bg-th-surface/90 hover:bg-th-surface-alt text-th-secondary text-xs font-medium px-2.5 py-1"
       >
         {label}
-        <span className="ml-1 text-slate-500" aria-hidden>
+        <span className="ml-1 text-th-muted" aria-hidden>
           ▾
         </span>
       </button>

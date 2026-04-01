@@ -2,6 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme color tokens — RGB channel values (no commas) for Tailwind opacity support.
+ * Usage in tailwind.config.js: rgb(var(--color-base) / <alpha-value>)
+ *
+ * Semantic mapping:
+ *   base         — page background
+ *   surface      — cards, panels, table header background
+ *   surface-alt  — hover rows, secondary surfaces
+ *   border       — primary borders, dividers
+ *   border-bright— input borders, edit-mode borders
+ *   muted        — muted/label text, idle icons
+ *   subtle       — slightly brighter muted text
+ *   tertiary     — tertiary body text
+ *   secondary    — secondary body text
+ *   primary      — primary body text
+ *   input        — input field backgrounds
+ */
+
+/* ── Midnight (default — current dark slate) ── */
+:root,
+[data-theme="midnight"] {
+  --color-base: 2 6 23;
+  --color-surface: 15 23 42;
+  --color-surface-alt: 30 41 59;
+  --color-border: 30 41 59;
+  --color-border-bright: 51 65 85;
+  --color-muted: 100 116 139;
+  --color-subtle: 148 163 184;
+  --color-tertiary: 203 213 225;
+  --color-secondary: 226 232 240;
+  --color-primary: 241 245 249;
+  --color-input: 2 6 23;
+}
+
+/* ── Ember (warm zinc/stone dark) ── */
+[data-theme="ember"] {
+  --color-base: 12 10 9;
+  --color-surface: 28 25 23;
+  --color-surface-alt: 41 37 36;
+  --color-border: 41 37 36;
+  --color-border-bright: 68 64 60;
+  --color-muted: 120 113 108;
+  --color-subtle: 168 162 158;
+  --color-tertiary: 214 211 209;
+  --color-secondary: 231 229 228;
+  --color-primary: 245 245 244;
+  --color-input: 12 10 9;
+}
+
+/* ── Daylight (light) ── */
+[data-theme="daylight"] {
+  --color-base: 255 255 255;
+  --color-surface: 248 250 252;
+  --color-surface-alt: 241 245 249;
+  --color-border: 226 232 240;
+  --color-border-bright: 203 213 225;
+  --color-muted: 100 116 139;
+  --color-subtle: 71 85 105;
+  --color-tertiary: 51 65 85;
+  --color-secondary: 30 41 59;
+  --color-primary: 15 23 42;
+  --color-input: 255 255 255;
+}
+
 body {
-  @apply bg-slate-950 text-slate-100 min-h-screen;
+  background-color: rgb(var(--color-base));
+  color: rgb(var(--color-primary));
+  @apply min-h-screen;
 }

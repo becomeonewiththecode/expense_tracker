@@ -248,7 +248,7 @@ export default function ExpenseTable({
     <div className={TABLE_CARD}>
       <div className={TABLE_HEADER_BAR}>
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-medium text-slate-200">{tableTitle}</h2>
+          <h2 className="text-sm font-medium text-th-secondary">{tableTitle}</h2>
           <TableUpdateFlash token={updateFlashToken} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -257,7 +257,7 @@ export default function ExpenseTable({
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-48 rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-slate-200 text-xs"
+            className="w-48 rounded-lg bg-th-base border border-th-border-bright px-3 py-1.5 text-th-secondary text-xs"
           />
           <button
             type="button"
@@ -354,7 +354,7 @@ export default function ExpenseTable({
                   key={row.id}
                   className={editing ? TABLE_ROW_EDITING : TABLE_ROW}
                 >
-                  <td className="px-4 py-3 text-slate-300 whitespace-nowrap align-middle">
+                  <td className="px-4 py-3 text-th-tertiary whitespace-nowrap align-middle">
                     {editing && d ? (
                       <input
                         type="date"
@@ -364,7 +364,7 @@ export default function ExpenseTable({
                             prev ? { ...prev, spent_at: e.target.value } : prev
                           )
                         }
-                        className="w-full min-w-[9.5rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        className="w-full min-w-[9.5rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
                       />
                     ) : (
                       toDateInputValue(row.spent_at) || "—"
@@ -382,7 +382,7 @@ export default function ExpenseTable({
                             prev ? { ...prev, amount: e.target.value } : prev
                           )
                         }
-                        className="w-full max-w-[7rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs tabular-nums"
+                        className="w-full max-w-[7rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs tabular-nums"
                       />
                     ) : (
                       <span className="font-medium text-white tabular-nums">
@@ -390,7 +390,7 @@ export default function ExpenseTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-300 align-middle">
+                  <td className="px-4 py-3 text-th-tertiary align-middle">
                     {editing && d ? (
                       <select
                         value={d.category}
@@ -406,7 +406,7 @@ export default function ExpenseTable({
                               : prev
                           );
                         }}
-                        className="w-full max-w-[11rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        className="w-full max-w-[11rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
                       >
                         {CATEGORY_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>
@@ -419,7 +419,7 @@ export default function ExpenseTable({
                     )}
                   </td>
                   <td
-                    className={`px-4 py-3 text-slate-300 align-middle ${editing ? "" : "hidden lg:table-cell"}`}
+                    className={`px-4 py-3 text-th-tertiary align-middle ${editing ? "" : "hidden lg:table-cell"}`}
                   >
                     {editing && d ? (
                       <div className="flex flex-col gap-1">
@@ -438,7 +438,7 @@ export default function ExpenseTable({
                                 : prev
                             );
                           }}
-                          className="w-full max-w-[8rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                          className="w-full max-w-[8rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
                         >
                           {FREQUENCY_OPTIONS.map((o) => (
                             <option key={o.value} value={o.value}>
@@ -458,7 +458,7 @@ export default function ExpenseTable({
                                   prev ? { ...prev, payment_day: e.target.value } : prev
                                 )
                               }
-                              className="w-14 rounded-lg bg-slate-950 border border-slate-600 px-1 py-1 text-white text-xs"
+                              className="w-14 rounded-lg bg-th-base border border-th-border-bright px-1 py-1 text-white text-xs"
                               placeholder="Day 1"
                               title="1st payment day (1–30)"
                             />
@@ -472,7 +472,7 @@ export default function ExpenseTable({
                                   prev ? { ...prev, payment_day_2: e.target.value } : prev
                                 )
                               }
-                              className="w-14 rounded-lg bg-slate-950 border border-slate-600 px-1 py-1 text-white text-xs"
+                              className="w-14 rounded-lg bg-th-base border border-th-border-bright px-1 py-1 text-white text-xs"
                               placeholder="Day 2"
                               title="2nd payment day (1–30)"
                             />
@@ -483,7 +483,7 @@ export default function ExpenseTable({
                       <span>
                         {formatFrequency(row.frequency)}
                         {row.frequency === "bimonthly" && row.payment_day != null && row.payment_day_2 != null && (
-                          <span className="text-slate-500 text-xs block">
+                          <span className="text-th-muted text-xs block">
                             Days {row.payment_day} &amp; {row.payment_day_2}
                           </span>
                         )}
@@ -491,7 +491,7 @@ export default function ExpenseTable({
                     )}
                   </td>
                   <td
-                    className={`px-4 py-3 text-slate-300 align-middle ${editing ? "" : "hidden md:table-cell"}`}
+                    className={`px-4 py-3 text-th-tertiary align-middle ${editing ? "" : "hidden md:table-cell"}`}
                   >
                     {editing && d ? (
                       <select
@@ -501,7 +501,7 @@ export default function ExpenseTable({
                             prev ? { ...prev, financial_institution: e.target.value } : prev
                           )
                         }
-                        className="w-full max-w-[10rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        className="w-full max-w-[10rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
                       >
                         {FINANCIAL_INSTITUTION_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>
@@ -514,7 +514,7 @@ export default function ExpenseTable({
                     )}
                   </td>
                   <td
-                    className={`px-4 py-3 text-slate-300 align-middle ${editing ? "" : "hidden md:table-cell"}`}
+                    className={`px-4 py-3 text-th-tertiary align-middle ${editing ? "" : "hidden md:table-cell"}`}
                   >
                     {editing && d ? (
                       <select
@@ -524,7 +524,7 @@ export default function ExpenseTable({
                             prev ? { ...prev, state: e.target.value } : prev
                           )
                         }
-                        className="w-full max-w-[8rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                        className="w-full max-w-[8rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
                       >
                         {EXPENSE_STATE_OPTIONS.map((o) => (
                           <option key={o.value} value={o.value}>
@@ -538,7 +538,7 @@ export default function ExpenseTable({
                   </td>
                   {showRenewalColumns && (
                     <td
-                      className={`px-4 py-3 text-slate-300 align-middle hidden lg:table-cell ${editing ? "" : ""}`}
+                      className={`px-4 py-3 text-th-tertiary align-middle hidden lg:table-cell ${editing ? "" : ""}`}
                     >
                       {editing && d && d.category === "renewal" ? (
                         <select
@@ -548,7 +548,7 @@ export default function ExpenseTable({
                               prev ? { ...prev, renewal_kind: e.target.value } : prev
                             )
                           }
-                          className="w-full max-w-[12rem] rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-white text-xs"
+                          className="w-full max-w-[12rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
                         >
                           <option value="">— Type —</option>
                           {RENEWAL_KIND_OPTIONS.map((o) => (
@@ -566,7 +566,7 @@ export default function ExpenseTable({
                   )}
                   {showRenewalColumns && (
                     <td
-                      className={`px-4 py-3 text-slate-300 align-middle hidden xl:table-cell max-w-[12rem]`}
+                      className={`px-4 py-3 text-th-tertiary align-middle hidden xl:table-cell max-w-[12rem]`}
                     >
                       {editing && d && d.category === "renewal" ? (
                         <input
@@ -576,7 +576,7 @@ export default function ExpenseTable({
                               prev ? { ...prev, website: e.target.value } : prev
                             )
                           }
-                          className="w-full min-w-0 rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-slate-300 text-xs"
+                          className="w-full min-w-0 rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-th-tertiary text-xs"
                           placeholder="URL or portal"
                         />
                       ) : row.category === "renewal" && row.website ? (
@@ -608,11 +608,11 @@ export default function ExpenseTable({
                             prev ? { ...prev, description: e.target.value } : prev
                           )
                         }
-                        className="w-full min-w-[8rem] max-w-xs rounded-lg bg-slate-950 border border-slate-600 px-2 py-1 text-slate-300 text-xs"
+                        className="w-full min-w-[8rem] max-w-xs rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-th-tertiary text-xs"
                         placeholder="Note"
                       />
                     ) : (
-                      <span className="text-slate-500 max-w-xs truncate block">{row.description}</span>
+                      <span className="text-th-muted max-w-xs truncate block">{row.description}</span>
                     )}
                   </td>
                   <td
@@ -643,7 +643,7 @@ export default function ExpenseTable({
                               key: "cancel",
                               label: "Cancel",
                               disabled: expenseSaving,
-                              className: "text-slate-400",
+                              className: "text-th-subtle",
                               onClick: cancelExpenseEdit,
                             },
                           ]}
