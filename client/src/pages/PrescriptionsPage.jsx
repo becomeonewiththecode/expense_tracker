@@ -175,7 +175,7 @@ export default function PrescriptionsPage() {
       vendor: row.vendor ?? "",
       notes: row.notes ?? "",
       category: row.category,
-      state: row.state === "cancel" ? "cancelled" : row.state || "active",
+      state: row.state || "active",
     });
   }
 

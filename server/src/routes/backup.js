@@ -5,6 +5,7 @@ import { authRequired } from "../middleware/auth.js";
 import {
   parseCategory,
   parseExpenseState,
+  normalizeExpenseStateForBackup,
   parseFinancialInstitution,
   parseFrequency,
   parseRenewalKind,
@@ -22,6 +23,7 @@ import {
   parsePrescriptionCategory,
   parseRenewalPeriod,
   parsePrescriptionState,
+  normalizePrescriptionStateForBackup,
   parseIsoDate,
   PRESCRIPTION_CATEGORY_ERROR,
   PRESCRIPTION_RENEWAL_PERIOD_ERROR,
@@ -115,8 +117,7 @@ function normalizeExpenseRow(row) {
       }
     }
   }
-  const normalizedState =
-    row.state === "cancel" ? "cancelled" : row.state === "paused" ? "paused" : "active";
+  const normalizedState = normalizeExpenseStateForBackup(row.state);
   return {
     amount: row.amount != null ? Number(row.amount) : row.amount,
     category: row.category,
@@ -133,8 +134,7 @@ function normalizeExpenseRow(row) {
 }
 
 function normalizePrescriptionRow(row) {
-  const normalizedState =
-    row.state === "cancel" ? "cancelled" : row.state === "paused" ? "paused" : "active";
+  const normalizedState = normalizePrescriptionStateForBackup(row.state);
   return {
     name: row.name ?? "",
     amount: row.amount != null ? Number(row.amount) : 0,

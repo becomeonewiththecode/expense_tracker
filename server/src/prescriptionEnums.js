@@ -45,11 +45,17 @@ export function parseRenewalPeriod(value) {
   return PRESCRIPTION_RENEWAL_PERIODS.includes(s) ? s : null;
 }
 
+/** DB uses `cancelled`; `cancel` is still accepted as a legacy request alias. */
 export function parsePrescriptionState(value) {
   if (value == null || value === "") return "active";
   const s = String(value).trim().toLowerCase();
-  const legacy = s === "cancel" ? "cancelled" : s;
-  return PRESCRIPTION_STATES.includes(legacy) ? legacy : null;
+  const normalized = s === "cancel" ? "cancelled" : s;
+  return PRESCRIPTION_STATES.includes(normalized) ? normalized : null;
+}
+
+/** Value for `prescriptions[].state` in backup JSON; aligns with DB and GET /api/prescriptions. */
+export function normalizePrescriptionStateForBackup(value) {
+  return parsePrescriptionState(value) ?? "active";
 }
 
 export function parseIsoDate(value) {

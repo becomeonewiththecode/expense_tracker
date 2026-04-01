@@ -11,7 +11,7 @@ This document describes the **Renewals** product area: long-horizon or irregular
 | **Renewal row** | A row in **`expenses`** with **`category = renewal`**. It uses the same core fields as any expense (amount, **`spent_at`**, frequency, institution, state, note). |
 | **`renewal_kind`** | Required when **`category`** is **`renewal`**. An allow-listed subtype (for example **`domain_names`**, **`car_insurance`**, **`online_education`**, **`hoa_fees`**). Stored in **`expenses.renewal_kind`** and mirrored on **`import_staging_rows`** during import review. |
 | **`website`** | Optional text (portal or URL) stored in **`expenses.website`**. On **commit**, **`website`** and **`renewal_kind`** are only copied from staging when the row’s category is **`renewal`**. |
-| **Renewals page** | Client route **`/renewals`** (`RenewalsPage.jsx`). Lists **`GET /api/expenses?category=renewal`**. Same **`ExpenseTable`** patterns as **Expenses** (sort, sticky **Actions** column, **Projection** / **Edit** / **Delete** in the row menu). **Projection:** header opens **combined** totals for **Active** rows only; row **Projection** opens a single-row modal. **`state`** **`cancel`** is excluded from combined projection math (aligned with **Upcoming expenses** subtotals). |
+| **Renewals page** | Client route **`/renewals`** (`RenewalsPage.jsx`). Lists **`GET /api/expenses?category=renewal`**. Same **`ExpenseTable`** patterns as **Expenses** (sort, sticky **Actions** column, **Projection** / **Edit** / **Delete** in the row menu). **Projection:** header opens **combined** totals for **Active** rows only; row **Projection** opens a single-row modal. Non-**active** **`state`** (for example **`cancelled`**, **`paused`**) is excluded from combined projection math (aligned with **Upcoming expenses** subtotals). |
 | **Expenses list** | Client route **`/expenses/list`** (`YourExpensesPage.jsx`) loads **`GET /api/expenses`** but **does not list** rows whose **`category`** is **`renewal`**; those are exclusive to this Renewals page in the UI. Changing category **to** **`renewal`** on the Expenses page (with a valid **`renewal_kind`**) removes the row from that list after save. |
 | **Upcoming expenses** (banner) | Separate client feature: **`RenewalReminders`** uses **`GET /api/expenses?limit=500`** and **frequency** + **`spent_at`** math. It is **not** limited to **`category = renewal`**—any recurring expense can appear there. |
 
@@ -57,7 +57,7 @@ flowchart LR
 
 ### Backup and restore
 
-Renewal rows are included in **`expenses`** in the JSON backup. Each object may include **`website`** and **`renewal_kind`**. Restore validates: if **`category`** is **`renewal`**, **`renewal_kind`** must be present and valid.
+Renewal rows are included in **`expenses`** in the JSON backup (**`version`** ≥ **`1`**; current exports use **`version`** **`3`**). Each object includes **`state`** (**`active`**, **`paused`**, **`cancelled`**) matching PostgreSQL, plus optional **`website`** and **`renewal_kind`**. Restore validates: if **`category`** is **`renewal`**, **`renewal_kind`** must be present and valid.
 
 ---
 
@@ -72,7 +72,7 @@ Renewal rows are included in **`expenses`** in the JSON backup. Each object may 
 
 Allow-lists live in **`server/src/expenseEnums.js`** (`CATEGORIES`, **`RENEWAL_KINDS`**) and are mirrored for labels in **`client/src/expenseOptions.js`** (**`RENEWAL_KIND_OPTIONS`**).
 
-**Combined Projection (client):** The API does not filter by **State** for **`GET /api/expenses?category=renewal`**. The Renewals page **`Projection`** modal passes only rows with **`state !== cancel`** into **`projection.js`** helpers so run rates and the pie match **Active** renewal spend (aligned with **Upcoming expenses** subtotals).
+**Combined Projection (client):** The API does not filter by **State** for **`GET /api/expenses?category=renewal`**. The Renewals page **`Projection`** modal passes only rows with **`state === active`** into **`projection.js`** helpers so run rates and the pie match **Active** renewal spend (aligned with **Upcoming expenses** subtotals).
 
 ### Renewal type catalog
 
@@ -101,7 +101,7 @@ Logical relationship: renewal rows are still **`expenses`**; there is no separat
 | Expense CRUD + list filter | `server/src/routes/expenses.js` |
 | Staging PATCH + commit | `server/src/routes/imports.js` |
 | Backup export/restore fields | `server/src/routes/backup.js` |
-| Renewals page | `client/src/pages/RenewalsPage.jsx` — filters **`cancel`** before combined Projection |
+| Renewals page | `client/src/pages/RenewalsPage.jsx` — filters to **`active`** only before combined Projection |
 | Expenses list (non-renewal UI filter) | `client/src/pages/YourExpensesPage.jsx` |
 | Import UI (renewal columns) | `client/src/pages/ExpensesPage.jsx` |
 | Shared table + renewal columns | `client/src/components/ExpenseTable.jsx` — optional **`onRowProjection`** (passed on **`YourExpensesPage`**, not **`RenewalsPage`**) |

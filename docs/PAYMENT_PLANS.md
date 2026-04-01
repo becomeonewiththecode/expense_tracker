@@ -12,6 +12,7 @@ This document describes the **Payment Plan** area: planned payments stored in **
 | **Expense category `payment_plan`** | An **`expenses`** row with **`category = payment_plan`** is kept in sync with **`payment_plans`** via **`paymentPlanSync.js`** (linked by **`source_expense_id`**). That row does **not** appear on **`/expenses/list`**; it is represented on **Payment Plan** alongside standalone **`payment_plans`** rows. |
 | **Payment Plan page** | Client route **`/payment-plans`** (`PaymentPlansPage.jsx`). Full CRUD via **`GET`/`POST`/`PATCH`/`DELETE /api/payment-plans`**. Table header: **Search notes**, **Projection** (row or all), **update flash** after successful saves. **RowActionsMenu** for **Edit** / **Delete** / **Projection**. |
 | **Add payment plan card** | Collapsible inline form under **Add payment plan**. **Show** / **Hide** always toggles visibility of the form. Default **`addOpen`** is **true** when the list is empty. A **`useEffect`** on **`items.length`** uses **`hadItemsRef`**: on the **first** transition to **`items.length > 0`** (initial load with data or first successful add), **`addOpen`** is set to **`false`** so the add block collapses. **Deleting all** plans resets the ref so the next “first non-empty” transition collapses again. |
+| **Backup JSON** | **`GET /api/backup/export`** includes **`paymentPlans`** and **`paymentPlanCount`** when **`version`** ≥ **`3`**. **`POST /restore`** with **`mode`** **`replace`** and **`version`** **`3`** replaces **`payment_plans`** from the file (alongside **expenses** and **prescriptions**). See [USER_GUIDE.md](./USER_GUIDE.md) **Backup and restore**. |
 
 ---
 
@@ -53,6 +54,15 @@ flowchart LR
 
 **Expenses:** Creating or updating an expense with **`category`** **`payment_plan`** upserts or clears the linked **`payment_plans`** row via **`source_expense_id`** (see **`server/src/paymentPlanSync.js`** and **`server/src/routes/expenses.js`**).
 
+### Backup export and restore (version 3)
+
+```mermaid
+flowchart LR
+  EXP["GET /backup/export v3+"] --> ARR["paymentPlans array"]
+  RST["POST /restore replace v3"] --> PG[(payment_plans)]
+  ARR -.->|round-trip| PG
+```
+
 ---
 
 ## Related files
@@ -60,7 +70,7 @@ flowchart LR
 | Concern | Location |
 |---------|----------|
 | Payment plan CRUD | `server/src/routes/paymentPlans.js` |
-| Enums / validation | `server/src/paymentPlanEnums.js` |
+| Enums / validation | `server/src/paymentPlanEnums.js` (also **`routes/backup.js`** on restore) |
 | Expense ↔ plan sync | `server/src/paymentPlanSync.js` |
 | Client page | `client/src/pages/PaymentPlansPage.jsx` |
 | Options / formatters | `client/src/paymentPlanOptions.js` |

@@ -8,11 +8,11 @@ This document describes the **Prescriptions** area: health-related and supply it
 
 | Idea | Meaning |
 |------|---------|
-| **Prescription row** | A row in **`prescriptions`** owned by a user. Not an **`expenses`** row. **Import** does not cover prescriptions. **`GET /api/backup/export`** includes **`prescriptions`** when **`version`** is **`2`**; **`POST /api/backup/restore`** restores them for **`version`** **`2`** files (see [USER_GUIDE.md](./USER_GUIDE.md) **Backup and restore**). |
+| **Prescription row** | A row in **`prescriptions`** owned by a user. Not an **`expenses`** row. **Import** does not cover prescriptions. **`GET /api/backup/export`** includes **`prescriptions`** when **`version`** ≥ **`2`** (current **`version`** **`3`**); each row’s **`state`** in JSON matches the database via **`normalizePrescriptionStateForBackup`**. **`POST /api/backup/restore`** restores them when the file **`version`** ≥ **`2`** (see [USER_GUIDE.md](./USER_GUIDE.md) **Backup and restore**). |
 | **Category** | One of **`medical`**, **`dental`**, **`vision`**, **`supplements`**, **`equipment`** (allow-list in **`prescriptionEnums.js`**). |
 | **`renewal_period`** | How long one cycle lasts: **`one_month`** … **`eleven_months`**, then **`one_year`** … **`five_years`** (see **`PRESCRIPTION_RENEWAL_PERIODS`**). **Renewed** adds that many calendar months or years to **`next_renewal_date`** (client **`advanceNextRenewalDate`**). |
 | **`next_renewal_date`** | **`DATE`** — next refill, appointment, or reorder target. The client computes **days until** in local calendar math (**`prescriptionSchedule.js`**). |
-| **State** | Same semantics as expenses: **`active`** (default) or **`cancel`**. **Cancel** rows are omitted from the **30-day reminder** banner. |
+| **State** | Same semantics as expenses: **`active`** (default), **`paused`**, or **`cancelled`**. Non-**active** rows are omitted from the **30-day reminder** banner. |
 | **Prescriptions page** | Client route **`/prescriptions`** (`PrescriptionsPage.jsx`). Full CRUD via **`/api/prescriptions`**. |
 | **Prescription reminders** | **`PrescriptionReminders.jsx`** in **`Layout`**, above the page outlet. Fetches **`GET /api/prescriptions`**, shows a cyan banner when any **active** row is due within **30 days** or **1–14 days overdue**. In-app only (no email). Dispatches / listens for **`prescriptions-changed`** after saves so the banner refreshes. |
 
@@ -29,7 +29,7 @@ This document describes the **Prescriptions** area: health-related and supply it
 | **vendor** | string | Pharmacy, clinic, supplier (optional empty string). |
 | **notes** | string | Free text. |
 | **category** | enum | **medical**, **dental**, **vision**, **supplements**, **equipment**. |
-| **state** | `active` \| `cancel` | Mirrors expense **State** in the UI. |
+| **state** | `active` \| `paused` \| `cancelled` | Mirrors expense **State** in the UI. |
 
 ---
 
@@ -98,7 +98,7 @@ Table **`prescriptions`** (created in **`server/src/db.js`**):
 | **`renewal_period`** | `TEXT NOT NULL` |
 | **`next_renewal_date`** | `DATE NOT NULL` |
 | **`vendor`**, **`notes`**, **`category`** | `TEXT` |
-| **`state`** | `active` \| `cancel` (check constraint) |
+| **`state`** | `active` \| `paused` \| `cancelled` (check constraint) |
 | **`created_at`** | `TIMESTAMPTZ` |
 
 Index: **`(user_id, next_renewal_date)`**.
