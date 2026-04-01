@@ -199,11 +199,21 @@ export function parseFrequency(value) {
 }
 
 /** @param {unknown} value */
+/** Parses expense state; DB and API use `cancelled`. `cancel` is still accepted as a legacy request alias. */
 export function parseExpenseState(value) {
   const s = String(value ?? "")
     .toLowerCase()
     .trim();
   if (!s) return null;
-  const legacy = s === "cancel" ? "cancelled" : s;
-  return EXPENSE_STATES.has(legacy) ? legacy : null;
+  const normalized = s === "cancel" ? "cancelled" : s;
+  return EXPENSE_STATES.has(normalized) ? normalized : null;
+}
+
+/**
+ * Value for `expenses[].state` in backup JSON. Must match PostgreSQL (`active` | `paused` | `cancelled`)
+ * and what GET /api/expenses returns. Older export code incorrectly defaulted `cancelled` to `active`;
+ * always re-download backup after server updates if states looked wrong in the file.
+ */
+export function normalizeExpenseStateForBackup(value) {
+  return parseExpenseState(value) ?? "active";
 }

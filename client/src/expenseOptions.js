@@ -106,6 +106,6 @@ export function formatFrequency(value) {
 
 export function formatExpenseState(value) {
   if (value == null || value === "") return "Active";
-  if (value === "cancel") return "Cancelled";
-  return stateLabels[value] || "Active";
+  const key = value === "cancel" ? "cancelled" : value;
+  return stateLabels[key] || "Active";
 }

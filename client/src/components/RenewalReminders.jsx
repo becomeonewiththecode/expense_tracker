@@ -252,7 +252,7 @@ export default function RenewalReminders({
         spentAt: row.spent_at,
         category: row.category,
         frequency: row.frequency,
-        state: row.state === "cancel" ? "cancelled" : row.state || "active",
+        state: row.state || "active",
       });
     }
     out.sort((a, b) => a.days - b.days || a.tier - b.tier);

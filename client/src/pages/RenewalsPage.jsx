@@ -91,7 +91,7 @@ export default function RenewalsPage() {
       website: row.website ?? "",
       frequency: row.frequency,
       financial_institution: row.financial_institution,
-      state: row.state === "cancel" ? "cancelled" : row.state || "active",
+      state: row.state || "active",
       description: row.description ?? "",
     });
   }
