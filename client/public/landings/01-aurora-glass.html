@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Tracker — Aurora</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #0c1222;
+        --muted: rgba(12, 18, 34, 0.62);
+        --glass: rgba(255, 255, 255, 0.14);
+        --glass-border: rgba(255, 255, 255, 0.35);
+        --accent: #7cf4ff;
+        --accent2: #c4a7ff;
+        --glow: rgba(124, 244, 255, 0.45);
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Outfit", system-ui, sans-serif;
+        color: var(--ink);
+        background: #050816;
+        overflow-x: hidden;
+      }
+      .bg-mesh {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background:
+          radial-gradient(ellipse 80% 50% at 20% 10%, rgba(124, 244, 255, 0.35), transparent 55%),
+          radial-gradient(ellipse 60% 45% at 85% 15%, rgba(196, 167, 255, 0.4), transparent 50%),
+          radial-gradient(ellipse 70% 60% at 50% 100%, rgba(255, 120, 200, 0.22), transparent 55%),
+          linear-gradient(165deg, #050816 0%, #0f172a 45%, #1e1b4b 100%);
+      }
+      .noise {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        opacity: 0.06;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      .wrap {
+        position: relative;
+        z-index: 2;
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 4rem;
+      }
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 3.5rem;
+      }
+      .logo {
+        font-family: "Syne", sans-serif;
+        font-weight: 800;
+        font-size: 1.15rem;
+        letter-spacing: -0.03em;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .logo span {
+        display: inline-flex;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        box-shadow: 0 0 20px var(--glow);
+      }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .nav-links a {
+        color: rgba(255, 255, 255, 0.75);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        padding: 0.5rem 0.85rem;
+        border-radius: 999px;
+        transition: color 0.2s, background 0.2s;
+      }
+      .nav-links a:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        padding: 0.65rem 1.25rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+      }
+      .btn:active {
+        transform: scale(0.98);
+      }
+      .btn-primary {
+        background: linear-gradient(120deg, #7cf4ff, #a78bfa);
+        color: #0c1222;
+        box-shadow: 0 8px 32px rgba(124, 244, 255, 0.25);
+      }
+      .btn-primary:hover {
+        box-shadow: 0 12px 40px rgba(196, 167, 255, 0.35);
+      }
+      .btn-ghost {
+        background: var(--glass);
+        border-color: var(--glass-border);
+        color: #fff;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+      .btn-ghost:hover {
+        background: rgba(255, 255, 255, 0.22);
+      }
+      .hero {
+        display: grid;
+        gap: 2.5rem;
+        align-items: center;
+      }
+      @media (min-width: 900px) {
+        .hero {
+          grid-template-columns: 1.05fr 0.95fr;
+          gap: 3rem;
+        }
+      }
+      .hero h1 {
+        font-family: "Syne", sans-serif;
+        font-weight: 800;
+        font-size: clamp(2.25rem, 5vw, 3.5rem);
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+        color: #fff;
+        margin: 0 0 1rem;
+      }
+      .hero h1 em {
+        font-style: normal;
+        background: linear-gradient(90deg, var(--accent), #fff, var(--accent2));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .hero p.lead {
+        margin: 0 0 1.75rem;
+        font-size: 1.1rem;
+        line-height: 1.65;
+        color: rgba(226, 232, 240, 0.85);
+        max-width: 34ch;
+      }
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 2rem;
+      }
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .pill {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .glass-panel {
+        border-radius: 1.5rem;
+        padding: 1.5rem;
+        background: var(--glass);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      }
+      .mock-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .mock-dots {
+        display: flex;
+        gap: 6px;
+      }
+      .mock-dots i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.25);
+      }
+      .mock-title {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: 500;
+      }
+      .rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.65rem 0.85rem;
+        border-radius: 0.75rem;
+        background: rgba(0, 0, 0, 0.2);
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 0.85rem;
+      }
+      .row .amt {
+        font-variant-numeric: tabular-nums;
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .row .tag {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 6px;
+        background: rgba(167, 139, 250, 0.25);
+        color: #e9d5ff;
+      }
+      .features {
+        margin-top: 4rem;
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 700px) {
+        .features {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      .feat {
+        padding: 1.35rem 1.25rem;
+        border-radius: 1.25rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #e2e8f0;
+      }
+      .feat h3 {
+        font-family: "Syne", sans-serif;
+        font-size: 1rem;
+        margin: 0 0 0.5rem;
+        color: #fff;
+      }
+      .feat p {
+        margin: 0;
+        font-size: 0.875rem;
+        line-height: 1.55;
+        color: rgba(226, 232, 240, 0.72);
+      }
+      footer {
+        margin-top: 3.5rem;
+        text-align: center;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.45);
+      }
+      footer a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-mesh" aria-hidden="true"></div>
+    <div class="noise" aria-hidden="true"></div>
+    <div class="wrap">
+      <nav>
+        <div class="logo"><span></span> Expense Tracker</div>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="/login">Log in</a>
+          <a class="btn btn-primary" href="/register">Get started</a>
+        </div>
+      </nav>
+      <section class="hero">
+        <div>
+          <div class="pill-row" aria-label="Highlights">
+            <span class="pill">Projections</span>
+            <span class="pill">OAuth</span>
+            <span class="pill">Imports</span>
+          </div>
+          <h1>See every subscription, renewal, and bill in <em>one calm place</em>.</h1>
+          <p class="lead">
+            Track recurring and one-time spending, prescriptions, and payment plans. Import CSV and PDF
+            statements, then chart where your money actually goes.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="/register">Create free account</a>
+            <a class="btn btn-ghost" href="/login">I already have one</a>
+          </div>
+        </div>
+        <div class="glass-panel" aria-label="Product preview">
+          <div class="mock-header">
+            <div class="mock-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <span class="mock-title">This month — overview</span>
+          </div>
+          <div class="rows">
+            <div class="row">
+              <span>Cloud storage</span>
+              <span class="tag">Renewal</span>
+              <span class="amt">$11.99</span>
+            </div>
+            <div class="row">
+              <span>Prescription refill</span>
+              <span class="tag">Health</span>
+              <span class="amt">$24.00</span>
+            </div>
+            <div class="row">
+              <span>Payment plan — laptop</span>
+              <span class="tag">Plan</span>
+              <span class="amt">$142.50</span>
+            </div>
+            <div class="row">
+              <span>Imported statement rows</span>
+              <span class="tag">Staging</span>
+              <span class="amt">12 new</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="features" class="features">
+        <article class="feat">
+          <h3>Renewals &amp; reminders</h3>
+          <p>Stay ahead of subscription churn with renewal-focused views built for real life.</p>
+        </article>
+        <article class="feat">
+          <h3>Reports that fit</h3>
+          <p>Daily to yearly slices plus custom ranges — cached when Redis is on for snappy loads.</p>
+        </article>
+        <article class="feat">
+          <h3>Sign in your way</h3>
+          <p>Google, GitHub, GitLab, or Microsoft — or classic email — you choose.</p>
+        </article>
+      </section>
+      <footer>
+        Preview: <strong>Aurora glass</strong> — open sibling HTML files in <code>/landings/</code> to compare.
+        <a href="/register">Register</a>
+      </footer>
+    </div>
+  </body>
+</html>

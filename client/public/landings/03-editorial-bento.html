@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Tracker — Editorial</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #faf8f5;
+        --ink: #1a1714;
+        --muted: #5c5650;
+        --line: #e8e4dc;
+        /* Tailwind emerald-600 — matches app CTAs / accents (e.g. LoginPage, Layout nav) */
+        --emerald-accent: #059669;
+        --sage: #3d5a4a;
+        --cream: #f0ebe3;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Inter", system-ui, sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      .page {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 4rem;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding-bottom: 1.75rem;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 2.5rem;
+      }
+      .brand {
+        font-family: "Fraunces", Georgia, serif;
+        font-weight: 700;
+        font-size: 1.35rem;
+        letter-spacing: -0.02em;
+      }
+      .brand span {
+        color: var(--emerald-accent);
+      }
+      header nav {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+      }
+      header a {
+        color: var(--muted);
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+      }
+      header a:hover {
+        color: var(--ink);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.55rem 1.15rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: background 0.2s, color 0.2s;
+      }
+      .btn-fill {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .btn-fill:hover {
+        background: var(--sage);
+        color: #fff;
+      }
+      .btn-outline {
+        border: 1px solid var(--line);
+        color: var(--ink);
+        background: transparent;
+      }
+      .btn-outline:hover {
+        border-color: var(--ink);
+      }
+      .hero-bento {
+        display: grid;
+        gap: 1.25rem;
+        margin-bottom: 2.5rem;
+      }
+      @media (min-width: 800px) {
+        .hero-bento {
+          grid-template-columns: 1.15fr 0.85fr;
+          grid-template-rows: auto auto;
+        }
+        .hero-main {
+          grid-row: span 2;
+        }
+      }
+      .tile {
+        background: var(--paper);
+        padding: 1.75rem 1.5rem;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+      }
+      .hero-main h1 {
+        font-family: "Fraunces", Georgia, serif;
+        font-weight: 600;
+        font-size: clamp(2rem, 4.2vw, 2.85rem);
+        line-height: 1.12;
+        letter-spacing: -0.03em;
+        margin: 0 0 1rem;
+      }
+      .hero-main h1 i {
+        font-family: "Fraunces", Georgia, serif;
+        font-style: italic;
+        font-weight: 400;
+        color: var(--emerald-accent);
+      }
+      .hero-main .lede {
+        margin: 0 0 1.5rem;
+        color: var(--muted);
+        font-size: 1.02rem;
+        max-width: 36ch;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+      }
+      .tile-side {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 140px;
+        background: var(--cream);
+      }
+      .tile-side .label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--muted);
+      }
+      .tile-quote {
+        font-family: "Fraunces", Georgia, serif;
+        font-style: italic;
+        font-size: 1.05rem;
+        color: var(--sage);
+        line-height: 1.45;
+      }
+      .grid-3 {
+        display: grid;
+        gap: 1.25rem;
+      }
+      @media (min-width: 700px) {
+        .grid-3 {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 1.35rem 1.25rem;
+        background: #fff;
+      }
+      .card h3 {
+        font-family: "Fraunces", Georgia, serif;
+        font-size: 1.1rem;
+        margin: 0 0 0.5rem;
+        font-weight: 600;
+      }
+      .card p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .footer-copy {
+        margin-top: 2.5rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid var(--line);
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div class="brand">Expense <span>Tracker</span></div>
+        <nav>
+          <a href="/login">Log in</a>
+          <a class="btn btn-fill" href="/register">Get started</a>
+        </nav>
+      </header>
+      <section class="hero-bento" aria-label="Introduction">
+        <div class="tile hero-main">
+          <h1>Personal finance, <i>edited</i> for clarity.</h1>
+          <p class="lede">
+            Recurring bills, one-off spends, renewals, prescriptions, and installment plans — unified with
+            imports, projections, and reports you can trust.
+          </p>
+          <div class="actions">
+            <a class="btn btn-fill" href="/register">Create your workspace</a>
+            <a class="btn btn-outline" href="/login">Sign in</a>
+          </div>
+        </div>
+        <div class="tile tile-side">
+          <span class="label">House expression</span>
+          <p class="tile-quote" style="margin: 0.75rem 0 0">
+            “I don’t have a spending problem — I have a long-term collaboration with ‘just this once.’”
+          </p>
+        </div>
+        <div class="tile tile-side">
+          <p class="tile-quote">“Know what renews, what’s due, and what you already paid — without another spreadsheet.”</p>
+        </div>
+      </section>
+      <section class="grid-3" aria-label="Capabilities">
+        <article class="card">
+          <h3>Statements → ledger</h3>
+          <p>CSV and PDF imports with staging so you commit clean rows, not guesswork.</p>
+        </article>
+        <article class="card">
+          <h3>Time-aware reporting</h3>
+          <p>From a single day to a custom window, see categories and trends that match how you plan.</p>
+        </article>
+        <article class="card">
+          <h3>Built-in specialized flows</h3>
+          <p>Renewals, prescriptions, and payment plans get first-class screens — not bolt-on notes.</p>
+        </article>
+      </section>
+      <p class="footer-copy">© 2026 Expense Tracker. All rights reserved.</p>
+    </div>
+  </body>
+</html>

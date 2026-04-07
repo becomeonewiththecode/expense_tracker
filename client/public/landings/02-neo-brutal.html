@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Tracker — Neo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f5f0e8;
+        --ink: #0a0a0a;
+        --lime: #c8ff00;
+        --pink: #ff4d6d;
+        --violet: #7b61ff;
+        --shadow: 5px 5px 0 #0a0a0a;
+        --shadow-lg: 8px 8px 0 #0a0a0a;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        background-image: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 24px,
+          rgba(10, 10, 10, 0.04) 24px,
+          rgba(10, 10, 10, 0.04) 25px
+        );
+      }
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 1.5rem 1.25rem 3rem;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2.5rem;
+        padding: 1rem 1.25rem;
+        border: 3px solid var(--ink);
+        background: #fff;
+        box-shadow: var(--shadow);
+      }
+      .logo {
+        font-weight: 700;
+        font-size: 1.25rem;
+        letter-spacing: -0.04em;
+        text-transform: uppercase;
+      }
+      .logo strong {
+        background: var(--lime);
+        padding: 0.15rem 0.4rem;
+        border: 2px solid var(--ink);
+      }
+      .nav-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.55rem 1.1rem;
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-decoration: none;
+        color: var(--ink);
+        border: 3px solid var(--ink);
+        box-shadow: 4px 4px 0 var(--ink);
+        transition: transform 0.1s, box-shadow 0.1s;
+      }
+      .btn:active {
+        transform: translate(2px, 2px);
+        box-shadow: 2px 2px 0 var(--ink);
+      }
+      .btn-lime {
+        background: var(--lime);
+      }
+      .btn-white {
+        background: #fff;
+      }
+      .btn-pink {
+        background: var(--pink);
+        color: #fff;
+      }
+      .hero-grid {
+        display: grid;
+        gap: 1.25rem;
+      }
+      @media (min-width: 880px) {
+        .hero-grid {
+          grid-template-columns: 1.1fr 0.9fr;
+          align-items: start;
+        }
+      }
+      .hero-card {
+        border: 3px solid var(--ink);
+        background: #fff;
+        box-shadow: var(--shadow-lg);
+        padding: 1.75rem 1.5rem;
+      }
+      .tagline {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        padding: 0.35rem 0.65rem;
+        border: 2px solid var(--ink);
+        background: var(--violet);
+        color: #fff;
+        margin-bottom: 1rem;
+      }
+      h1 {
+        margin: 0 0 1rem;
+        font-size: clamp(2rem, 4.5vw, 3.25rem);
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        text-transform: uppercase;
+      }
+      h1 span {
+        display: inline-block;
+        background: var(--lime);
+        padding: 0 0.2em;
+        border: 3px solid var(--ink);
+      }
+      .sub {
+        margin: 0 0 1.5rem;
+        font-size: 1.05rem;
+        line-height: 1.55;
+        max-width: 38ch;
+        font-weight: 500;
+      }
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+      }
+      .side-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .stat {
+        border: 3px solid var(--ink);
+        padding: 1rem 1.1rem;
+        background: var(--pink);
+        color: #fff;
+        box-shadow: var(--shadow);
+        font-weight: 700;
+      }
+      .stat:nth-child(2) {
+        background: var(--violet);
+      }
+      .stat:nth-child(3) {
+        background: var(--lime);
+        color: var(--ink);
+      }
+      .stat small {
+        display: block;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        opacity: 0.9;
+        margin-bottom: 0.25rem;
+      }
+      .stat big {
+        font-size: 1.35rem;
+        letter-spacing: -0.03em;
+      }
+      .bento {
+        margin-top: 2rem;
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 640px) {
+        .bento {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (min-width: 900px) {
+        .bento {
+          grid-template-columns: repeat(4, 1fr);
+        }
+        .bento .wide {
+          grid-column: span 2;
+        }
+      }
+      .cell {
+        border: 3px solid var(--ink);
+        background: #fff;
+        box-shadow: var(--shadow);
+        padding: 1.15rem 1.1rem;
+        min-height: 120px;
+      }
+      .cell h2 {
+        margin: 0 0 0.4rem;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .cell p {
+        margin: 0;
+        font-size: 0.88rem;
+        line-height: 1.5;
+        font-weight: 500;
+      }
+      .cell.accent {
+        background: #0a0a0a;
+        color: #fff;
+      }
+      .cell.accent h2 {
+        color: var(--lime);
+      }
+      footer {
+        margin-top: 2.5rem;
+        padding-top: 1rem;
+        border-top: 3px dashed var(--ink);
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <div class="logo">Expense <strong>Tracker</strong></div>
+        <div class="nav-actions">
+          <a class="btn btn-white" href="/login">Log in</a>
+          <a class="btn btn-lime" href="/register">Start free</a>
+        </div>
+      </nav>
+      <div class="hero-grid">
+        <div class="hero-card">
+          <span class="tagline">Full-stack finance</span>
+          <h1>Stop guessing. <span>Start tracking.</span></h1>
+          <p class="sub">
+            One app for expenses, renewals, prescriptions, and payment plans — plus CSV/PDF imports and
+            spending projections.
+          </p>
+          <div class="cta">
+            <a class="btn btn-lime" href="/register">Create account</a>
+            <a class="btn btn-pink" href="/login">Sign in</a>
+          </div>
+        </div>
+        <div class="side-stack">
+          <div class="stat">
+            <small>OAuth providers</small>
+            <big>4</big>
+          </div>
+          <div class="stat">
+            <small>Report ranges</small>
+            <big>5+</big>
+          </div>
+          <div class="stat">
+            <small>Your data</small>
+            <big>Yours</big>
+          </div>
+        </div>
+      </div>
+      <section class="bento" aria-label="Features">
+        <div class="cell wide accent">
+          <h2>Imports</h2>
+          <p>Upload statements, review staging rows, commit to your ledger without spreadsheet chaos.</p>
+        </div>
+        <div class="cell">
+          <h2>Renewals</h2>
+          <p>Dedicated renewal flows so nothing auto-renews in silence.</p>
+        </div>
+        <div class="cell">
+          <h2>Health</h2>
+          <p>Prescription cadence and reminders alongside the rest of your budget.</p>
+        </div>
+        <div class="cell">
+          <h2>Plans</h2>
+          <p>Sync payment plans with expenses and keep balances honest.</p>
+        </div>
+        <div class="cell wide">
+          <h2>Reports</h2>
+          <p>Categorized reporting from daily snapshots to custom windows — built for the way you think about cash flow.</p>
+        </div>
+      </section>
+      <footer>
+        Preview: <strong>Neo-brutalist</strong>. Compare with <code>/landings/01-aurora-glass.html</code> and
+        <code>/landings/03-editorial-bento.html</code>.
+      </footer>
+    </div>
+  </body>
+</html>
