@@ -316,9 +316,10 @@ The application includes an **admin site** at **`/admin`** for operators. It is 
 
 ### Tabs and operations
 
-- **System health:** Runs automatically and shows API health, database connectivity, basic database sanity, and application resources.
+- **System health:** Runs automatically and shows API health, **web UI reachability**, database connectivity, basic database sanity, and application resources.
 - **Backup & restore:** Per-user and whole-database backups (JSON downloads), restore preview and restore apply.
 - **User accounts:** View users, reset passwords, modify roles/permissions (requires re-authentication).
+- **Swagger:** Embedded API documentation for all endpoints (backed by `/api/docs` and `/api/openapi.json`).
 
 ---
 

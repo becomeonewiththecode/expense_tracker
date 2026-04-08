@@ -153,6 +153,7 @@ flowchart TB
     BOOT[index.js bootstrap]
     MW[CORS plus JSON body plus error handler]
     R0["GET /health"]
+    R0b["/api/docs + /api/openapi.json"]
     R1["/api/auth"]
     R2["/api/expenses"]
     R3["/api/imports"]
@@ -163,6 +164,7 @@ flowchart TB
     R8["/api/admin"]
     BOOT --> MW
     MW --> R0
+    MW --> R0b
     MW --> R1
     MW --> R2
     MW --> R3

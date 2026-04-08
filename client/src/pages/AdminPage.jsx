@@ -22,6 +22,7 @@ const TABS = [
   { id: "health", label: "System health" },
   { id: "backup", label: "Backup & restore" },
   { id: "users", label: "User accounts" },
+  { id: "swagger", label: "Swagger" },
 ];
 
 function formatBytes(n) {
@@ -480,6 +481,7 @@ export default function AdminPage() {
 
   const dc = health?.databaseConnectivity;
   const dh = health?.databaseHealth;
+  const web = health?.web;
   const app = health?.application;
   const disk = app?.disk;
 
@@ -716,6 +718,19 @@ export default function AdminPage() {
                       loading={healthLoading && !health}
                       subtitle={health?.api?.message || "Admin API endpoint"}
                       detail={health != null ? `Round-trip ${health.responseMs ?? "—"} ms` : null}
+                    />
+                    <StatusCard
+                      title="Web (UI)"
+                      ok={web?.ok}
+                      loading={healthLoading && !health}
+                      subtitle="Can the API reach the web server (nginx/static UI)?"
+                      detail={
+                        web?.ok
+                          ? `Latency ${web.latencyMs ?? "—"} ms · HTTP ${web.status ?? "—"}`
+                          : web?.error
+                            ? `${web.error}${web?.url ? ` · ${web.url}` : ""}`
+                            : undefined
+                      }
                     />
                     <StatusCard
                       title="Database connectivity"
@@ -969,6 +984,34 @@ export default function AdminPage() {
                       </table>
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === "swagger" && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-lg font-medium text-white">Swagger API docs</h2>
+                    <a
+                      href="/api/docs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-emerald-300 hover:underline"
+                    >
+                      Open in new tab
+                    </a>
+                  </div>
+                  <p className="text-xs text-th-muted">
+                    Docs are served by the API at <span className="font-mono">/api/docs</span>. The OpenAPI JSON is at{" "}
+                    <span className="font-mono">/api/openapi.json</span>.
+                  </p>
+                  <div className="rounded-xl border border-th-border overflow-hidden bg-th-base">
+                    <iframe
+                      title="Swagger UI"
+                      src="/api/docs"
+                      className="w-full"
+                      style={{ height: "70vh" }}
+                    />
+                  </div>
                 </div>
               )}
             </div>

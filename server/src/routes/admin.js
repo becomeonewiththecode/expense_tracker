@@ -161,6 +161,34 @@ adminRouter.get("/health", adminRequired, async (_req, res) => {
   const started = Date.now();
   const checkedAt = new Date().toISOString();
 
+  let web = { ok: false, latencyMs: null, status: null, error: null, url: null };
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    const url = process.env.ADMIN_WEB_HEALTH_URL?.trim()
+      ? process.env.ADMIN_WEB_HEALTH_URL.trim()
+      : process.env.NODE_ENV === "production"
+        ? "http://web/"
+        : (process.env.CLIENT_ORIGIN?.trim() ? process.env.CLIENT_ORIGIN.trim() : null);
+    if (!url) {
+      web = { ok: false, latencyMs: null, status: null, error: "No ADMIN_WEB_HEALTH_URL or CLIENT_ORIGIN configured", url: null };
+    } else {
+      const t0 = Date.now();
+      const resp = await fetch(url, { signal: controller.signal, redirect: "follow" });
+      const latencyMs = Date.now() - t0;
+      const status = resp.status;
+      let ok = resp.ok;
+      if (ok) {
+        const ct = String(resp.headers.get("content-type") || "");
+        ok = ct.includes("text/html") || ct.includes("text/plain") || ct.includes("application/octet-stream") || ct === "";
+      }
+      web = { ok, latencyMs, status, error: ok ? null : `Unexpected response (status ${status})`, url };
+    }
+    clearTimeout(timeout);
+  } catch (e) {
+    web = { ok: false, latencyMs: null, status: null, error: String(e?.name === "AbortError" ? "Timed out" : (e?.message || e)), url: web.url };
+  }
+
   let databaseConnectivity = { ok: false, latencyMs: null, error: null };
   try {
     const t0 = Date.now();
@@ -231,6 +259,7 @@ adminRouter.get("/health", adminRequired, async (_req, res) => {
   res.json({
     checkedAt,
     api: { ok: true, message: "Admin API is responding" },
+    web,
     databaseConnectivity,
     databaseHealth,
     application: {

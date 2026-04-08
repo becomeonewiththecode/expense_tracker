@@ -45,7 +45,7 @@ Must match the URL users type in the browser to open the single-page application
 The repository includes an **admin site** at **`/admin`** (a separate UI from the normal user app). It is backed by **`/api/admin/*`** endpoints and is designed for operational tasks:
 
 - **Backup and restore** (per-user and whole database)
-- **System health checks** (API, database connectivity, database sanity, and application resources)
+- **System health checks** (API, web UI, database connectivity, database sanity, and application resources)
 - **User account management** (reset passwords, modify permissions/roles)
 
 #### Admin environment variables
@@ -58,10 +58,28 @@ For production Docker Compose, set these in **`deployment/docker-compose/.env`**
 
 If `ADMIN_TOTP_SECRET` is **not** set, the first successful password login will prompt the admin UI to **enroll 2FA** (QR code + one-time code verification) before operations proceed.
 
+#### Web health probe (nginx / UI)
+
+The admin **System health** tab includes a **Web (UI)** probe. By default, the API checks:
+
+- **Production Compose:** `http://web/` (Compose service DNS)
+- **Other environments:** `CLIENT_ORIGIN`
+
+You can override the target URL with:
+
+- `ADMIN_WEB_HEALTH_URL` (for example `http://10.0.0.30:8080/`)
+
 #### Re-authentication and timeouts
 
 - Admin sessions time out after **15 minutes of inactivity**.
 - Sensitive operations (whole DB backup, restore, user password reset, permission changes) require **re-authentication** (password + 2FA) even during an active session.
+
+#### Swagger / OpenAPI docs
+
+The API serves interactive docs via Swagger UI:
+
+- **Swagger UI:** `/api/docs`
+- **OpenAPI JSON:** `/api/openapi.json`
 
 ### OAuth (optional)
 

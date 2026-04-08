@@ -13,6 +13,8 @@ import { backupRouter } from "./routes/backup.js";
 import { prescriptionsRouter } from "./routes/prescriptions.js";
 import { paymentPlansRouter } from "./routes/paymentPlans.js";
 import { adminRouter } from "./routes/admin.js";
+import swaggerUi from "swagger-ui-express";
+import { openApiSpec } from "./openapi.js";
 import { startMonthlySummaryJob } from "./jobs/monthlySummary.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,6 +32,11 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
+
+app.get("/api/openapi.json", (_req, res) => {
+  res.json(openApiSpec);
+});
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openApiSpec, { swaggerOptions: { persistAuthorization: true } }));
 
 app.use("/api/uploads", express.static(path.join(uploadsRoot)));
 
