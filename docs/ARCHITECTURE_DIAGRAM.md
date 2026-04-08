@@ -160,6 +160,7 @@ flowchart TB
     R5["/api/backup"]
     R6["/api/prescriptions"]
     R7["/api/payment-plans"]
+    R8["/api/admin"]
     BOOT --> MW
     MW --> R0
     MW --> R1
@@ -169,6 +170,7 @@ flowchart TB
     MW --> R5
     MW --> R6
     MW --> R7
+    MW --> R8
   end
 
   subgraph libs [Libraries]
@@ -196,6 +198,7 @@ flowchart TB
   R5 --> JWT
   R6 --> JWT
   R7 --> JWT
+  R8 --> JWT
   R4 --> RDX
   R2 --> PG
   R3 --> PG
@@ -203,6 +206,7 @@ flowchart TB
   R5 --> PG
   R6 --> PG
   R7 --> PG
+  R8 --> PG
 
   subgraph enumHelpers [Allow-lists and parsers]
     EE[expenseEnums.js]
@@ -219,6 +223,11 @@ flowchart TB
     RCS[recoveryCodeStorage.js]
   end
   R5 --> RCS
+
+  subgraph adminSecurity [Admin security]
+    AS[adminSecurity.js]
+  end
+  R8 --> AS
 
   subgraph job [Background]
     CC --> PG
@@ -467,15 +476,38 @@ erDiagram
   users ||--o{ import_staging_rows : has
   users ||--o{ monthly_summaries : has
   import_batches ||--o{ import_staging_rows : contains
+  admins ||--o{ admin_user_notifications : writes
+  users ||--o{ admin_user_notifications : receives
 
   users {
     serial id PK
     text email UK
     text password_hash
+    text role
     text avatar_url
     text recovery_lookup
     text recovery_token_hash
     text recovery_code_ciphertext
+    timestamptz created_at
+  }
+
+  admins {
+    serial id PK
+    text username UK
+    text password_hash
+    text totp_secret
+    boolean must_change_password
+    boolean is_active
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  admin_user_notifications {
+    serial id PK
+    int admin_id FK
+    int user_id FK
+    text event_type
+    jsonb payload
     timestamptz created_at
   }
 

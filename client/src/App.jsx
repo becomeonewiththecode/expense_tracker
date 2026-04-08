@@ -14,6 +14,7 @@ import ProfilePage from "./pages/ProfilePage.jsx";
 import PostLoginRedirect from "./components/PostLoginRedirect.jsx";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
 import RecoverPasswordPage from "./pages/RecoverPasswordPage.jsx";
+import AdminPage from "./pages/AdminPage.jsx";
 
 /** Logged-out users see the landing page at `/`; other app paths redirect to login. */
 function AppShell() {
@@ -41,6 +42,7 @@ export default function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/recover" element={<RecoverPasswordPage />} />
       <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
+      <Route path="/admin" element={<AdminPage />} />
       <Route path="/" element={<AppShell />}>
         <Route index element={<PostLoginRedirect />} />
         <Route path="expenses/list" element={<YourExpensesPage />} />

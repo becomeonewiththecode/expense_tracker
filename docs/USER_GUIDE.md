@@ -299,6 +299,29 @@ The header shows **Import** and the five list destinations (**Expenses**, **Rene
 
 ---
 
+## Admin site (operators)
+
+The application includes an **admin site** at **`/admin`** for operators. It is separate from normal user accounts and uses **admin credentials** plus **two-factor authentication**.
+
+### First-time login and 2FA enrollment
+
+1. Enter **`ADMIN_USERNAME`** and **`ADMIN_PASSWORD`** (set by the server operator in environment variables).
+2. On first login, if 2FA has not been configured for that admin, the page shows a **QR code** to scan with an authenticator app. Scan it, then enter the 6-digit code to **Activate 2FA**.
+3. After enrollment, future logins require the 6-digit code (**Verify 2FA**).
+
+### Session timeout and re-authentication
+
+- Admin sessions end after **15 minutes of inactivity**.
+- Sensitive operations require **re-authentication** (admin password + 2FA) even within an active session.
+
+### Tabs and operations
+
+- **System health:** Runs automatically and shows API health, database connectivity, basic database sanity, and application resources.
+- **Backup & restore:** Per-user and whole-database backups (JSON downloads), restore preview and restore apply.
+- **User accounts:** View users, reset passwords, modify roles/permissions (requires re-authentication).
+
+---
+
 ## Session and security
 
 - After **email and password** login or **single sign-on** completion, the application stores a **JSON Web Token** in the browser (`localStorage`) and sends it on API requests. The session model is the same for both login types. Tokens **expire** after a period configured on the server; when an API call fails because the token is no longer valid, you may see a prompt asking whether to **continue the session**. Choosing **Continue session** requests a **new token** without leaving the page (if your old token is still within the allowed refresh window **and** the server still uses the same **`JWT_SECRET`** that signed it). For **Docker Compose**, **`npm run compose:prod`** seeds **`JWT_SECRET`** into **`deployment/docker-compose/.env`** when missing; do not delete that file between rebuilds unless you intend to invalidate sessions. If you **rotate** the secret or **Continue session** returns **Invalid token**, **sign out** and sign in again.  

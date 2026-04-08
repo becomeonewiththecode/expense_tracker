@@ -19,7 +19,7 @@ export function getApiErrorMessage(err, fallback = "Something went wrong") {
 
   const status = err.response.status;
   if (status === 502 || status === 503 || status === 504) {
-    return `API or proxy error (${status}). Is the server running on the port in client/.env (API_PROXY_TARGET, default http://127.0.0.1:4000)? For PM2: npx pm2 logs expense-api`;
+    return `API or proxy error (${status}). If you use Docker Compose (nginx + api), the API container is down or unreachable: run "docker compose ps" and "docker logs expense-tracker-api". For local Vite dev, ensure the API is running and client/.env API_PROXY_TARGET matches it (default http://127.0.0.1:4000). For PM2: npx pm2 logs expense-api`;
   }
   if (typeof data === "string" && data.length && /<html/i.test(data)) {
     return `Server returned HTML (${status}) instead of JSON — often a proxy or crash page. Check API logs: npx pm2 logs expense-api`;

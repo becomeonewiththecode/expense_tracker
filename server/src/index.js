@@ -12,6 +12,7 @@ import { reportsRouter } from "./routes/reports.js";
 import { backupRouter } from "./routes/backup.js";
 import { prescriptionsRouter } from "./routes/prescriptions.js";
 import { paymentPlansRouter } from "./routes/paymentPlans.js";
+import { adminRouter } from "./routes/admin.js";
 import { startMonthlySummaryJob } from "./jobs/monthlySummary.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -39,6 +40,7 @@ app.use("/api/reports", reportsRouter);
 app.use("/api/backup", backupRouter);
 app.use("/api/prescriptions", prescriptionsRouter);
 app.use("/api/payment-plans", paymentPlansRouter);
+app.use("/api/admin", adminRouter);
 
 app.use((err, _req, res, _next) => {
   console.error("unhandled:", err);
