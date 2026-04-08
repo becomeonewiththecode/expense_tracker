@@ -145,7 +145,7 @@ For recurring expenses (Weekly, Monthly, Bi-monthly, Yearly), the app estimates 
 
 The **Upcoming expenses** panel shows at the top of: Import, all Lists destinations (Expenses, Renewals, Prescriptions, Payment Plan, Reports), and Profile.
 
-By default, the panel shows items due within **7 days**. You can change this with **Showing renewals within** in the panel header (next to **Show/Hide**) or in **Profile** → **Appearance** → **Upcoming renewals window (days)**.
+By default, the panel shows items due within **7 days**. You can change this with **Showing renewals within** in the panel header (next to **Show/Hide**) or in **Profile** → **Appearance** → **Upcoming renewals window (days)**. Choose **1**, **3**, **5**, **7**, **10**, **14**, **21**, **30**, or **40** days.
 
 | Days until renewal | Reminder tier | Wording example |
 |---|---|---|
@@ -170,6 +170,8 @@ The selected window acts as a cap on those tiers (for example, a 7-day window sh
 
 Lines marked **Cancelled** in State are shown with a **green background** so you can spot subscriptions you have cancelled while still seeing the computed renewal date.
 
+After a cancelled row is **at least one day past** its renewal date (and still within your selected window horizon), it is **removed from Upcoming expenses** and listed under **Profile** → **Appearance** → **Auto-hidden cancelled recurring items** (browser storage per account). That list applies to cancelled recurring **expenses**, **renewals**, and **payment-plan** rows the same way.
+
 #### Expanding, collapsing, and dismissing
 
 - Reminder tables start **collapsed**. Expand or collapse them with:
@@ -184,6 +186,7 @@ Lines marked **Cancelled** in State are shown with a **green background** so you
 #### Amber badge
 
 - While any qualifying renewals exist, a **count** appears in an **amber badge** to the right of the avatar.
+- The number **matches how many rows you see** in the reminder tables when at least one row is shown. If you **Dismiss** some lines in this session, the badge reflects **only the rows still visible**. If you **Dismiss all** while rows still qualify, the badge shows **how many still qualify** until you expand again from the badge or **Upcoming expenses** in the account menu.
 - **Click the badge** to toggle the reminder tables and total on or off.
 - The badge stays visible as you navigate between pages until you sign out or no rows qualify.
 - The **(i)** control next to “Upcoming expenses” toggles a detailed explanation of how bands, subtotals, and Cancelled rows work.
@@ -293,7 +296,9 @@ The header shows **Import** and the five list destinations (**Expenses**, **Rene
 
 **Table display:** Expenses (`/expenses/list`), Renewals (`/renewals`), and Prescriptions (`/prescriptions`) tables paginate client-side. Default is **10 rows per page** with pagination controls at the bottom, plus a **Rows** selector in the table footer. Supported limits are **5**, **10**, **25**, **50**, and **100**. You can change the value in this section or directly from the table footer selector.
 
-**Upcoming renewals window:** The **Upcoming expenses** panel uses a saved day window (default **7** days). You can change it in **Profile** → **Appearance** or directly in the panel header via **Showing renewals within**. Supported values are **3**, **5**, **7**, **10**, **14**, **21**, **30**, and **40** days.
+**Upcoming renewals window:** The **Upcoming expenses** panel uses a saved day window (default **7** days). You can change it in **Profile** → **Appearance** or directly in the panel header via **Showing renewals within**. Supported values are **1**, **3**, **5**, **7**, **10**, **14**, **21**, **30**, and **40** days.
+
+**Auto-hidden cancelled recurring items:** Under **Appearance**, a read-only list shows cancelled recurring expenses (including renewals and payment-plan-linked rows) that **Upcoming expenses** has auto-hidden after renewal—see the renewal reminders section above.
 
 **Backup and restore:** Download a **JSON** file (`expense-tracker-backup` format). Current exports use **`version`** **`3`**, which includes **`expenses`**, **`prescriptions`**, and **`paymentPlans`** (with **`renewalCount`**, **`prescriptionCount`**, **`paymentPlanCount`**). Older **`version`** **`1`** / **`2`** files still restore. **Renewals** are normal **`expenses`** with **`category`** **`renewal`** inside the **`expenses`** array. Each expense includes **`state`**: **`active`**, **`paused`**, or **`cancelled`** (matching the database and the app UI—**re-download** after a server update if an old file showed every row as **`active`** when some were cancelled). Each prescription includes the same **`state`** values. The file includes an **`account`** object (**`userId`**, **`email`**, and a human-readable **`label`**) so you can see which user the backup belongs to—downloads also use the email in the **filename**. **`account.hasRecoveryCode`** indicates whether a recovery code is on file; **`account.recoveryCode`** may contain the actual code (so you can restore password recovery after moving servers). Codes created before the server stored an exportable copy will show **`hasRecoveryCode`** without **`recoveryCode`** until you **replace** the code once. The top-level **`email`** field is still present for compatibility. Each expense object includes **`spent_at`**, **`frequency`**, **`state`**, category, institution, amount, description, optional **`website`** and **`renewal_kind`** when applicable, and denormalized **`payment_day`** / **`payment_month`**. Older backup files without **`state`** still restore successfully (**active** is assumed). **Restore** loads into the **currently signed-in** account. If the backup’s email does not match your session, the app asks you to confirm before importing. **Append** adds imported rows. **Replace** clears and reloads from the file according to **`version`**: **`1`**—**expenses** only; **`2`**—**expenses** and **prescriptions**; **`3`**—also **payment plans**. Each restore is limited to **25,000** rows per array and a **15 MB** request body. Store backup files securely. If **Download backup** or **Restore** reports **Invalid token**, try **Continue session** if a prompt appears; otherwise **sign out** and **sign in** again (or the server’s signing secret may have changed).
 

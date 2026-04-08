@@ -1,7 +1,8 @@
 export const RENEWAL_REMINDER_WINDOW_DAYS_KEY = "expenseTracker.renewalReminderWindowDays.v1";
 
 export const RENEWAL_REMINDER_WINDOW_DAYS_DEFAULT = 7;
-export const RENEWAL_REMINDER_WINDOW_DAYS_OPTIONS = [3, 5, 7, 10, 14, 21, 30, 40];
+/** Profile and Upcoming expenses panel (max horizon 40 days). */
+export const RENEWAL_REMINDER_WINDOW_DAYS_OPTIONS = [1, 3, 5, 7, 10, 14, 21, 30, 40];
 
 function coerceRenewalReminderWindowDays(value) {
   const n = Number(value);

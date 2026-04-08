@@ -1,6 +1,7 @@
 export const CATEGORY_OPTIONS = [
   { value: "home", label: "Home" },
   { value: "entertainment", label: "Entertainment" },
+  { value: "streaming_service", label: "Streaming service" },
   { value: "personal", label: "Personal" },
   { value: "business", label: "Business" },
   { value: "education", label: "Education" },

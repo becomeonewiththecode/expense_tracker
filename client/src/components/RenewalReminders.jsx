@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import api from "../api.js";
+import { useAuth } from "../auth.jsx";
 import {
   formatCategory,
   formatExpenseState,
@@ -12,10 +13,12 @@ import {
   daysUntilRenewal,
   isEarlyRenewalTierSuppressedAfterRecentOccurrence,
   nextRenewalDate,
+  previousRenewalBeforeDisplayedNext,
   renewalReminderTier,
   spentAtToIsoDateString,
   startOfLocalDay,
 } from "../renewalSchedule.js";
+import { setHiddenCancelledRenewalsForUser } from "../renewalHiddenPreferences.js";
 import {
   getRenewalReminderWindowDays,
   RENEWAL_REMINDER_WINDOW_DAYS_OPTIONS,
@@ -189,6 +192,7 @@ export default function RenewalReminders({
   tablesExpanded,
   onTablesExpandedChange,
 }) {
+  const { user } = useAuth();
   const location = useLocation();
   const renewalHelpTriggerId = useId();
   const renewalHelpPanelId = useId();
@@ -235,12 +239,58 @@ export default function RenewalReminders({
     return () => window.removeEventListener("renewalReminderWindowDays-changed", onChange);
   }, []);
 
+  const hiddenCancelledRenewals = useMemo(() => {
+    const now = new Date();
+    const today = startOfLocalDay(now);
+    const hidden = [];
+    for (const row of items) {
+      if (!row || row.id == null) continue;
+      if (String(row.state || "").toLowerCase() !== "cancelled") continue;
+      const previousRenewal = previousRenewalBeforeDisplayedNext(row, now);
+      if (!previousRenewal) continue;
+      const prevStart = startOfLocalDay(previousRenewal);
+      const daysSincePrior = Math.round((today.getTime() - prevStart.getTime()) / 86400000);
+      if (daysSincePrior < 1) continue;
+      if (daysSincePrior > renewalReminderWindowDays) continue;
+
+      const cat = formatCategory(row.category);
+      const note = String(row.description || "").trim();
+      const title = note ? `${cat} · ${note.length > 40 ? `${note.slice(0, 38)}…` : note}` : cat;
+      const amountNum = Number(row.amount);
+      hidden.push({
+        expenseId: Number(row.id),
+        title,
+        institution: formatFinancialInstitution(row.financial_institution),
+        amount: Number.isFinite(amountNum) ? amountNum : 0,
+        state: "cancelled",
+        hiddenAt: today.toISOString(),
+        lastRenewalDate: prevStart.toISOString().slice(0, 10),
+        reason: "Cancelled and at least one day past renewal date",
+      });
+    }
+    hidden.sort((a, b) => a.expenseId - b.expenseId);
+    return hidden;
+  }, [items, renewalReminderWindowDays]);
+
+  const hiddenCancelledIds = useMemo(
+    () => new Set(hiddenCancelledRenewals.map((row) => Number(row.expenseId))),
+    [hiddenCancelledRenewals]
+  );
+
+  useEffect(() => {
+    if (!user?.id) return;
+    setHiddenCancelledRenewalsForUser(user.id, hiddenCancelledRenewals);
+  }, [user?.id, hiddenCancelledRenewals]);
+
   /** All tier-qualified rows (ignore dismiss) — for header count when the panel is empty. */
   const eligibleRenewals = useMemo(() => {
     const now = new Date();
     const out = [];
     for (const row of items) {
       if (row == null || row.id == null) continue;
+      if (hiddenCancelledIds.has(Number(row.id))) {
+        continue;
+      }
       const days = daysUntilRenewal(row, now);
       if (days == null || days < 0) continue;
       if (days > renewalReminderWindowDays) continue;
@@ -272,7 +322,7 @@ export default function RenewalReminders({
     }
     out.sort((a, b) => a.days - b.days || a.tier - b.tier);
     return out;
-  }, [items, renewalReminderWindowDays]);
+  }, [items, renewalReminderWindowDays, hiddenCancelledIds]);
 
   const reminders = useMemo(
     () => eligibleRenewals.filter((r) => !dismissed.has(r.key)),
@@ -339,9 +389,12 @@ export default function RenewalReminders({
     }
     const eligible = eligibleRenewals.length;
     const visible = reminders.length;
+    // Badge should match rows in the table when any are visible. While everything is dismissed
+    // (panel hidden), keep showing the full eligible count so "Upcoming expenses" still reflects backlog.
+    const badgeCount = visible > 0 ? visible : eligible;
     if (eligible > 0) {
       onRenewalChipChange({
-        count: eligible,
+        count: badgeCount,
         allDismissed: visible === 0,
         tablesExpanded,
         onExpand: expandPanel,
