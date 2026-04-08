@@ -5,6 +5,11 @@ import { useAuth } from "../auth.jsx";
 import { getRowsPerPage, setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import { useTheme } from "../ThemeContext.jsx";
 import { THEME_OPTIONS } from "../themePreferences.js";
+import {
+  getRenewalReminderWindowDays,
+  setRenewalReminderWindowDays,
+  RENEWAL_REMINDER_WINDOW_DAYS_OPTIONS,
+} from "../renewalPreferences.js";
 
 export default function ProfilePage() {
   const { user, setSession, token, refreshUser } = useAuth();
@@ -22,6 +27,9 @@ export default function ProfilePage() {
   const [previewUrl, setPreviewUrl] = useState(null);
 
   const [rowsPerPage, setRowsPerPageUi] = useState(() => getRowsPerPage());
+  const [renewalReminderWindowDays, setRenewalReminderWindowDaysUi] = useState(() =>
+    getRenewalReminderWindowDays()
+  );
   const { theme, setTheme } = useTheme();
 
   const [recoveryLoading, setRecoveryLoading] = useState(false);
@@ -52,6 +60,12 @@ export default function ProfilePage() {
     const onChange = () => setRowsPerPageUi(getRowsPerPage());
     window.addEventListener("tableRowsPerPage-changed", onChange);
     return () => window.removeEventListener("tableRowsPerPage-changed", onChange);
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => setRenewalReminderWindowDaysUi(getRenewalReminderWindowDays());
+    window.addEventListener("renewalReminderWindowDays-changed", onChange);
+    return () => window.removeEventListener("renewalReminderWindowDays-changed", onChange);
   }, []);
 
   useEffect(() => {
@@ -493,6 +507,29 @@ export default function ProfilePage() {
           </select>
           <p className="text-[10px] text-th-muted mt-2">
             Default is 10. Tables will page at the bottom of the list.
+          </p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-th-subtle mb-1">
+            Upcoming renewals window (days)
+          </label>
+          <select
+            value={renewalReminderWindowDays}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              setRenewalReminderWindowDaysUi(next);
+              setRenewalReminderWindowDays(next);
+            }}
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          >
+            {RENEWAL_REMINDER_WINDOW_DAYS_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] text-th-muted mt-2">
+            Default is 7. This controls which rows appear in the Renews reminders table.
           </p>
         </div>
       </div>

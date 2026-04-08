@@ -17,6 +17,11 @@ import {
   startOfLocalDay,
 } from "../renewalSchedule.js";
 import {
+  getRenewalReminderWindowDays,
+  RENEWAL_REMINDER_WINDOW_DAYS_OPTIONS,
+  setRenewalReminderWindowDays,
+} from "../renewalPreferences.js";
+import {
   SORTABLE_TH_BUTTON,
   SORTABLE_TH_ICON_ACTIVE,
   SORTABLE_TH_ICON_IDLE,
@@ -192,6 +197,9 @@ export default function RenewalReminders({
   const [loadError, setLoadError] = useState(false);
   const [renewalHelpOpen, setRenewalHelpOpen] = useState(false);
   const [renewalSort, setRenewalSort] = useState({ key: null, dir: "asc" });
+  const [renewalReminderWindowDays, setRenewalReminderWindowDays] = useState(() =>
+    getRenewalReminderWindowDays()
+  );
 
   function handleRenewalSort(colKey) {
     setRenewalSort((prev) => {
@@ -221,6 +229,12 @@ export default function RenewalReminders({
     };
   }, [location.pathname]);
 
+  useEffect(() => {
+    const onChange = () => setRenewalReminderWindowDays(getRenewalReminderWindowDays());
+    window.addEventListener("renewalReminderWindowDays-changed", onChange);
+    return () => window.removeEventListener("renewalReminderWindowDays-changed", onChange);
+  }, []);
+
   /** All tier-qualified rows (ignore dismiss) — for header count when the panel is empty. */
   const eligibleRenewals = useMemo(() => {
     const now = new Date();
@@ -229,6 +243,7 @@ export default function RenewalReminders({
       if (row == null || row.id == null) continue;
       const days = daysUntilRenewal(row, now);
       if (days == null || days < 0) continue;
+      if (days > renewalReminderWindowDays) continue;
       if (isEarlyRenewalTierSuppressedAfterRecentOccurrence(row, now, days)) continue;
       const tier = renewalReminderTier(days);
       if (tier == null) continue;
@@ -257,7 +272,7 @@ export default function RenewalReminders({
     }
     out.sort((a, b) => a.days - b.days || a.tier - b.tier);
     return out;
-  }, [items]);
+  }, [items, renewalReminderWindowDays]);
 
   const reminders = useMemo(
     () => eligibleRenewals.filter((r) => !dismissed.has(r.key)),
@@ -377,6 +392,24 @@ export default function RenewalReminders({
           </button>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <label
+            htmlFor="upcoming-expenses-window-days"
+            className="text-xs text-amber-200/80 whitespace-nowrap"
+          >
+            Showing renewals within
+          </label>
+          <select
+            id="upcoming-expenses-window-days"
+            value={renewalReminderWindowDays}
+            onChange={(e) => setRenewalReminderWindowDays(Number(e.target.value))}
+            className="rounded-md border border-amber-700/70 bg-amber-950/70 px-2 py-1 text-xs text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500/60"
+          >
+            {RENEWAL_REMINDER_WINDOW_DAYS_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n} days
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             onClick={() => onTablesExpandedChange((v) => !v)}

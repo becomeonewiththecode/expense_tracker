@@ -145,11 +145,15 @@ For recurring expenses (Weekly, Monthly, Bi-monthly, Yearly), the app estimates 
 
 The **Upcoming expenses** panel shows at the top of: Import, all Lists destinations (Expenses, Renewals, Prescriptions, Payment Plan, Reports), and Profile.
 
+By default, the panel shows items due within **7 days**. You can change this with **Showing renewals within** in the panel header (next to **Show/Hide**) or in **Profile** → **Appearance** → **Upcoming renewals window (days)**.
+
 | Days until renewal | Reminder tier | Wording example |
 |---|---|---|
 | **0 -- 14** | Final two weeks | Exact count, e.g. “in 12 days” |
 | **15 -- 24** | About two weeks | “about 15 days” |
 | **25 -- 40** | About a month | “about 30 days” |
+
+The selected window acts as a cap on those tiers (for example, a 7-day window shows only rows due in 0-7 days even though tier logic is defined up to 40 days).
 
 - **One-time** expenses are ignored.
 - After a renewal date passes, the line is hidden for about two weeks so the list does not immediately show the next cycle.
@@ -172,6 +176,7 @@ Lines marked **Cancelled** in State are shown with a **green background** so you
   - The **amber badge** next to the avatar
   - The panel’s **Show/Hide** control
   - **Double-clicking** the title row
+- Set **Showing renewals within** in the panel header to change how many upcoming days are displayed.
 - **Dismiss** hides a single line for this browser session.
 - **Dismiss all** hides every visible reminder.
 - If you dismiss all rows but qualifying renewals still exist, click the **amber badge** or open the **account menu** (avatar) and choose **Upcoming expenses** to restore them.
@@ -287,6 +292,8 @@ The application can show **precomputed monthly totals** from the `monthly_summar
 The header shows **Import** and the five list destinations (**Expenses**, **Renewals**, **Prescriptions**, **Payment Plan**, **Reports**): on **phones and tablets** they are grouped under a **Lists** menu; on **wide screens** (from about laptop size up) they appear as separate links in the bar. There is no separate **Profile** tab. Signed-in users open **Profile** from the **account menu** (click the avatar in the header) to update **email**, **password**, and **profile picture**. **Recovery code** (under **Password recovery**): generate a code once, store it safely offline, and use it on **`/recover`** if you forget your password. The **full code is shown only at the moment you create or replace it**; afterward, Profile shows a **masked placeholder** so you can see that a code is on file without seeing the secret. Replacing or removing the code invalidates the previous one.
 
 **Table display:** Expenses (`/expenses/list`), Renewals (`/renewals`), and Prescriptions (`/prescriptions`) tables paginate client-side. Default is **10 rows per page** with pagination controls at the bottom, plus a **Rows** selector in the table footer. Supported limits are **5**, **10**, **25**, **50**, and **100**. You can change the value in this section or directly from the table footer selector.
+
+**Upcoming renewals window:** The **Upcoming expenses** panel uses a saved day window (default **7** days). You can change it in **Profile** → **Appearance** or directly in the panel header via **Showing renewals within**. Supported values are **3**, **5**, **7**, **10**, **14**, **21**, **30**, and **40** days.
 
 **Backup and restore:** Download a **JSON** file (`expense-tracker-backup` format). Current exports use **`version`** **`3`**, which includes **`expenses`**, **`prescriptions`**, and **`paymentPlans`** (with **`renewalCount`**, **`prescriptionCount`**, **`paymentPlanCount`**). Older **`version`** **`1`** / **`2`** files still restore. **Renewals** are normal **`expenses`** with **`category`** **`renewal`** inside the **`expenses`** array. Each expense includes **`state`**: **`active`**, **`paused`**, or **`cancelled`** (matching the database and the app UI—**re-download** after a server update if an old file showed every row as **`active`** when some were cancelled). Each prescription includes the same **`state`** values. The file includes an **`account`** object (**`userId`**, **`email`**, and a human-readable **`label`**) so you can see which user the backup belongs to—downloads also use the email in the **filename**. **`account.hasRecoveryCode`** indicates whether a recovery code is on file; **`account.recoveryCode`** may contain the actual code (so you can restore password recovery after moving servers). Codes created before the server stored an exportable copy will show **`hasRecoveryCode`** without **`recoveryCode`** until you **replace** the code once. The top-level **`email`** field is still present for compatibility. Each expense object includes **`spent_at`**, **`frequency`**, **`state`**, category, institution, amount, description, optional **`website`** and **`renewal_kind`** when applicable, and denormalized **`payment_day`** / **`payment_month`**. Older backup files without **`state`** still restore successfully (**active** is assumed). **Restore** loads into the **currently signed-in** account. If the backup’s email does not match your session, the app asks you to confirm before importing. **Append** adds imported rows. **Replace** clears and reloads from the file according to **`version`**: **`1`**—**expenses** only; **`2`**—**expenses** and **prescriptions**; **`3`**—also **payment plans**. Each restore is limited to **25,000** rows per array and a **15 MB** request body. Store backup files securely. If **Download backup** or **Restore** reports **Invalid token**, try **Continue session** if a prompt appears; otherwise **sign out** and **sign in** again (or the server’s signing secret may have changed).
 
