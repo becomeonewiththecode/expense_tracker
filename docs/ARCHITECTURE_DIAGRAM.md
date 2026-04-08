@@ -1,6 +1,6 @@
 # Expense Tracker — Architecture diagrams
 
-This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For the **Renewals** feature (category **`renewal`**, **`renewal_kind`**, **`/renewals`** page, import staging), see [RENEWALS.md](./RENEWALS.md). For **Prescriptions** (**`/prescriptions`**, **`prescriptions`** table, **`renewal_period`** monthly **1–11** or **1–5 years**, 30-day reminders), see [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). For **Payment Plan** (**`/payment-plans`**, **`payment_plans`** table, **`payment_plan`** expense-category sync, and **Add payment plan** Show/Hide behavior), see [PAYMENT_PLANS.md](./PAYMENT_PLANS.md) and [ARCHITECTURE.md](./ARCHITECTURE.md#data-model). For **Docker Compose production**, **`ensure-env.mjs`**, **`JWT_SECRET`**, and **`env_file`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
+This file collects visual overviews of **applications**, **runtime processes**, and **integrations**. For narrative design notes, see [ARCHITECTURE.md](./ARCHITECTURE.md). For the **Renewals** feature (category **`renewal`**, **`renewal_kind`**, **`/renewals`** page, import staging), see [RENEWALS.md](./RENEWALS.md). For **Prescriptions** (**`/prescriptions`**, **`prescriptions`** table, **`renewal_period`** monthly **1–11** or **1–5 years**, 30-day reminders), see [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). For **Payment Plan** (**`/payment-plans`**, **`payment_plans`** table with **`remaining_payments`** and **`paid_in_full`** **`status`**, **`resolvePaymentPlanStatusForRemaining`**, **`payment_plan`** expense-category sync, **Add payment plan** Show/Hide, and **Show cancelled (paid in full)** in the table), see [PAYMENT_PLANS.md](./PAYMENT_PLANS.md) and [ARCHITECTURE.md](./ARCHITECTURE.md#data-model). For **Docker Compose production**, **`ensure-env.mjs`**, **`JWT_SECRET`**, and **`env_file`**, see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md).
 
 ---
 
@@ -252,7 +252,7 @@ flowchart TB
 | `jobs/monthlySummary.js` | Monthly rollup job | `node-cron`, `pg` writing **`monthly_summaries`** |
 | `db.js` | Connection pool and **`initDb()`** | `pg` |
 | `expenseEnums.js` | **Allow-lists** for **`category`** (including **`streaming_service`**, **`renewal`**, and **`payment_plan`**), **`renewal_kind`** (**`RENEWAL_KINDS`**), institution, frequency, **state**; **`spent_at`** → **`payment_day`** / **`payment_month`**; **`normalizeExpenseStateForBackup`** | **`routes/expenses.js`**, **`routes/imports.js`**, **`routes/backup.js`** |
-| `paymentPlanEnums.js` | Payment plan allow-lists and parsers (category, schedule, priority, status, account type, payment method, institution, tag, frequency) | **`routes/paymentPlans.js`**, **`routes/backup.js`** (restore **v3** **`paymentPlans`**) |
+| `paymentPlanEnums.js` | Payment plan allow-lists and parsers (category, schedule, priority, **status** including **`paid_in_full`**, account type, payment method, institution, tag, frequency, **`remaining_payments`**); **`resolvePaymentPlanStatusForRemaining`** | **`routes/paymentPlans.js`**, **`routes/backup.js`** (restore **v3** **`paymentPlans`**) |
 | `prescriptionEnums.js` | **`PRESCRIPTION_CATEGORIES`**, **`PRESCRIPTION_RENEWAL_PERIODS`**, **state**; **`parseIsoDate`**; **`normalizePrescriptionStateForBackup`** | **`routes/prescriptions.js`**, **`routes/backup.js`** |
 | `recoveryCodeStorage.js` | Encrypt/decrypt recovery plaintext for **`users.recovery_code_ciphertext`**; **`persistRecoveryCodeForUser`** shared by **`auth`** and **`backup`** | `crypto`, `bcryptjs` |
 | `middleware/auth.js` | Bearer JSON Web Token to **`req.userId`** | `jsonwebtoken` |
@@ -293,10 +293,10 @@ flowchart TB
     Rcv[RecoverPasswordPage]
     ADM["AdminPage — /admin"]
     EP[ExpensesPage — Import]
-    YEP["YourExpensesPage — /expenses/list (UI omits category renewal and payment_plan)"]
+    YEP["YourExpensesPage — /expenses/list (read-only table; omit renewal and payment_plan; ExpenseEditModal)"]
     NRP[RenewalsPage — /renewals]
-    PSP[PrescriptionsPage — /prescriptions]
-    PPP[PaymentPlansPage — /payment-plans]
+    PSP["PrescriptionsPage — /prescriptions (read-only table; edit modal)"]
+    PPP["PaymentPlansPage — /payment-plans (hide paid_in_full by default)"]
     RPg[ReportsPage]
     PP[ProfilePage]
   end
@@ -337,17 +337,23 @@ flowchart LR
   subgraph YEP["YourExpensesPage — /expenses/list"]
     direction TB
     YG["GET /expenses"]
-    YV["Table + combined Projection omit category renewal and payment_plan"]
+    YV["Read-only ExpenseTable + combined Projection omit renewal and payment_plan"]
+    YE["Edit: ExpenseEditModal + ManualExpenseFormFields"]
     YU["Header flashes update icon after successful save/add"]
     YG --- YV
+    YG --- YE
     YG --- YU
   end
   subgraph NRP["RenewalsPage — /renewals"]
     direction TB
     NG["GET ?category=renewal + CRUD"]
-    NV["Header Projection: Active only omit cancelled/paused"]
+    NV["Read-only ExpenseTable showRenewalColumns + onRowProjection"]
+    NE["Edit: same ExpenseEditModal as Expenses list"]
+    NW["Header Projection: Active only omit cancelled/paused"]
     NU["Header flashes update icon after successful save/add"]
     NG --- NV
+    NG --- NE
+    NG --- NW
     NG --- NU
   end
   NRP --> EX["/expenses CRUD"]
@@ -355,14 +361,16 @@ flowchart LR
   subgraph PSPg["PrescriptionsPage — /prescriptions"]
     direction TB
     PG2["GET POST PATCH DELETE /prescriptions"]
-    PG2 --- PGnote["next_renewal_date + renewal_period 1-11 mo or 1-5 yr"]
+    PG2 --- PGnote["Read-only table; Edit modal PrescriptionFormFields = add form"]
+    PG2 --- PGdates["next_renewal_date + renewal_period 1-11 mo or 1-5 yr"]
     PG2 --- PGu["Header flashes update icon after add/edit/renew save"]
   end
   PSPg --> PRX["/prescriptions CRUD"]
   subgraph PPPg["PaymentPlansPage — /payment-plans"]
     direction TB
     PPG2["GET POST PATCH DELETE /payment-plans"]
-    PPG2 --- PPGnote["search notes + credit-card institutions"]
+    PPG2 --- PPGnote["search notes + Show cancelled paid in full + credit-card institutions"]
+    PPG2 --- PPGproj["combined Projection + Projection button: visible rows only"]
     PPG2 --- PPGadd["Add card: Show/Hide; auto-collapse on first non-empty list"]
     PPG2 --- PPGu["Header flashes update icon after successful save/add"]
   end
@@ -425,15 +433,16 @@ flowchart TD
 | Authentication state | `auth.jsx` — `AuthProvider`, protected routes, registers the session-invalid handler for `api.js` |
 | Expired session prompt | `SessionExpiredModal.jsx` — **Continue session** → **`POST /auth/refresh`** → reload; **Sign out** → **`/login`** |
 | Errors | `apiError.js` — network and proxy error messages |
-| Labels versus server enums | `expenseOptions.js` — categories (including **Streaming service**, **Renewal**, **Payment Plan**), **`RENEWAL_KIND_OPTIONS`** / **`formatRenewalKind`**, frequencies, institutions, **expense state** (**Active** / **Paused** / **Cancelled**; API `active` / `paused` / `cancelled`). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
+| Labels versus server enums | `expenseOptions.js` — categories (including **Streaming service**, **Renewal**, **Payment Plan**), **`RENEWAL_KIND_OPTIONS`** / **`formatRenewalKind`**, frequencies, institutions, **expense state** (**Active** / **Paused** / **Cancelled**; API `active` / `paused` / `cancelled`). **`paymentPlanOptions.js`** — payment plan **status** includes **Cancelled (paid in full)** (**`paid_in_full`**); add form uses **`PAYMENT_PLAN_STATUS_OPTIONS_FOR_ADD`** (omits **`paid_in_full`**). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
+| List edit modals (expenses / renewals) | **`ManualExpenseForm.jsx`** exports **`ManualExpenseFormFields`**; **`ExpenseEditModal.jsx`** wraps them for **`YourExpensesPage`** and **`RenewalsPage`** (**Escape**, backdrop, scroll lock). |
 | Main navigation (authenticated shell) | **`Layout.jsx`** — **Import**; **Lists** dropdown below **`lg`** or inline **Expenses** / **Renewals** / **Prescriptions** / **Payment Plan** / **Reports** at **`lg`+**; avatar **account menu** (**Profile**, **Upcoming expenses** when applicable, **Sign out**) |
 | Upcoming expenses | **`Layout.jsx`** (avatar menu, **badge** toggles tables, **`renewalTablesExpanded`**) + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** + **`renewalPreferences.js`** (window **1**/**3**/**5**/**7**/**10**/**14**/**21**/**30**/**40** days, default **7**, in-panel and Profile) + **`renewalHiddenPreferences.js`** (auto-hidden cancelled list for Profile) — all main shell routes; see [Renewal reminders (client)](#renewal-reminders-client) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (client confirms when backup **`account.email`** differs from session); **Appearance** includes **Auto-hidden cancelled recurring items** (reads **`renewalHiddenPreferences.js`**); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
-| Renewals (odd-interval contracts) | `RenewalsPage` at **`/renewals`** — **`GET /expenses?category=renewal`** (list includes **Cancelled** / **Paused** rows); manual add defaults to category **Renewal**; **`ExpenseTable`** with **`showRenewalColumns`** and **`onRowProjection`** (sticky **Actions** column). Combined header **Projection** and per-row **Projection** use **`projection.js`**; combined totals use **Active** rows only—non-**active** **`state`** excluded client-side. **Import** (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
-| Prescriptions (health / supplies) | `PrescriptionsPage` at **`/prescriptions`** — **`/api/prescriptions`** CRUD; **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. Header flashes a short update icon on successful add/edit/renew saves. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
-| Expenses list (`/expenses/list`) | **`YourExpensesPage`** — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** and **`category !== payment_plan`** in the table and in **combined Projection**; changing a row’s category to **Renewal** (with a type) or **Payment Plan** on save removes it from this view (it remains queryable on **`/renewals`** or **`/payment-plans`**). Header flashes a short update icon after successful save/add updates. |
-| Payment Plan (`/payment-plans`) | **`PaymentPlansPage`** — **`/api/payment-plans`** CRUD; note search in the table header; credit-card account type narrows institution options to **VISA**, **American Express**, **Mastercard**. **Add payment plan:** **Show** / **Hide** toggles the inline form; first transition to a non-empty list collapses it (**`hadItemsRef`**). Header flashes a short update icon after successful save/add updates. |
+| Renewals (odd-interval contracts) | `RenewalsPage` at **`/renewals`** — **`GET /expenses?category=renewal`** (list includes **Cancelled** / **Paused** rows); manual add defaults to category **Renewal**; read-only **`ExpenseTable`** with **`showRenewalColumns`** and **`onRowProjection`**; **Edit** uses **`ExpenseEditModal`** + **`ManualExpenseFormFields`**. Combined header **Projection** and per-row **Projection** use **`projection.js`**; combined totals use **Active** rows only—non-**active** **`state`** excluded client-side. **Import** (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
+| Prescriptions (health / supplies) | `PrescriptionsPage` at **`/prescriptions`** — **`/api/prescriptions`** CRUD; read-only table; **Edit** opens a **modal** with shared **`PrescriptionFormFields`** (same as add). **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. Header flashes a short update icon on successful add/edit/renew saves. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
+| Expenses list (`/expenses/list`) | **`YourExpensesPage`** — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** and **`category !== payment_plan`** in the read-only table and in **combined Projection**; **Edit** opens **`ExpenseEditModal`** with **`ManualExpenseFormFields`** (same as add). Changing category to **Renewal** or **Payment Plan** on save moves the row to **`/renewals`** or **`/payment-plans`**. Header flashes a short update icon after successful save/add updates. |
+| Payment Plan (`/payment-plans`) | **`PaymentPlansPage`** — **`/api/payment-plans`** CRUD; note search; **Show cancelled (paid in full)** reveals rows with **`paid_in_full`** status (hidden by default); combined **Projection** uses visible rows only. **Edit** opens a **modal** with the same field grid as **Add payment plan** (shared **`PaymentPlanFormFields`**); table is read-only. Credit-card account type narrows institution options to **VISA**, **American Express**, **Mastercard**. **Add payment plan:** **Show** / **Hide** toggles the inline form; first transition to a non-empty list collapses it (**`hadItemsRef`**). Header flashes a short update icon after successful save/add updates. |
 
 ### Payment Plan — add section (client)
 
@@ -446,6 +455,26 @@ flowchart TD
   B -->|no| D[no auto-collapse]
   C --> U[hadItemsRef tracks hasItems]
   D --> U
+```
+
+### Payment Plan — paid in full (API + list visibility)
+
+**Server:** **`POST`** / **`PATCH`** and **restore** validation call **`resolvePaymentPlanStatusForRemaining`** in **`paymentPlanEnums.js`** (see [PAYMENT_PLANS.md](./PAYMENT_PLANS.md)). **Client:** the table and combined **Projection** use **`visibleTableItems`** (by default **`status !== paid_in_full`**).
+
+```mermaid
+flowchart LR
+  subgraph SRV["paymentPlans.js + backup restore"]
+    RP[remaining_payments + status from body or DB merge]
+    RES[resolvePaymentPlanStatusForRemaining]
+    RP --> RES --> DB[(payment_plans)]
+  end
+  subgraph CL["PaymentPlansPage.jsx"]
+    GET[GET /payment-plans → items]
+    SCH[notes search]
+    HID["unless Show cancelled: drop paid_in_full"]
+    GET --> SCH --> HID --> TBL[table + pagination]
+    HID --> PRJ[combined Projection + pie]
+  end
 ```
 
 ### Renewals vs. Expenses list vs. Upcoming expenses (diagram)
@@ -560,6 +589,7 @@ erDiagram
     text institution
     text tag
     text frequency
+    int remaining_payments
     text notes
     timestamptz created_at
   }
@@ -651,7 +681,7 @@ flowchart LR
 
 **`prescriptions` in backup JSON:** Included when **`version`** ≥ **`2`**, with **`prescriptionCount`**; each row’s **`state`** uses **`normalizePrescriptionStateForBackup`**. Restore accepts **`version`** **`1`**–**`3`**. In **replace** mode, **`version`** **`1`** clears and restores **expenses** only; **`version`** **`2`** or **`3`** also clears and restores **`prescriptions`**.
 
-**`paymentPlans` in backup JSON:** Included when **`version`** ≥ **`3`**, with **`paymentPlanCount`**. **Replace** with **`version`** **`3`** clears and restores **`payment_plans`** as well as **expenses** and **prescriptions**.
+**`paymentPlans` in backup JSON:** Included when **`version`** ≥ **`3`**, with **`paymentPlanCount`**. **Replace** with **`version`** **`3`** clears and restores **`payment_plans`** as well as **expenses** and **prescriptions**. Each restored plan is validated like **`POST /payment-plans`**, and **`status`** is adjusted with **`resolvePaymentPlanStatusForRemaining`** so **`remaining_payments`** and **`paid_in_full`** stay consistent.
 
 **`users.recovery_code_ciphertext`:** Optional encrypted copy of the recovery code for **`GET /backup/export`** (see **`recoveryCodeStorage.js`**). **`users.recovery_lookup`** / **`recovery_token_hash`** remain the source of truth for **`POST /recover-password`**.
 
@@ -679,9 +709,9 @@ sequenceDiagram
   Vite-->>Browser: 200 JSON
 ```
 
-**Expenses list page:** the browser may call **`GET /api/expenses`** the same way (no **`category`** query). The API returns **all** of the user’s rows; **`YourExpensesPage`** then **omits** rows whose **`category`** is **`renewal`** or **`payment_plan`** when building the table and the **combined Projection** (those rows are listed on **`/renewals`** or **`/payment-plans`**). The table shows pagination controls at the bottom, including a **Rows** selector; it paginates client-side using your **Profile → Table display → Rows per page** preference (default **10**; options **5**, **10**, **25**, **50**, **100**).
+**Expenses list page:** the browser may call **`GET /api/expenses`** the same way (no **`category`** query). The API returns **all** of the user’s rows; **`YourExpensesPage`** then **omits** rows whose **`category`** is **`renewal`** or **`payment_plan`** when building the **read-only** table and the **combined Projection** (those rows are listed on **`/renewals`** or **`/payment-plans`**). **Edit** opens **`ExpenseEditModal`** with **`ManualExpenseFormFields`**; **`PATCH /api/expenses/:id`** runs on **Save changes**. Pagination uses the **Profile → Table display → Rows per page** preference (default **10**; options **5**, **10**, **25**, **50**, **100**); changing page size or page closes an open edit dialog.
 
-**Filtered list (Renewals page):** the same sequence applies with **`GET /api/expenses?category=renewal`** (and optional **`limit`**); the API adds **`AND category = $n`** after validating **`category`** against **`expenseEnums`**. The table paginates client-side with the same rows-per-page preference and footer **Rows** selector (default **10**; options **5**, **10**, **25**, **50**, **100**).
+**Filtered list (Renewals page):** the same **`GET`** sequence applies with **`GET /api/expenses?category=renewal`** (and optional **`limit`**); the API adds **`AND category = $n`** after validating **`category`** against **`expenseEnums`**. The UI uses the same read-only **`ExpenseTable`** + **`ExpenseEditModal`** pattern and the same client-side pagination rules as the Expenses list.
 
 ```mermaid
 sequenceDiagram

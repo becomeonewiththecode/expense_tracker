@@ -55,14 +55,15 @@ export async function syncPaymentPlanForExpense(client, userId, row) {
     institutionFromExpenseInstitution(row.financial_institution),
     row.frequency === "once" ? "discretionary" : "recurring",
     frequencyFromExpenseFrequency(row.frequency),
+    null,
     notesFromExpense(row),
   ];
 
   await client.query(
     `INSERT INTO payment_plans (
       user_id, source_expense_id, name, amount, category, payment_schedule, priority_level, status,
-      account_type, payment_method, institution, tag, frequency, notes
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+      account_type, payment_method, institution, tag, frequency, remaining_payments, notes
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
     ON CONFLICT (user_id, source_expense_id) WHERE source_expense_id IS NOT NULL
     DO UPDATE SET
       name = EXCLUDED.name,

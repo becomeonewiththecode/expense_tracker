@@ -11,8 +11,8 @@ This document describes the **Renewals** product area: long-horizon or irregular
 | **Renewal row** | A row in **`expenses`** with **`category = renewal`**. It uses the same core fields as any expense (amount, **`spent_at`**, frequency, institution, state, note). |
 | **`renewal_kind`** | Required when **`category`** is **`renewal`**. An allow-listed subtype (for example **`domain_names`**, **`car_insurance`**, **`online_education`**, **`hoa_fees`**). Stored in **`expenses.renewal_kind`** and mirrored on **`import_staging_rows`** during import review. |
 | **`website`** | Optional text (portal or URL) stored in **`expenses.website`**. On **commit**, **`website`** and **`renewal_kind`** are only copied from staging when the row’s category is **`renewal`**. |
-| **Renewals page** | Client route **`/renewals`** (`RenewalsPage.jsx`). Lists **`GET /api/expenses?category=renewal`**. Same **`ExpenseTable`** patterns as **Expenses** (sort, sticky **Actions** column, **Projection** / **Edit** / **Delete** in the row menu). **Projection:** header opens **combined** totals for **Active** rows only; row **Projection** opens a single-row modal. Non-**active** **`state`** (for example **`cancelled`**, **`paused`**) is excluded from combined projection math (aligned with **Upcoming expenses** subtotals). |
-| **Expenses list** | Client route **`/expenses/list`** (`YourExpensesPage.jsx`) loads **`GET /api/expenses`** but **does not list** rows whose **`category`** is **`renewal`**; those are exclusive to this Renewals page in the UI. Changing category **to** **`renewal`** on the Expenses page (with a valid **`renewal_kind`**) removes the row from that list after save. |
+| **Renewals page** | Client route **`/renewals`** (`RenewalsPage.jsx`). Lists **`GET /api/expenses?category=renewal`**. **`ExpenseTable`** is **read-only** (sort, search notes, sticky **Actions**). **Edit** opens **`ExpenseEditModal`** with **`ManualExpenseFormFields`**—the same field grid as **Add renewal manually** (including **renewal type** and **website**). **Projection** / **Edit** / **Delete** stay in the row menu. **Projection:** header opens **combined** totals for **Active** rows only; row **Projection** opens a single-row modal. Non-**active** **`state`** is excluded from combined projection math (aligned with **Upcoming expenses** subtotals). |
+| **Expenses list** | Client route **`/expenses/list`** (`YourExpensesPage.jsx`) loads **`GET /api/expenses`** but **does not list** rows whose **`category`** is **`renewal`**; those are exclusive to this Renewals page in the UI. Changing category **to** **`renewal`** in the **edit dialog** (with a valid **`renewal_kind`**) removes the row from the Expenses list after save. |
 | **Upcoming expenses** (banner) | Separate client feature: **`RenewalReminders`** uses **`GET /api/expenses?limit=500`** and **frequency** + **`spent_at`** math. It is **not** limited to **`category = renewal`**—any recurring expense (including **`payment_plan`**) can appear there. Display is capped by a user setting (**default 7 days**; discrete options **1**, **3**, **5**, **7**, **10**, **14**, **21**, **30**, **40**) configurable in **Profile** → **Appearance** and in the panel header (**Showing renewals within**). **Cancelled** rows are dropped from the panel once they are at least one day past renewal and within that same window horizon; they are listed read-only under **Profile** → **Appearance** → **Auto-hidden cancelled recurring items** (**`renewalHiddenPreferences.js`**). The avatar **amber badge** count matches **visible** reminder rows when the table shows at least one line, and **total eligible** when every line is **Dismiss**’d for the session. |
 
 ---
@@ -47,8 +47,8 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  U["User on /expenses/list"] --> M[Modification mode: Edit row]
-  M --> S["Set category Renewal + renewal type, Save"]
+  U["User on /expenses/list"] --> E["Actions → Edit → ExpenseEditModal"]
+  E --> S["Set category Renewal + renewal type, Save changes"]
   S --> P["PATCH /api/expenses/:id"]
   P --> DB[(expenses)]
   DB --> X["Row no longer shown on Expenses table"]
@@ -104,8 +104,8 @@ Logical relationship: renewal rows are still **`expenses`**; there is no separat
 | Renewals page | `client/src/pages/RenewalsPage.jsx` — filters to **`active`** only before combined Projection |
 | Expenses list (non-renewal UI filter) | `client/src/pages/YourExpensesPage.jsx` |
 | Import UI (renewal columns) | `client/src/pages/ExpensesPage.jsx` |
-| Shared table + renewal columns | `client/src/components/ExpenseTable.jsx` — optional **`onRowProjection`** (passed on **`YourExpensesPage`**, not **`RenewalsPage`**) |
-| Manual form (renewal fields) | `client/src/components/ManualExpenseForm.jsx` |
+| Read-only table + renewal columns + row actions | `client/src/components/ExpenseTable.jsx` — **`onRowProjection`** on both **`YourExpensesPage`** and **`RenewalsPage`** |
+| Manual add + shared edit fields + expense edit modal | `client/src/components/ManualExpenseForm.jsx` (**`ManualExpenseFormFields`**), `client/src/components/ExpenseEditModal.jsx` |
 | Nav link | `client/src/components/Layout.jsx` |
 | Route registration | `client/src/App.jsx` |
 

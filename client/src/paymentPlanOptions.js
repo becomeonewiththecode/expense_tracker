@@ -60,6 +60,7 @@ const STATUS_ENTRIES = [
   ["pending", "Pending"],
   ["paused", "Paused"],
   ["completed", "Completed"],
+  ["paid_in_full", "Cancelled (paid in full)"],
 ];
 
 const ACCOUNT_TYPE_ENTRIES = [
@@ -127,6 +128,11 @@ export const PAYMENT_PLAN_CATEGORY_OPTIONS = makeOptions(CATEGORY_ENTRIES);
 export const PAYMENT_PLAN_SCHEDULE_OPTIONS = makeOptions(SCHEDULE_ENTRIES);
 export const PAYMENT_PLAN_PRIORITY_OPTIONS = makeOptions(PRIORITY_ENTRIES);
 export const PAYMENT_PLAN_STATUS_OPTIONS = makeOptions(STATUS_ENTRIES);
+/** Server sets this when `# of payments` reaches 0; omit from add-form dropdown. */
+export const PAID_IN_FULL_STATUS = "paid_in_full";
+export const PAYMENT_PLAN_STATUS_OPTIONS_FOR_ADD = PAYMENT_PLAN_STATUS_OPTIONS.filter(
+  (o) => o.value !== PAID_IN_FULL_STATUS
+);
 export const PAYMENT_PLAN_ACCOUNT_TYPE_OPTIONS = makeOptions(ACCOUNT_TYPE_ENTRIES);
 export const PAYMENT_PLAN_METHOD_OPTIONS = makeOptions(PAYMENT_METHOD_ENTRIES);
 export const PAYMENT_PLAN_INSTITUTION_OPTIONS = makeOptions(INSTITUTION_ENTRIES);

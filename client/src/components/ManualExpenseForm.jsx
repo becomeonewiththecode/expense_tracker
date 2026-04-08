@@ -26,18 +26,13 @@ export function createEmptyManualExpenseForm() {
   };
 }
 
-export default function ManualExpenseForm({
-  form,
-  setForm,
-  onSubmit,
-  submitLabel = "Add expense",
-  disabled = false,
-}) {
+const inputClass =
+  "w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none";
+
+/** Shared field grid for add and edit (parent supplies `<form>` + grid classes + submit). */
+export function ManualExpenseFormFields({ form, setForm, autoFocusAmount = false }) {
   return (
-    <form
-      onSubmit={onSubmit}
-      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-8 items-end bg-th-surface/50 border border-th-border rounded-xl p-4"
-    >
+    <>
       <div>
         <label className="text-xs text-th-muted block mb-1">Amount</label>
         <input
@@ -46,9 +41,10 @@ export default function ManualExpenseForm({
           min="0"
           value={form.amount}
           onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-          className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          className={inputClass}
           placeholder="0.00"
           required
+          autoFocus={autoFocusAmount}
         />
       </div>
       <div>
@@ -63,7 +59,7 @@ export default function ManualExpenseForm({
               renewal_kind: category === "renewal" ? f.renewal_kind : "",
             }));
           }}
-          className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          className={inputClass}
         >
           {CATEGORY_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -79,7 +75,7 @@ export default function ManualExpenseForm({
             value={form.renewal_kind}
             onChange={(e) => setForm((f) => ({ ...f, renewal_kind: e.target.value }))}
             required
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+            className={inputClass}
           >
             <option value="">— Select type —</option>
             {RENEWAL_KIND_OPTIONS.map((o) => (
@@ -97,7 +93,7 @@ export default function ManualExpenseForm({
             type="text"
             value={form.website}
             onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))}
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+            className={inputClass}
             placeholder="https://…"
           />
         </div>
@@ -115,7 +111,7 @@ export default function ManualExpenseForm({
               payment_day_2: frequency === "bimonthly" ? f.payment_day_2 : "",
             }));
           }}
-          className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          className={inputClass}
         >
           {FREQUENCY_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -134,7 +130,7 @@ export default function ManualExpenseForm({
               max="30"
               value={form.payment_day}
               onChange={(e) => setForm((f) => ({ ...f, payment_day: e.target.value }))}
-              className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+              className={inputClass}
               placeholder="1–30"
               required
             />
@@ -147,7 +143,7 @@ export default function ManualExpenseForm({
               max="30"
               value={form.payment_day_2}
               onChange={(e) => setForm((f) => ({ ...f, payment_day_2: e.target.value }))}
-              className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+              className={inputClass}
               placeholder="1–30"
               required
             />
@@ -158,10 +154,8 @@ export default function ManualExpenseForm({
         <label className="text-xs text-th-muted block mb-1">Financial institution</label>
         <select
           value={form.financial_institution}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, financial_institution: e.target.value }))
-          }
-          className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          onChange={(e) => setForm((f) => ({ ...f, financial_institution: e.target.value }))}
+          className={inputClass}
         >
           {FINANCIAL_INSTITUTION_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -175,7 +169,7 @@ export default function ManualExpenseForm({
         <select
           value={form.state}
           onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
-          className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          className={inputClass}
         >
           {EXPENSE_STATE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -190,7 +184,7 @@ export default function ManualExpenseForm({
           type="date"
           value={form.spent_at}
           onChange={(e) => setForm((f) => ({ ...f, spent_at: e.target.value }))}
-          className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          className={inputClass}
           required
         />
       </div>
@@ -199,10 +193,27 @@ export default function ManualExpenseForm({
         <input
           value={form.description}
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500/40 outline-none"
+          className={inputClass}
           placeholder="Optional"
         />
       </div>
+    </>
+  );
+}
+
+export default function ManualExpenseForm({
+  form,
+  setForm,
+  onSubmit,
+  submitLabel = "Add expense",
+  disabled = false,
+}) {
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-8 items-end bg-th-surface/50 border border-th-border rounded-xl p-4"
+    >
+      <ManualExpenseFormFields form={form} setForm={setForm} />
       <button
         type="submit"
         disabled={disabled}

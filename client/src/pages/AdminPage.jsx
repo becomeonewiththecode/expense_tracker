@@ -1,21 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import axios from "axios";
-import QRCode from "qrcode";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { adminApi, ADMIN_TOKEN_KEY, clearAdminSession } from "../adminApi.js";
 import { getApiErrorMessage } from "../apiError.js";
-
-const ADMIN_TOKEN_KEY = "expense_tracker_admin_token";
-
-const adminApi = axios.create({
-  baseURL: "/api/admin",
-  headers: { "Content-Type": "application/json" },
-  timeout: 120_000,
-});
-
-adminApi.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem(ADMIN_TOKEN_KEY);
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
 
 const TABS = [
   { id: "session", label: "Session" },
@@ -70,24 +56,18 @@ function StatusCard({ title, ok, subtitle, detail, loading }) {
 }
 
 export default function AdminPage() {
-  const [challengeId, setChallengeId] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem(ADMIN_TOKEN_KEY) || "");
-  const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [needs2faSetup, setNeeds2faSetup] = useState(false);
-  const [setupManualKey, setSetupManualKey] = useState("");
-  const [setupOtpAuthUrl, setSetupOtpAuthUrl] = useState("");
-  const [setupQrDataUrl, setSetupQrDataUrl] = useState("");
-  const [error, setError] = useState("");
-  const [ok, setOk] = useState("");
+  const [mustChangePassword, setMustChangePassword] = useState(() => Boolean(location.state?.mustChangePassword));
   const [reauthToken, setReauthToken] = useState("");
 
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [currentAdminPassword, setCurrentAdminPassword] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
 
-  const [activeTab, setActiveTab] = useState("health");
+  const [activeTab, setActiveTab] = useState("session");
   const [health, setHealth] = useState(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [userIdForBackup, setUserIdForBackup] = useState("");
@@ -126,29 +106,6 @@ export default function AdminPage() {
     setUsersFeedback(null);
   }
 
-  useEffect(() => {
-    if (!setupOtpAuthUrl) {
-      setSetupQrDataUrl("");
-      return;
-    }
-    let cancelled = false;
-    QRCode.toDataURL(setupOtpAuthUrl, {
-      width: 220,
-      margin: 2,
-      errorCorrectionLevel: "M",
-      color: { dark: "#000000", light: "#ffffff" },
-    })
-      .then((url) => {
-        if (!cancelled) setSetupQrDataUrl(url);
-      })
-      .catch(() => {
-        if (!cancelled) setSetupQrDataUrl("");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [setupOtpAuthUrl]);
-
   const refreshHealth = useCallback(async () => {
     setHealthLoading(true);
     setHealthFeedback(null);
@@ -171,71 +128,6 @@ export default function AdminPage() {
     return () => clearInterval(id);
   }, [isAuthed, activeTab, refreshHealth]);
 
-  async function loginAdmin(e) {
-    e.preventDefault();
-    setError("");
-    setOk("");
-    setChallengeId("");
-    setNeeds2faSetup(false);
-    setSetupManualKey("");
-    setSetupOtpAuthUrl("");
-    setOtp("");
-    try {
-      const { data } = await adminApi.post("/auth/login", { username, password });
-      setChallengeId(data.challengeId);
-      setMustChangePassword(Boolean(data.mustChangePassword));
-      setNeeds2faSetup(Boolean(data.needs2faSetup));
-      setSetupManualKey(String(data?.setup?.manualKey || ""));
-      setSetupOtpAuthUrl(String(data?.setup?.otpauthUrl || ""));
-      setOk(
-        data.needs2faSetup
-          ? "Password accepted. Set up authenticator app, then verify code."
-          : "Password accepted. Enter your 2FA code."
-      );
-    } catch (err) {
-      setError(getApiErrorMessage(err, "Admin login failed"));
-    }
-  }
-
-  async function verify2fa(e) {
-    e.preventDefault();
-    setError("");
-    setOk("");
-    try {
-      const { data } = await adminApi.post("/auth/verify-2fa", { challengeId, code: otp });
-      sessionStorage.setItem(ADMIN_TOKEN_KEY, data.token);
-      setAdminToken(data.token);
-      setMustChangePassword(Boolean(data.mustChangePassword));
-      setOk("2FA verified.");
-      setPassword("");
-      setOtp("");
-      setChallengeId("");
-    } catch (err) {
-      setError(getApiErrorMessage(err, "2FA verification failed"));
-    }
-  }
-
-  async function complete2faSetup(e) {
-    e.preventDefault();
-    setError("");
-    setOk("");
-    try {
-      const { data } = await adminApi.post("/auth/setup-2fa/verify", { challengeId, code: otp });
-      sessionStorage.setItem(ADMIN_TOKEN_KEY, data.token);
-      setAdminToken(data.token);
-      setMustChangePassword(Boolean(data.mustChangePassword));
-      setNeeds2faSetup(false);
-      setSetupManualKey("");
-      setSetupOtpAuthUrl("");
-      setPassword("");
-      setOtp("");
-      setChallengeId("");
-      setOk("2FA setup complete.");
-    } catch (err) {
-      setError(getApiErrorMessage(err, "2FA setup failed"));
-    }
-  }
-
   async function changeAdminPassword(e) {
     e.preventDefault();
     setSessionFeedback(null);
@@ -249,6 +141,7 @@ export default function AdminPage() {
       setCurrentAdminPassword("");
       setNewAdminPassword("");
       setPassword("");
+      setOtp("");
       setSessionFeedback({ type: "success", message: "Admin password updated." });
     } catch (err) {
       setSessionFeedback({ type: "error", message: getApiErrorMessage(err, "Could not change password") });
@@ -462,18 +355,15 @@ export default function AdminPage() {
   }
 
   function logoutAdmin() {
-    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+    clearAdminSession();
     setAdminToken("");
     setReauthToken("");
     setHealth(null);
     setUsers([]);
-    setChallengeId("");
-    setNeeds2faSetup(false);
-    setSetupManualKey("");
-    setSetupOtpAuthUrl("");
     setOtp("");
     clearTabFeedback();
     setActiveTab("session");
+    navigate("/admin/login", { replace: true });
   }
 
   const tabBtn = (id) =>
@@ -490,6 +380,10 @@ export default function AdminPage() {
   const app = health?.application;
   const disk = app?.disk;
 
+  if (!isAuthed) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-th-base text-th-secondary">
       <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -500,109 +394,7 @@ export default function AdminPage() {
           </p>
         </div>
 
-        {error && <p className="text-sm text-rose-400 rounded-lg border border-rose-900/50 bg-rose-950/30 px-3 py-2">{error}</p>}
-        {!isAuthed && ok && <p className="text-sm text-emerald-400">{ok}</p>}
-
-        {!isAuthed ? (
-          <div className="bg-th-surface border border-th-border rounded-xl p-4 space-y-3">
-            <h2 className="font-medium text-white">Sign in</h2>
-            <form onSubmit={loginAdmin} className="grid sm:grid-cols-2 gap-3">
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Admin username"
-                className="rounded bg-th-input border border-th-border-bright px-3 py-2"
-              />
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                placeholder="Admin password"
-                className="rounded bg-th-input border border-th-border-bright px-3 py-2"
-              />
-              <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-2">
-                Continue
-              </button>
-            </form>
-            {challengeId && needs2faSetup ? (
-              <form onSubmit={complete2faSetup} className="space-y-4 pt-2 border-t border-th-border">
-                <div>
-                  <h3 className="text-sm font-medium text-white mb-2">Set up two-factor authentication</h3>
-                  <p className="text-xs text-th-muted mb-3">
-                    Scan the QR code with an authenticator app, then enter the 6-digit code to activate.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-4 items-start">
-                    <div className="rounded-lg bg-white p-3 shadow-inner border border-th-border-bright shrink-0">
-                      {setupQrDataUrl ? (
-                        <img src={setupQrDataUrl} alt="QR code for authenticator setup" width={220} height={220} className="block" />
-                      ) : (
-                        <div className="w-[220px] h-[220px] flex items-center justify-center text-xs text-neutral-500 text-center px-2">
-                          Generating QR code…
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0 space-y-3 w-full">
-                      <div>
-                        <label htmlFor="admin-setup-otp" className="block text-xs font-medium text-th-subtle mb-1">
-                          Authenticator code
-                        </label>
-                        <input
-                          id="admin-setup-otp"
-                          value={otp}
-                          onChange={(e) => setOtp(e.target.value)}
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          placeholder="6-digit code"
-                          className="w-full max-w-xs rounded bg-th-input border border-th-border-bright px-3 py-2 font-mono tracking-widest"
-                        />
-                      </div>
-                      <details className="text-xs text-th-muted">
-                        <summary className="cursor-pointer text-th-subtle hover:text-th-secondary">Can’t scan? Enter key manually</summary>
-                        <div className="mt-2 space-y-2 pl-1 border-l border-th-border-bright">
-                          <p>
-                            <span className="text-th-subtle">Secret key</span>
-                            <input
-                              readOnly
-                              value={setupManualKey}
-                              className="mt-1 block w-full rounded bg-th-input border border-th-border-bright px-2 py-1.5 font-mono text-[11px] text-th-secondary"
-                            />
-                          </p>
-                        </div>
-                      </details>
-                      <button
-                        type="submit"
-                        className="rounded border border-th-border-bright px-4 py-2 text-sm font-medium text-th-secondary hover:bg-th-surface-alt"
-                      >
-                        Activate 2FA
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </form>
-            ) : challengeId ? (
-              <form onSubmit={verify2fa} className="grid sm:grid-cols-2 gap-3 pt-2 border-t border-th-border">
-                <div className="sm:col-span-2">
-                  <label htmlFor="admin-verify-otp" className="block text-xs font-medium text-th-subtle mb-1">
-                    2FA code
-                  </label>
-                  <input
-                    id="admin-verify-otp"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder="6-digit code"
-                    className="w-full max-w-xs rounded bg-th-input border border-th-border-bright px-3 py-2 font-mono tracking-widest"
-                  />
-                </div>
-                <button type="submit" className="rounded border border-th-border-bright px-3 py-2 sm:w-fit">
-                  Verify 2FA
-                </button>
-              </form>
-            ) : null}
-          </div>
-        ) : (
-          <div className="space-y-4">
+        <div className="space-y-4">
             <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-th-surface border border-th-border">
               {TABS.map((t) => (
                 <button key={t.id} type="button" className={tabBtn(t.id)} onClick={() => setActiveTab(t.id)}>
@@ -1027,8 +819,7 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

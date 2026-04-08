@@ -155,6 +155,10 @@ export async function initDb() {
       ON payment_plans(user_id, source_expense_id)
       WHERE source_expense_id IS NOT NULL;
     CREATE INDEX IF NOT EXISTS idx_payment_plans_user_id_desc ON payment_plans(user_id, id DESC);
+    ALTER TABLE payment_plans ADD COLUMN IF NOT EXISTS remaining_payments INTEGER NULL;
+    ALTER TABLE payment_plans DROP CONSTRAINT IF EXISTS payment_plans_remaining_payments_check;
+    ALTER TABLE payment_plans ADD CONSTRAINT payment_plans_remaining_payments_check
+      CHECK (remaining_payments IS NULL OR remaining_payments >= 0);
 
     CREATE TABLE IF NOT EXISTS admins (
       id SERIAL PRIMARY KEY,

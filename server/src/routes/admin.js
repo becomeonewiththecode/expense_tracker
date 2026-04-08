@@ -400,9 +400,27 @@ adminRouter.post("/restore/database", adminRequired, requireReauth, async (req, 
     }
     for (const p of paymentPlans) {
       await client.query(
-        `INSERT INTO payment_plans (id, user_id, source_expense_id, name, amount, category, payment_schedule, priority_level, status, account_type, payment_method, institution, tag, frequency, notes, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,COALESCE($16::timestamptz,NOW()))`,
-        [p.id, p.user_id, p.source_expense_id ?? null, p.name, p.amount, p.category, p.payment_schedule, p.priority_level, p.status, p.account_type, p.payment_method, p.institution, p.tag, p.frequency, p.notes ?? "", p.created_at ?? null]
+        `INSERT INTO payment_plans (id, user_id, source_expense_id, name, amount, category, payment_schedule, priority_level, status, account_type, payment_method, institution, tag, frequency, remaining_payments, notes, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,COALESCE($17::timestamptz,NOW()))`,
+        [
+          p.id,
+          p.user_id,
+          p.source_expense_id ?? null,
+          p.name,
+          p.amount,
+          p.category,
+          p.payment_schedule,
+          p.priority_level,
+          p.status,
+          p.account_type,
+          p.payment_method,
+          p.institution,
+          p.tag,
+          p.frequency,
+          p.remaining_payments != null ? Number(p.remaining_payments) : null,
+          p.notes ?? "",
+          p.created_at ?? null,
+        ]
       );
     }
     await client.query(`SELECT setval(pg_get_serial_sequence('expenses', 'id'), COALESCE((SELECT MAX(id) FROM expenses), 1), TRUE)`);

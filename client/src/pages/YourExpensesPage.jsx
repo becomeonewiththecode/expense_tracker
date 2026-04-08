@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api";
+import ExpenseEditModal from "../components/ExpenseEditModal.jsx";
 import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
 import ExpenseTable from "../components/ExpenseTable.jsx";
 import ProjectionModal from "../components/ProjectionModal.jsx";
@@ -99,10 +100,10 @@ export default function YourExpensesPage() {
     });
   }
 
-  function cancelExpenseEdit() {
+  const cancelExpenseEdit = useCallback(() => {
     setExpenseEditId(null);
     setExpenseEditDraft(null);
-  }
+  }, []);
 
   async function saveExpenseEdit() {
     if (!expenseEditId || !expenseEditDraft) return;
@@ -293,17 +294,12 @@ export default function YourExpensesPage() {
           )}
           <ExpenseTable
             items={filteredExpenseListItems}
-            expenseEditId={expenseEditId}
-            expenseEditDraft={expenseEditDraft}
-            setExpenseEditDraft={setExpenseEditDraft}
-            expenseSaving={expenseSaving}
-            openExpenseEdit={openExpenseEdit}
-            cancelExpenseEdit={cancelExpenseEdit}
-            saveExpenseEdit={saveExpenseEdit}
+            onEdit={openExpenseEdit}
+            onCancelEditSession={cancelExpenseEdit}
             remove={remove}
             onProjection={() => setProjectionTarget({ kind: "all" })}
             onRowProjection={(row) => setProjectionTarget({ kind: "row", row })}
-            showRenewalColumns={expenseEditDraft?.category === "renewal"}
+            showRenewalColumns={false}
             searchValue={noteSearch}
             onSearchChange={setNoteSearch}
             searchPlaceholder="Search notes"
@@ -311,6 +307,16 @@ export default function YourExpensesPage() {
           />
         </>
       )}
+
+      <ExpenseEditModal
+        open={expenseEditId != null && expenseEditDraft != null}
+        title="Edit expense"
+        draft={expenseEditDraft}
+        setDraft={setExpenseEditDraft}
+        saving={expenseSaving}
+        onSave={saveExpenseEdit}
+        onClose={cancelExpenseEdit}
+      />
 
       <ProjectionModal
         open={projectionTarget != null}

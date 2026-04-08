@@ -13,7 +13,7 @@ You can:
 - **Import** a **comma-separated values or PDF** statement, **review** each line, set **categories** (and adjust **frequency** if needed), then commit the import (see below); use category **Renewal** plus a **renewal type** for long-cycle renewals (see [Renewals screen](#renewals-screen))  
 - Open **Lists** → **Renewals** to work with renewal-tagged expenses only (annual fees, domains, policies, and similar)  
 - Open **Lists** → **Prescriptions** to track medical, dental, vision, supplements, and equipment on **irregular renewal cycles** (**1–11 months** in monthly steps, or **1–5 years**), with **next renewal date** reminders in the app  
-- Open **Lists** → **Payment Plan** to track planned payments with category, schedule, priority, account, method, institution, tag, frequency, amount, and notes  
+- Open **Lists** → **Payment Plan** to track planned payments with category, schedule, priority, account, method, institution, tag, frequency, optional **# of payments** (remaining before paid off), amount, and notes; when **# of payments** hits **0**, the plan becomes **Cancelled (paid in full)** and is **hidden** from the table until you enable **Show cancelled (paid in full)**  
 - **Delete** expenses from the list  
 - **Lists** → **Reports** shows charts: daily, weekly, monthly, yearly, or a custom date range  
 - See **stored monthly summaries** (totals computed by a background job on a schedule)
@@ -130,9 +130,9 @@ Fill in the form and click **Add expense**:
 #### Editing a row
 
 1. Open a row’s **Actions** menu and choose **Edit**.
-2. You can change: transaction date, amount, category, frequency, institution, State, and note.
-3. When the draft category is **Renewal**, extra columns appear for **Renewal type** and **Website**.
-4. While editing, **Save** and **Cancel** replace **Edit** and **Delete** in the Actions menu.
+2. A **dialog** opens with the **same fields as Add expense manually** (transaction date, amount, category, frequency, bi-monthly payment days when applicable, institution, state, note—and when category is **Renewal**, **renewal type** and **website**).
+3. **Save changes** sends a **PATCH**; **Close**, **Cancel**, **Escape**, or clicking the dimmed backdrop discards edits.
+4. The table stays read-only; pagination changes close an open edit dialog.
 5. After a successful save or add, the table header briefly flashes an update icon as confirmation.
 
 ---
@@ -210,11 +210,10 @@ Click **Projection** in the table header to see a combined report:
 #### Per-row projection
 
 - Each row’s **Actions** menu includes **Projection** for that expense only (same numbers, single slice or small pie).
-- If you are editing a row, the per-row Projection uses your **unsaved draft values**.
 
 #### Other actions
 
-- **Edit** opens inline editing.
+- **Edit** opens the full-field edit dialog (see [Editing a row](#editing-a-row)).
 - **Delete** asks for confirmation.
 - If you have no expenses yet, the page shows the manual form and a link to Import.
 
@@ -233,7 +232,7 @@ Parsing uses **date, amount, and description** from the file; **comma-separated 
 
 ## Renewals screen
 
-**Lists** → **Renewals** (**`/renewals`**) lists only expenses whose **category** is **Renewal**—use it for items that renew on unusual schedules (often **Yearly** or longer horizons in practice). Each row has the same core fields as on **Expenses**, plus **Renewal type** and optional **Website**. **Projection** in the table header opens a **combined** report for **Active** renewal items only—rows with **State** **Cancelled** or **Paused** are listed in the table but **not** included in the combined projection totals (same idea as **Upcoming expenses** subtotals). The row **Actions** menu also includes **Projection** for that row (and **Edit** / **Delete**). The **Actions** column stays visible when you scroll horizontally (sticky on the right), like the other list tables. Successful saves/adds briefly flash an update icon in the renewal table header.
+**Lists** → **Renewals** (**`/renewals`**) lists only expenses whose **category** is **Renewal**—use it for items that renew on unusual schedules (often **Yearly** or longer horizons in practice). Each row has the same core fields as on **Expenses**, plus **Renewal type** and optional **Website**. **Edit** opens the same **dialog** as on **Expenses** (full manual-expense field set, pre-filled). **Projection** in the table header opens a **combined** report for **Active** renewal items only—rows with **State** **Cancelled** or **Paused** are listed in the table but **not** included in the combined projection totals (same idea as **Upcoming expenses** subtotals). The row **Actions** menu also includes **Projection** for that row (and **Edit** / **Delete**). The **Actions** column stays visible when you scroll horizontally (sticky on the right), like the other list tables. Successful saves/adds briefly flash an update icon in the renewal table header.
 
 - **Add renewal manually** (or the form when the list is empty) defaults to category **Renewal** and frequency **Yearly**; you must pick a **renewal type**.  
 - **Import:** On **Import**, set a row’s category to **Renewal**, choose the **renewal type**, optionally add a **website**, then commit—those lines appear here; they do **not** appear in the main **Expenses** table (only on **Renewals**).  
@@ -243,7 +242,11 @@ Parsing uses **date, amount, and description** from the file; **comma-separated 
 
 ## Payment Plan screen
 
-**Lists** → **Payment Plan** (**`/payment-plans`**) tracks planned payments in a dedicated table with fields such as category, schedule, priority, status, account type, payment method, institution, tag, frequency, amount, and notes.
+**Lists** → **Payment Plan** (**`/payment-plans`**) tracks planned payments in a dedicated table with fields such as category, schedule, priority, status, account type, payment method, institution, tag, frequency, optional **# of payments** (remaining count before the plan is paid off; leave blank for ongoing), amount, and notes.
+
+- **Paid in full** — When **# of payments** reaches **0**, the plan is marked **Cancelled (paid in full)** and is **hidden** from the table by default. Turn on **Show cancelled (paid in full)** in the table header to list or edit those rows. Combined **Projection** only includes plans that are currently visible in the table.
+
+- **Edit** — **Actions** → **Edit** opens a full-screen-style dialog with the **same fields as Add payment plan** (name, amount, category, schedule, priority, status including **Cancelled (paid in full)** when applicable, account, method, institution, tag, frequency, **# of payments**, notes). **Save changes** sends a **PATCH**; **Close**, **Cancel**, **Escape**, or clicking the dimmed backdrop discards edits.
 
 - **Add payment plan** — The header card has **Show** / **Hide** for the inline add form (always available). With **no** plans yet, the form starts **open**; the **first** time you have at least one plan (after load or after saving), the add section **collapses** automatically—you can tap **Show** anytime to open it again.
 - **Edit** / **Delete** — Open the row **Actions** menu.
@@ -261,7 +264,8 @@ Technical detail: [PAYMENT_PLANS.md](./PAYMENT_PLANS.md).
 **Lists** → **Prescriptions** (**`/prescriptions`**) is for items that **do not** follow the same model as bank-card **expenses**: you set a **renewal period** (**1–11 months** in monthly steps, then **1–5 years**), a **next renewal date**, and optional **vendor** and **notes**. **Categories** are **Medical**, **Dental**, **Vision**, **Supplements**, and **Equipment**. **State** works like expenses (**Active** / **Paused** / **Cancelled**); non-**active** lines stay in the list but **do not** appear in the reminder banner.
 
 - **Add prescription** — Fill **name**, **amount**, **category**, **renewal period**, **next renewal date**, **vendor**, **notes**, and **state**, then save.  
-- **Edit** / **Delete** — Open the row **Actions** menu.  
+- **Edit** — **Actions** → **Edit** opens a **dialog** with the **same fields as Add prescription**, pre-filled; **Save changes**, **Close** / **Cancel** / **Escape** / backdrop work like other list edit dialogs.  
+- **Delete** — Open the row **Actions** menu.  
 - **Renewed** — After a refill or visit, click **Renewed** to move **next renewal date** forward by one **renewal period** (you can still edit the date manually).  
 - **Update indicator** — Successful add/edit/renew updates flash a brief icon in the table header so you can confirm the Prescriptions table changed.
 - **Reminders** — When an **active** item is due within about **30 days**, or is **1–14 days overdue**, a **cyan** **Prescription renewals** panel appears **above the page** (on **Import**, **Lists** destinations, **Profile**). It is **in-app only** (not email). Use **Dismiss for this visit** to hide it until you reload or change prescriptions. Saving on this page updates the banner for the same session.

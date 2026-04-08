@@ -23,10 +23,8 @@ import {
   TABLE_HEAD,
   TABLE_HEADER_BAR,
   TABLE_ROW,
-  TABLE_ROW_EDITING,
   TABLE_SCROLL,
   TABLE_TD_STICKY_ACTIONS_DEFAULT,
-  TABLE_TD_STICKY_ACTIONS_EDITING,
   TABLE_TH_STICKY_ACTIONS,
 } from "../tableStyles.js";
 import PaginationControls from "./PaginationControls.jsx";
@@ -155,37 +153,11 @@ function SortableTh({ colKey, label, sort, onSort, className }) {
   );
 }
 
-/** Merge saved row with in-progress edit for projection preview. */
-function rowSnapshotForProjection(row, draft) {
-  if (draft) {
-    const amt = Number(draft.amount);
-    return {
-      ...row,
-      amount: Number.isFinite(amt) ? amt : row.amount,
-      category: draft.category,
-      renewal_kind: draft.renewal_kind,
-      website: draft.website,
-      frequency: draft.frequency,
-      payment_day: draft.payment_day ? Number(draft.payment_day) : row.payment_day,
-      payment_day_2: draft.payment_day_2 ? Number(draft.payment_day_2) : row.payment_day_2,
-      financial_institution: draft.financial_institution,
-      state: draft.state,
-      description: draft.description,
-      spent_at: draft.spent_at,
-    };
-  }
-  return row;
-}
-
 export default function ExpenseTable({
   items,
-  expenseEditId,
-  expenseEditDraft,
-  setExpenseEditDraft,
-  expenseSaving,
-  openExpenseEdit,
-  cancelExpenseEdit,
-  saveExpenseEdit,
+  onEdit,
+  /** Called when pagination changes so the parent can close an open edit dialog. */
+  onCancelEditSession,
   remove,
   onProjection,
   /** Omit to hide per-row Projection (e.g. Renewals list). */
@@ -225,12 +197,12 @@ export default function ExpenseTable({
   }, [safePage]);
 
   function handlePageChange(nextPage) {
-    cancelExpenseEdit();
+    onCancelEditSession?.();
     setPage(nextPage);
   }
 
   function handleRowsPerPageChange(nextSize) {
-    cancelExpenseEdit();
+    onCancelEditSession?.();
     setRowsPerPage(nextSize);
     setPage(1);
   }
@@ -345,344 +317,87 @@ export default function ExpenseTable({
             </tr>
           </thead>
           <tbody className={TABLE_BODY}>
-            {pageItems.map((row) => {
-              const editing = expenseEditId === row.id;
-              const d = expenseEditDraft;
-              const snapshot = rowSnapshotForProjection(row, editing ? d : null);
-              return (
-                <tr
-                  key={row.id}
-                  className={editing ? TABLE_ROW_EDITING : TABLE_ROW}
-                >
-                  <td className="px-4 py-3 text-th-tertiary whitespace-nowrap align-middle">
-                    {editing && d ? (
-                      <input
-                        type="date"
-                        value={d.spent_at}
-                        onChange={(e) =>
-                          setExpenseEditDraft((prev) =>
-                            prev ? { ...prev, spent_at: e.target.value } : prev
-                          )
-                        }
-                        className="w-full min-w-[9.5rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
-                      />
-                    ) : (
-                      toDateInputValue(row.spent_at) || "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3 align-middle">
-                    {editing && d ? (
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={d.amount}
-                        onChange={(e) =>
-                          setExpenseEditDraft((prev) =>
-                            prev ? { ...prev, amount: e.target.value } : prev
-                          )
-                        }
-                        className="w-full max-w-[7rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs tabular-nums"
-                      />
-                    ) : (
-                      <span className="font-medium text-white tabular-nums">
-                        ${Number(row.amount).toFixed(2)}
+            {pageItems.map((row) => (
+              <tr key={row.id} className={TABLE_ROW}>
+                <td className="px-4 py-3 text-th-tertiary whitespace-nowrap align-middle">
+                  {toDateInputValue(row.spent_at) || "—"}
+                </td>
+                <td className="px-4 py-3 align-middle">
+                  <span className="font-medium text-white tabular-nums">${Number(row.amount).toFixed(2)}</span>
+                </td>
+                <td className="px-4 py-3 text-th-tertiary align-middle">{formatCategory(row.category)}</td>
+                <td className="px-4 py-3 text-th-tertiary align-middle hidden lg:table-cell">
+                  <span>
+                    {formatFrequency(row.frequency)}
+                    {row.frequency === "bimonthly" && row.payment_day != null && row.payment_day_2 != null && (
+                      <span className="text-th-muted text-xs block">
+                        Days {row.payment_day} &amp; {row.payment_day_2}
                       </span>
                     )}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-th-tertiary align-middle hidden md:table-cell">
+                  {formatFinancialInstitution(row.financial_institution)}
+                </td>
+                <td className="px-4 py-3 text-th-tertiary align-middle hidden md:table-cell">
+                  {formatExpenseState(row.state)}
+                </td>
+                {showRenewalColumns && (
+                  <td className="px-4 py-3 text-th-tertiary align-middle hidden lg:table-cell">
+                    {row.category === "renewal" ? formatRenewalKind(row.renewal_kind) : "—"}
                   </td>
-                  <td className="px-4 py-3 text-th-tertiary align-middle">
-                    {editing && d ? (
-                      <select
-                        value={d.category}
-                        onChange={(e) => {
-                          const category = e.target.value;
-                          setExpenseEditDraft((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  category,
-                                  renewal_kind: category === "renewal" ? prev.renewal_kind : "",
-                                }
-                              : prev
-                          );
-                        }}
-                        className="w-full max-w-[11rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
+                )}
+                {showRenewalColumns && (
+                  <td className="px-4 py-3 text-th-tertiary align-middle hidden xl:table-cell max-w-[12rem]">
+                    {row.category === "renewal" && row.website ? (
+                      <a
+                        href={/^https?:\/\//i.test(row.website) ? row.website : `https://${row.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sky-400 hover:text-sky-300 truncate block max-w-[12rem]"
                       >
-                        {CATEGORY_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
+                        {row.website}
+                      </a>
                     ) : (
-                      formatCategory(row.category)
+                      "—"
                     )}
                   </td>
-                  <td
-                    className={`px-4 py-3 text-th-tertiary align-middle ${editing ? "" : "hidden lg:table-cell"}`}
-                  >
-                    {editing && d ? (
-                      <div className="flex flex-col gap-1">
-                        <select
-                          value={d.frequency}
-                          onChange={(e) => {
-                            const frequency = e.target.value;
-                            setExpenseEditDraft((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    frequency,
-                                    payment_day: frequency === "bimonthly" ? (prev.payment_day || "") : prev.payment_day,
-                                    payment_day_2: frequency === "bimonthly" ? (prev.payment_day_2 || "") : "",
-                                  }
-                                : prev
-                            );
-                          }}
-                          className="w-full max-w-[8rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
-                        >
-                          {FREQUENCY_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                        {d.frequency === "bimonthly" && (
-                          <div className="flex gap-1">
-                            <input
-                              type="number"
-                              min="1"
-                              max="30"
-                              value={d.payment_day || ""}
-                              onChange={(e) =>
-                                setExpenseEditDraft((prev) =>
-                                  prev ? { ...prev, payment_day: e.target.value } : prev
-                                )
-                              }
-                              className="w-14 rounded-lg bg-th-base border border-th-border-bright px-1 py-1 text-white text-xs"
-                              placeholder="Day 1"
-                              title="1st payment day (1–30)"
-                            />
-                            <input
-                              type="number"
-                              min="1"
-                              max="30"
-                              value={d.payment_day_2 || ""}
-                              onChange={(e) =>
-                                setExpenseEditDraft((prev) =>
-                                  prev ? { ...prev, payment_day_2: e.target.value } : prev
-                                )
-                              }
-                              className="w-14 rounded-lg bg-th-base border border-th-border-bright px-1 py-1 text-white text-xs"
-                              placeholder="Day 2"
-                              title="2nd payment day (1–30)"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span>
-                        {formatFrequency(row.frequency)}
-                        {row.frequency === "bimonthly" && row.payment_day != null && row.payment_day_2 != null && (
-                          <span className="text-th-muted text-xs block">
-                            Days {row.payment_day} &amp; {row.payment_day_2}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </td>
-                  <td
-                    className={`px-4 py-3 text-th-tertiary align-middle ${editing ? "" : "hidden md:table-cell"}`}
-                  >
-                    {editing && d ? (
-                      <select
-                        value={d.financial_institution}
-                        onChange={(e) =>
-                          setExpenseEditDraft((prev) =>
-                            prev ? { ...prev, financial_institution: e.target.value } : prev
-                          )
-                        }
-                        className="w-full max-w-[10rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
-                      >
-                        {FINANCIAL_INSTITUTION_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      formatFinancialInstitution(row.financial_institution)
-                    )}
-                  </td>
-                  <td
-                    className={`px-4 py-3 text-th-tertiary align-middle ${editing ? "" : "hidden md:table-cell"}`}
-                  >
-                    {editing && d ? (
-                      <select
-                        value={d.state}
-                        onChange={(e) =>
-                          setExpenseEditDraft((prev) =>
-                            prev ? { ...prev, state: e.target.value } : prev
-                          )
-                        }
-                        className="w-full max-w-[8rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
-                      >
-                        {EXPENSE_STATE_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      formatExpenseState(row.state)
-                    )}
-                  </td>
-                  {showRenewalColumns && (
-                    <td
-                      className={`px-4 py-3 text-th-tertiary align-middle hidden lg:table-cell ${editing ? "" : ""}`}
-                    >
-                      {editing && d && d.category === "renewal" ? (
-                        <select
-                          value={d.renewal_kind || ""}
-                          onChange={(e) =>
-                            setExpenseEditDraft((prev) =>
-                              prev ? { ...prev, renewal_kind: e.target.value } : prev
-                            )
-                          }
-                          className="w-full max-w-[12rem] rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-white text-xs"
-                        >
-                          <option value="">— Type —</option>
-                          {RENEWAL_KIND_OPTIONS.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : row.category === "renewal" ? (
-                        formatRenewalKind(row.renewal_kind)
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  )}
-                  {showRenewalColumns && (
-                    <td
-                      className={`px-4 py-3 text-th-tertiary align-middle hidden xl:table-cell max-w-[12rem]`}
-                    >
-                      {editing && d && d.category === "renewal" ? (
-                        <input
-                          value={d.website ?? ""}
-                          onChange={(e) =>
-                            setExpenseEditDraft((prev) =>
-                              prev ? { ...prev, website: e.target.value } : prev
-                            )
-                          }
-                          className="w-full min-w-0 rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-th-tertiary text-xs"
-                          placeholder="URL or portal"
-                        />
-                      ) : row.category === "renewal" && row.website ? (
-                        <a
-                          href={
-                            /^https?:\/\//i.test(row.website)
-                              ? row.website
-                              : `https://${row.website}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sky-400 hover:text-sky-300 truncate block max-w-[12rem]"
-                        >
-                          {row.website}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  )}
-                  <td
-                    className={`px-4 py-3 align-middle ${editing ? "" : "hidden sm:table-cell"}`}
-                  >
-                    {editing && d ? (
-                      <input
-                        value={d.description}
-                        onChange={(e) =>
-                          setExpenseEditDraft((prev) =>
-                            prev ? { ...prev, description: e.target.value } : prev
-                          )
-                        }
-                        className="w-full min-w-[8rem] max-w-xs rounded-lg bg-th-base border border-th-border-bright px-2 py-1 text-th-tertiary text-xs"
-                        placeholder="Note"
-                      />
-                    ) : (
-                      <span className="text-th-muted max-w-xs truncate block">{row.description}</span>
-                    )}
-                  </td>
-                  <td
-                    className={editing ? TABLE_TD_STICKY_ACTIONS_EDITING : TABLE_TD_STICKY_ACTIONS_DEFAULT}
-                  >
-                    {editing ? (
-                      <div className="flex justify-end">
-                        <RowActionsMenu
-                          items={[
-                            ...(onRowProjection
-                              ? [
-                                  {
-                                    key: "projection",
-                                    label: "Projection",
-                                    className: "text-violet-400",
-                                    onClick: () => onRowProjection(snapshot),
-                                  },
-                                ]
-                              : []),
-                            {
-                              key: "save",
-                              label: expenseSaving ? "Saving…" : "Save",
-                              disabled: expenseSaving,
-                              className: "text-emerald-400",
-                              onClick: () => saveExpenseEdit(),
-                            },
-                            {
-                              key: "cancel",
-                              label: "Cancel",
-                              disabled: expenseSaving,
-                              className: "text-th-subtle",
-                              onClick: cancelExpenseEdit,
-                            },
-                          ]}
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex justify-end">
-                        <RowActionsMenu
-                          items={[
-                            ...(onRowProjection
-                              ? [
-                                  {
-                                    key: "projection",
-                                    label: "Projection",
-                                    className: "text-violet-400",
-                                    onClick: () => onRowProjection(snapshot),
-                                  },
-                                ]
-                              : []),
-                            {
-                              key: "edit",
-                              label: "Edit",
-                              className: "text-sky-400",
-                              onClick: () => openExpenseEdit(row),
-                            },
-                            {
-                              key: "delete",
-                              label: "Delete",
-                              className: "text-rose-400",
-                              onClick: () => remove(row.id),
-                            },
-                          ]}
-                        />
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+                )}
+                <td className="px-4 py-3 align-middle hidden sm:table-cell">
+                  <span className="text-th-muted max-w-xs truncate block">{row.description}</span>
+                </td>
+                <td className={TABLE_TD_STICKY_ACTIONS_DEFAULT}>
+                  <div className="flex justify-end">
+                    <RowActionsMenu
+                      items={[
+                        ...(onRowProjection
+                          ? [
+                              {
+                                key: "projection",
+                                label: "Projection",
+                                className: "text-violet-400",
+                                onClick: () => onRowProjection(row),
+                              },
+                            ]
+                          : []),
+                        {
+                          key: "edit",
+                          label: "Edit",
+                          className: "text-sky-400",
+                          onClick: () => onEdit(row),
+                        },
+                        {
+                          key: "delete",
+                          label: "Delete",
+                          className: "text-rose-400",
+                          onClick: () => remove(row.id),
+                        },
+                      ]}
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
         {totalItems > 0 && (
