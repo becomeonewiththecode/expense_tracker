@@ -313,6 +313,7 @@ The application includes an **admin site** at **`/admin`** for operators. It is 
 
 - Admin sessions end after **15 minutes of inactivity**.
 - Sensitive operations require **re-authentication** (admin password + 2FA) even within an active session.
+- The **Session** tab always includes an admin password change form. On first login it is marked as required; after that it remains available for routine password rotation.
 
 ### Tabs and operations
 

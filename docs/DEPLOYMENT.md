@@ -73,6 +73,7 @@ You can override the target URL with:
 
 - Admin sessions time out after **15 minutes of inactivity**.
 - Sensitive operations (whole DB backup, restore, user password reset, permission changes) require **re-authentication** (password + 2FA) even during an active session.
+- Admin passwords can be rotated anytime from the **Session** tab (first login still enforces an immediate change).
 
 #### Swagger / OpenAPI docs
 

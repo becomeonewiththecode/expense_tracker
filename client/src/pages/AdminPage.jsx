@@ -84,6 +84,7 @@ export default function AdminPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
+  const [currentAdminPassword, setCurrentAdminPassword] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
 
   const [activeTab, setActiveTab] = useState("health");
@@ -240,8 +241,12 @@ export default function AdminPage() {
     setSessionFeedback(null);
     setLoadingChangePwd(true);
     try {
-      await adminApi.post("/auth/change-password", { currentPassword: password, newPassword: newAdminPassword });
+      await adminApi.post("/auth/change-password", {
+        currentPassword: currentAdminPassword,
+        newPassword: newAdminPassword,
+      });
       setMustChangePassword(false);
+      setCurrentAdminPassword("");
       setNewAdminPassword("");
       setPassword("");
       setSessionFeedback({ type: "success", message: "Admin password updated." });
@@ -664,25 +669,32 @@ export default function AdminPage() {
                       <p className="text-xs text-amber-200/80">No active re-auth — backup/restore/reset will ask you to unlock first.</p>
                     )}
                   </div>
-                  {mustChangePassword && (
-                    <form onSubmit={changeAdminPassword} className="border-t border-th-border pt-4 space-y-3">
-                      <h3 className="text-sm font-medium text-amber-200/90">Change default password</h3>
-                      <input
-                        value={newAdminPassword}
-                        onChange={(e) => setNewAdminPassword(e.target.value)}
-                        type="password"
-                        placeholder="New admin password (12+ characters)"
-                        className="w-full max-w-md rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-sm"
-                      />
-                      <button
-                        type="submit"
-                        disabled={loadingChangePwd}
-                        className="rounded-lg bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
-                      >
-                        {loadingChangePwd ? "Saving…" : "Save new password"}
-                      </button>
-                    </form>
-                  )}
+                  <form onSubmit={changeAdminPassword} className="border-t border-th-border pt-4 space-y-3">
+                    <h3 className="text-sm font-medium text-amber-200/90">
+                      {mustChangePassword ? "Change default password (required)" : "Change admin password"}
+                    </h3>
+                    <input
+                      value={currentAdminPassword}
+                      onChange={(e) => setCurrentAdminPassword(e.target.value)}
+                      type="password"
+                      placeholder="Current admin password"
+                      className="w-full max-w-md rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={newAdminPassword}
+                      onChange={(e) => setNewAdminPassword(e.target.value)}
+                      type="password"
+                      placeholder="New admin password (12+ characters)"
+                      className="w-full max-w-md rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="submit"
+                      disabled={loadingChangePwd}
+                      className="rounded-lg bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
+                    >
+                      {loadingChangePwd ? "Saving…" : "Save new password"}
+                    </button>
+                  </form>
                 </div>
               )}
 

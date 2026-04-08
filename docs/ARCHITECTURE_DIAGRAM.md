@@ -291,6 +291,7 @@ flowchart TB
     LP[LoginPage]
     RP[RegisterPage]
     Rcv[RecoverPasswordPage]
+    ADM["AdminPage — /admin"]
     EP[ExpensesPage — Import]
     YEP["YourExpensesPage — /expenses/list (UI omits category renewal and payment_plan)"]
     NRP[RenewalsPage — /renewals]
@@ -301,6 +302,7 @@ flowchart TB
   end
 
   subgraph api [Express paths under /api]
+    ADOC["/docs + /openapi.json"]
     A1["/auth — login register refresh oauth profile avatar recovery"]
     A2["/expenses — CRUD list ?category=renewal"]
     A3["/imports — upload staging commit"]
@@ -308,11 +310,14 @@ flowchart TB
     A5["/backup — export restore"]
     A6["/prescriptions — CRUD"]
     A7["/payment-plans — CRUD"]
+    A8["/admin — auth health backup restore users"]
   end
 
   LP --> A1
   RP --> A1
   Rcv --> A1
+  ADM --> A8
+  ADM --> ADOC
   PP --> A1
   PP --> A5
   EP --> A3
