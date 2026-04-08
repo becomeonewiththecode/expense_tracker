@@ -61,11 +61,11 @@ Verify with **`curl -sS http://localhost:8080/health`** (adjust the port if you 
 ## Account: register and sign in
 
 1. Open the application URL in your browser.  
-2. Choose **Create account** (or open the `/register` route).  
+2. If you are signed out, the `/` route shows a public landing page with **Get started** and **Log in** actions. Choose **Create account** (or open the `/register` route directly).  
 3. Enter **email** and **password** (minimum length is enforced on the form).  
 4. After success you are signed in and taken to **Expenses** if you already have saved expenses, otherwise to **Import** (add or import).  
 
-To sign in later, use **Sign in** and open the `/login` route with the same email and password.
+To sign in later, use **Sign in** from the landing page or open `/login` directly with the same email and password.
 
 **Forgot your password?** If you previously generated a **recovery code** under **Profile**, use **Forgot password?** on the sign-in page (`/recover`). Paste the full code and choose a new password. **No email is sent.** Afterward, sign in with your **email** and the **new** password. If you use **single sign-on only** and have not set a password, sign in with your provider first, then open **Profile** to add a password and optionally create a recovery code.
 

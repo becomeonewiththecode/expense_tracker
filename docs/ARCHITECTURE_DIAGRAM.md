@@ -253,6 +253,8 @@ flowchart TB
 
 These diagrams show how **React** pages map to backend routes. The HTTP client uses Axios with `baseURL: "/api"`.
 
+**Route gate at `/`:** `AppShell` checks authentication state. Signed-out users who open `/` see `LandingPage`; signed-in users on `/` continue into the authenticated `Layout` shell (index redirect then sends them to `/expenses` or `/expenses/list`). Signed-out requests to authenticated routes (for example `/reports`) are redirected to `/login`.
+
 **Shell navigation (signed-in `Layout.jsx` header):** **Import** links to **`/expenses`**. The list destinations—**Expenses** (`/expenses/list`), **Renewals** (`/renewals`), **Prescriptions** (`/prescriptions`), **Payment Plan** (`/payment-plans`), and **Reports** (`/reports`)—appear as a **Lists** dropdown on **small/medium** viewports (below Tailwind **`lg`**, 1024px) and as **horizontal NavLinks** from **`lg`** and up (laptops and larger). **Profile** and **Sign out** live in the avatar **account menu**, not in the main nav bar.
 
 ```mermaid
@@ -274,6 +276,7 @@ flowchart TB
 ```mermaid
 flowchart TB
   subgraph pages [client/src/pages]
+    MKT["LandingPage — / (signed-out)"]
     LP[LoginPage]
     RP[RegisterPage]
     Rcv[RecoverPasswordPage]
