@@ -11,3 +11,4 @@ deployment/kubernetes/secret-api.yaml
 
 # Uploaded profile pictures (local dev)
 server/uploads/
+.claude/
