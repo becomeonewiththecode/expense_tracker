@@ -5,6 +5,8 @@ import { useTheme } from "../ThemeContext.jsx";
 import { THEME_OPTIONS } from "../themePreferences.js";
 import RenewalReminders from "./RenewalReminders.jsx";
 import PrescriptionReminders from "./PrescriptionReminders.jsx";
+import NotificationBell from "./NotificationBell.jsx";
+import AppVersionStamp from "./AppVersionStamp.jsx";
 
 const linkClass = ({ isActive }) =>
   [
@@ -39,7 +41,8 @@ function ListsNavDropdown() {
     pathname === "/renewals" ||
     pathname === "/prescriptions" ||
     pathname === "/payment-plans" ||
-    pathname === "/reports";
+    pathname === "/reports" ||
+    pathname === "/income";
 
   function closeListsMenu() {
     listsMenuRef.current?.removeAttribute("open");
@@ -66,6 +69,14 @@ function ListsNavDropdown() {
         className="absolute left-0 top-full mt-1 py-1 min-w-[12rem] rounded-lg border border-th-border-bright bg-th-surface shadow-xl z-50"
         role="menu"
       >
+        <NavLink
+          to="/income"
+          role="menuitem"
+          className={listsDropdownItemClass}
+          onClick={closeListsMenu}
+        >
+          Income
+        </NavLink>
         <NavLink
           to="/expenses/list"
           role="menuitem"
@@ -150,6 +161,9 @@ export default function Layout() {
               <ListsNavDropdown />
             </div>
             <div className="hidden lg:flex items-center gap-1 sm:gap-2">
+              <NavLink to="/income" className={linkClass}>
+                Income
+              </NavLink>
               <NavLink to="/expenses/list" className={linkClass}>
                 Expenses
               </NavLink>
@@ -167,7 +181,8 @@ export default function Layout() {
               </NavLink>
             </div>
           </nav>
-          <div className="flex items-center text-sm text-th-subtle justify-end">
+          <div className="flex items-center gap-2 text-sm text-th-subtle justify-end">
+            <NotificationBell />
             <details
               ref={accountMenuRef}
               className="relative group"
@@ -296,6 +311,11 @@ export default function Layout() {
         <PrescriptionReminders />
         <Outlet />
       </main>
+      <footer className="border-t border-th-border-bright/40 py-2 mt-auto shrink-0">
+        <div className="max-w-7xl w-full mx-auto px-4 flex justify-end">
+          <AppVersionStamp className="text-[10px] text-th-muted tabular-nums" />
+        </div>
+      </footer>
     </div>
   );
 }

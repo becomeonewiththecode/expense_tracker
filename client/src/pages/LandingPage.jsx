@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import AppVersionStamp from "../components/AppVersionStamp.jsx";
 import "./LandingPage.css";
 
 export default function LandingPage() {
@@ -63,7 +64,10 @@ export default function LandingPage() {
           </article>
         </section>
 
-        <p className="lp-footer-copy">© 2026 Expense Tracker. All rights reserved.</p>
+        <div className="lp-footer-copy">
+          <p style={{ margin: 0 }}>© 2026 Expense Tracker. All rights reserved.</p>
+          <AppVersionStamp className="block mt-2 text-[0.75rem] opacity-90" />
+        </div>
       </div>
     </div>
   );

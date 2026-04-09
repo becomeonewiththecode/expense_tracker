@@ -12,6 +12,8 @@ The **client** is built with React, Tailwind CSS, Recharts, React Router, and Ax
 - [Renewals](./docs/RENEWALS.md) — Renewal category, renewal kinds, import staging, and the Renewals page
 - [Payment Plans](./docs/PAYMENT_PLANS.md) — Payment plans page, expense sync, and add/edit workflow
 - [Prescriptions](./docs/PRESCRIPTIONS.md) — Prescriptions table, renewal periods, and in-app reminders
+- [Budgeting](./docs/BUDGETING.md) — Monthly budgets, category lines, threshold notifications, variance, and exports (with diagrams)
+- [Income versus spend](./docs/INCOME_VS_SPEND.md) — Cash-flow actuals, recurring run rate vs obligations, projection (with diagrams); [legacy link](./docs/INCOME_AND_MINIMUM_CHECK.md) redirects here
 
 ### Architecture
 
@@ -78,7 +80,8 @@ All paths are under the `/api` prefix. During development, the Vite proxy forwar
 - **Expenses** — CRUD at `/api/expenses` and `/api/expenses/:id`. Frequencies: `once`, `weekly`, `monthly`, `bimonthly` (twice per month), `yearly`. States: `active`, `paused`, `cancelled`. Bimonthly expenses require two payment days (`payment_day` and `payment_day_2`, each 1-30).
 - **Imports** — Upload statements via `POST /api/imports`, review staging rows, commit to expenses
 - **Reports** — Daily, weekly, monthly, yearly, and custom range endpoints under `/api/reports/`
-- **Backup** — `GET /api/backup/export` and `POST /api/backup/restore` (JSON format, versions 1-3)
+- **Backup** — `GET /api/backup/export` and `POST /api/backup/restore` (JSON format, versions 1–4; v4 adds income entries)
+- **API docs** — When signed in (or from **Admin → Swagger**), open **`/api/docs`** for Swagger UI or **`/api/openapi.json`** for the OpenAPI 3 spec (includes backup schemas and **`info`** notes for **`GET /health`** at the site root).
 
 Report responses may be cached in Redis for approximately two minutes when `REDIS_URL` is set.
 

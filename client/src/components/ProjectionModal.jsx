@@ -41,6 +41,8 @@ export default function ProjectionModal({
   projectionScopeKey,
   /** `"expense"` (default), `"prescription"`, or `"payment_plan"` — copy and slice list differ. */
   projectionKind = "expense",
+  /** Optional: annualized income from `/income` rows (same math as expenses). */
+  incomeProjection = null,
 }) {
   const [selectedSlice, setSelectedSlice] = useState(null);
 
@@ -192,6 +194,46 @@ export default function ProjectionModal({
             </div>
           )}
         </div>
+        {projectionKind === "expense" && incomeProjection != null && (
+          <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/25 divide-y divide-th-border/60">
+            <p className="px-4 py-2 text-xs font-medium text-emerald-200/90">
+              Income (logged on Income page — same run-rate rules as expenses)
+            </p>
+            <div className="flex justify-between gap-4 px-4 py-3">
+              <span className="text-sm text-th-subtle">Monthly (run rate)</span>
+              <span className="text-sm font-medium text-emerald-200 tabular-nums">
+                {formatProjectionCurrency(incomeProjection.recurring.monthly)}
+              </span>
+            </div>
+            <div className="flex justify-between gap-4 px-4 py-3">
+              <span className="text-sm text-th-subtle">Yearly (run rate)</span>
+              <span className="text-sm font-medium text-emerald-200 tabular-nums">
+                {formatProjectionCurrency(incomeProjection.recurring.yearly)}
+              </span>
+            </div>
+            {incomeProjection.oneTimeTotal > 0 && (
+              <div className="flex justify-between gap-4 px-4 py-3">
+                <span className="text-sm text-th-subtle">One-time income (total)</span>
+                <span className="text-sm font-medium text-emerald-200/90 tabular-nums">
+                  {formatProjectionCurrency(incomeProjection.oneTimeTotal)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between gap-4 px-4 py-3 bg-th-base/30">
+              <span className="text-sm text-th-subtle">Net monthly (income − expense run rate)</span>
+              <span
+                className={[
+                  "text-sm font-semibold tabular-nums",
+                  incomeProjection.recurring.monthly - recurring.monthly >= 0
+                    ? "text-emerald-300"
+                    : "text-rose-300",
+                ].join(" ")}
+              >
+                {formatProjectionCurrency(incomeProjection.recurring.monthly - recurring.monthly)}
+              </span>
+            </div>
+          </div>
+        )}
         {Array.isArray(pieData) && pieData.length > 0 && (
           <div className="rounded-lg border border-th-border bg-th-base/50 p-3">
             <p className="text-xs text-th-muted mb-1">

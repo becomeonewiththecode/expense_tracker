@@ -1,0 +1,22 @@
+%% How monthly actuals compare to budget (Mermaid source for docs/BUDGETING.md)
+
+flowchart LR
+  subgraph month [Calendar month M]
+    A[Sum expenses spent_at in M]
+    T[budget_periods.total_amount]
+    L[budget_lines per category]
+  end
+
+  A --> V{Compare}
+  T --> V
+  L --> V
+
+  V --> TOT[Total variance remaining percentUsed status]
+  V --> CAT[Per line actual vs budgeted]
+
+  TOT --> UI[Reports sidebar and suggestions]
+  CAT --> UI
+
+  TOT --> TH{Thresholds set?}
+  TH -->|yes| N[Upsert user_notifications]
+  TH -->|no| SKIP[No threshold notification]

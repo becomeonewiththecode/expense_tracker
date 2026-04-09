@@ -7,6 +7,7 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import ExpensesPage from "./pages/ExpensesPage.jsx";
 import YourExpensesPage from "./pages/YourExpensesPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
+import IncomePage from "./pages/IncomePage.jsx";
 import RenewalsPage from "./pages/RenewalsPage.jsx";
 import PrescriptionsPage from "./pages/PrescriptionsPage.jsx";
 import PaymentPlansPage from "./pages/PaymentPlansPage.jsx";
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="prescriptions" element={<PrescriptionsPage />} />
         <Route path="payment-plans" element={<PaymentPlansPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="income" element={<IncomePage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

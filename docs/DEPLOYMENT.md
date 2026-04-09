@@ -2,7 +2,7 @@
 
 ## Production on one host (Docker Compose)
 
-Full stack (Postgres, Redis, API, nginx + built client): from the repo root run **`npm run compose:prod`**. It runs **`node deployment/docker-compose/ensure-env.mjs`**, which creates **`deployment/docker-compose/.env`** from **`.env.example`** if needed and writes a random **`JWT_SECRET`** when the line is empty or too short (stable on disk, gitignored). Edit **`CLIENT_ORIGIN`** (and optional **`OAUTH_*`**) in that **`.env`** as needed.
+Full stack (Postgres, Redis, API, nginx + built client): from the repo root use **`npm run compose:build`** (build images locally via **`docker-compose-build.yml`**) or **`npm run compose:prod`** (pull tagged images via **`docker-compose-prod.yml`**). Both run **`node deployment/docker-compose/ensure-env.mjs`** first, which creates **`deployment/docker-compose/.env`** from **`.env.example`** if needed and writes a random **`JWT_SECRET`** when the line is empty or too short (stable on disk, gitignored). Edit **`CLIENT_ORIGIN`**, optional **`IMAGE_TAG`** / **`DOCKERHUB_USERNAME`** (prod), and optional **`OAUTH_*`** as needed.
 
 You can run **`npm run compose:ensure-env`** alone, or follow the manual **`docker compose …`** flow in [../deployment/docker-compose/README.md](../deployment/docker-compose/README.md) (use **`--env-file deployment/docker-compose/.env`** on the host command so **`HTTP_PORT`** and Postgres-related values interpolate).
 
@@ -33,7 +33,7 @@ Copy `server/.env.example` to `server/.env` and edit values as needed. The defau
 ### JWT_SECRET
 
 - **Local API** (`server/`, not `NODE_ENV=production`): if the secret is missing, shorter than 16 characters, or still a `change-me…` placeholder, **`ensureJwtSecret()`** generates one and writes **`server/.env`**.
-- **Production Docker Compose** does not auto-generate inside the container; use **`deployment/docker-compose/.env`** on the host. **`npm run compose:prod`** runs **`deployment/docker-compose/ensure-env.mjs`** so **`JWT_SECRET`** is filled there automatically when unset.
+- **Full-stack Docker Compose** does not auto-generate **`JWT_SECRET`** inside the container; use **`deployment/docker-compose/.env`** on the host. **`npm run compose:build`** and **`npm run compose:prod`** run **`ensure-env.mjs`** so **`JWT_SECRET`** is filled there automatically when unset.
 - You can also set secrets manually with `openssl rand -base64 32`.
 
 ### CLIENT_ORIGIN
@@ -81,6 +81,8 @@ The API serves interactive docs via Swagger UI:
 
 - **Swagger UI:** `/api/docs`
 - **OpenAPI JSON:** `/api/openapi.json`
+
+The spec’s **`info.description`** documents **`GET /health`** (served at the **site root**, not under **`/api`**). **`components.schemas`** include **`UserBackupExport`**, **`BackupRestoreRequest`**, and **`HealthResponse`**. The **backup** tag summarizes profile export **version** **4** (**`incomeEntries`**). Admin backup endpoints note **version** **2** for full-database and per-user snapshots.
 
 ### OAuth (optional)
 

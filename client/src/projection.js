@@ -52,6 +52,11 @@ export function computeSpendingProjection(items) {
   };
 }
 
+/** Same annualization as expenses; used for logged income rows (`amount` + `frequency`). */
+export function computeIncomeProjection(items) {
+  return computeSpendingProjection(items);
+}
+
 /**
  * Pie slices: recurring annual $ by category, plus optional "One-time" slice.
  * Values are comparable (annual $) for combined view.

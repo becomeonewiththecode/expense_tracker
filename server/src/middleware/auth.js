@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import { verifyUserSessionToken } from "../userSecurity.js";
 
 export function authRequired(req, res, next) {
   const header = req.headers.authorization;
@@ -6,16 +6,8 @@ export function authRequired(req, res, next) {
   if (!token) {
     return res.status(401).json({ error: "Missing token" });
   }
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const raw = payload.sub;
-    const n = typeof raw === "string" ? parseInt(raw, 10) : Number(raw);
-    if (!Number.isInteger(n) || n < 1) {
-      return res.status(401).json({ error: "Invalid token" });
-    }
-    req.userId = n;
-    next();
-  } catch {
-    return res.status(401).json({ error: "Invalid token" });
-  }
+  const result = verifyUserSessionToken(token);
+  if (!result.ok) return res.status(401).json({ error: result.error });
+  req.userId = result.userId;
+  next();
 }

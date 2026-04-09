@@ -232,14 +232,20 @@ export default function ProfilePage() {
         typeof data.paymentPlanCount === "number"
           ? data.paymentPlanCount
           : data.paymentPlans?.length ?? 0;
+      const incCount =
+        typeof data.incomeEntryCount === "number"
+          ? data.incomeEntryCount
+          : data.incomeEntries?.length ?? 0;
       const extra =
-        Number.isFinite(ver) && ver >= 2
-          ? Number.isFinite(ver) && ver >= 3
-            ? ` — ${rCount} renewal row(s) (within expenses), ${pCount} prescription(s), ${ppCount} payment plan row(s)`
-            : ` — ${rCount} renewal row(s) (within expenses), ${pCount} prescription(s)`
-          : rCount > 0
-            ? ` — includes ${rCount} renewal row(s) (category renewal)`
-            : "";
+        Number.isFinite(ver) && ver >= 4
+          ? ` — ${rCount} renewal row(s) (within expenses), ${pCount} prescription(s), ${ppCount} payment plan row(s), ${incCount} income row(s)`
+          : Number.isFinite(ver) && ver >= 2
+            ? Number.isFinite(ver) && ver >= 3
+              ? ` — ${rCount} renewal row(s) (within expenses), ${pCount} prescription(s), ${ppCount} payment plan row(s)`
+              : ` — ${rCount} renewal row(s) (within expenses), ${pCount} prescription(s)`
+            : rCount > 0
+              ? ` — includes ${rCount} renewal row(s) (category renewal)`
+              : "";
       setBackupOk(`Downloaded backup for ${who} (${n} expense row(s)${extra}).`);
     } catch (err) {
       setBackupError(getApiErrorMessage(err, "Download failed"));
@@ -271,13 +277,22 @@ export default function ProfilePage() {
       const v = Number(parsed?.version);
       const wipesPrescriptions = Number.isFinite(v) && v >= 2;
       const wipesPaymentPlans = Number.isFinite(v) && v >= 3;
-      const ok = window.confirm(
-        wipesPrescriptions && wipesPaymentPlans
-          ? "Replace mode deletes all current expenses, prescriptions, and payment plans, then imports the file. This cannot be undone. Continue?"
-          : wipesPrescriptions
-            ? "Replace mode deletes all current expenses and prescriptions, then imports the file. Existing payment plans are left unchanged. This cannot be undone. Continue?"
-            : "Replace mode deletes all current expenses, then imports the file. Existing prescriptions and payment plans are left unchanged. This cannot be undone. Continue?"
-      );
+      const wipesIncome = Number.isFinite(v) && v >= 4;
+      let replaceMsg =
+        "Replace mode deletes all current expenses, then imports the file. Existing prescriptions, payment plans, and income entries are left unchanged. This cannot be undone. Continue?";
+      if (wipesPrescriptions && !wipesPaymentPlans) {
+        replaceMsg =
+          "Replace mode deletes all current expenses and prescriptions, then imports the file. Existing payment plans and income entries are left unchanged. This cannot be undone. Continue?";
+      }
+      if (wipesPrescriptions && wipesPaymentPlans && !wipesIncome) {
+        replaceMsg =
+          "Replace mode deletes all current expenses, prescriptions, and payment plans, then imports the file. Existing income entries are left unchanged. This cannot be undone. Continue?";
+      }
+      if (wipesPrescriptions && wipesPaymentPlans && wipesIncome) {
+        replaceMsg =
+          "Replace mode deletes all current expenses, prescriptions, payment plans, and income entries, then imports the file. This cannot be undone. Continue?";
+      }
+      const ok = window.confirm(replaceMsg);
       if (!ok) return;
     }
 
@@ -315,7 +330,8 @@ export default function ProfilePage() {
         const renewals = Number(b.renewals) || 0;
         const prescriptions = Number(b.prescriptions) || 0;
         const paymentPlans = Number(b.paymentPlans) || 0;
-        return `Expenses: ${expenses} · Renewals: ${renewals} · Prescriptions: ${prescriptions} · Payment plans: ${paymentPlans}`;
+        const incomeEntries = Number(b.incomeEntries) || 0;
+        return `Expenses: ${expenses} · Renewals: ${renewals} · Prescriptions: ${prescriptions} · Payment plans: ${paymentPlans} · Income: ${incomeEntries}`;
       }
 
       try {
@@ -819,7 +835,8 @@ export default function ProfilePage() {
         </div>
         {backupHelpOpen && (
           <p className="text-xs text-th-muted leading-relaxed">
-            Download a JSON backup with all expenses (including renewals), prescriptions, and payment plans. Each backup
+            Download a JSON backup with all expenses (including renewals), prescriptions, payment plans, and income entries
+            (format version 4). Each backup
             includes an <span className="text-th-subtle">account</span> block so you can see which user it belongs to.{" "}
             <span className="text-th-subtle">Append</span> adds to what you have;{" "}
             <span className="text-th-subtle">Replace</span> clears existing rows before importing into the currently

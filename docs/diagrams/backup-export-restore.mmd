@@ -1,0 +1,9 @@
+%% Profile backup export/restore (Mermaid source for ARCHITECTURE_DIAGRAM.md § Backup)
+%% View: https://mermaid.live
+
+flowchart LR
+  PR[ProfilePage] --> EXP["GET /api/backup/export"]
+  EXP --> FILE["JSON v4: expenses prescriptions paymentPlans incomeEntries account"]
+  FILE --> RST["POST /api/backup/restore"]
+  RST --> PG[(PostgreSQL + income_entries + recovery)]
+  PR --> RST

@@ -14,6 +14,9 @@ import {
   STATE_ERROR,
   paymentMetaFromSpentAt,
   tryParsePaymentDay,
+  PAYMENT_DAY_ERROR,
+  PAYMENT_DAY_2_ERROR,
+  BIMONTHLY_PAYMENT_DAYS_REQUIRED,
 } from "../expenseEnums.js";
 import {
   decryptRecoveryStored,
@@ -56,9 +59,9 @@ import {
 import { syncPaymentPlanForExpense } from "../paymentPlanSync.js";
 
 export const BACKUP_FORMAT = "expense-tracker-backup";
-/** v1: expenses only. v2: adds prescriptions. v3: adds payment plans. */
-export const BACKUP_VERSION = 3;
-export const BACKUP_VERSIONS_SUPPORTED = [1, 2, 3];
+/** v1: expenses only. v2: prescriptions. v3: payment plans. v4: income entries. */
+export const BACKUP_VERSION = 4;
+export const BACKUP_VERSIONS_SUPPORTED = [1, 2, 3, 4];
 const MAX_RESTORE_ROWS = 25_000;
 
 export const backupRouter = Router();
@@ -167,6 +170,83 @@ function normalizePaymentPlanRow(row) {
     frequency: row.frequency,
     remaining_payments: row.remaining_payments != null ? Number(row.remaining_payments) : null,
     notes: row.notes ?? "",
+  };
+}
+
+function normalizeIncomeRow(row) {
+  let received_at = row.received_at;
+  if (received_at != null) {
+    const s = String(received_at);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      received_at = s;
+    } else if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      received_at = s.slice(0, 10);
+    } else {
+      const t = Date.parse(s);
+      if (!Number.isNaN(t)) {
+        received_at = new Date(t).toISOString().slice(0, 10);
+      }
+    }
+  }
+  return {
+    amount: row.amount != null ? Number(row.amount) : row.amount,
+    frequency: row.frequency,
+    description: row.description ?? "",
+    received_at,
+    payment_day: row.payment_day != null ? Number(row.payment_day) : null,
+    payment_day_2: row.payment_day_2 != null ? Number(row.payment_day_2) : null,
+  };
+}
+
+/**
+ * @param {unknown} raw
+ * @param {number} index
+ * @returns {{ ok: true, values: object } | { ok: false, error: string }}
+ */
+function validateIncomeForRestore(raw, index) {
+  const label = `Income ${index + 1}`;
+  if (!raw || typeof raw !== "object") {
+    return { ok: false, error: `${label}: invalid object` };
+  }
+  const amount = Number(raw.amount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return { ok: false, error: `${label}: invalid amount` };
+  }
+  const frequency = parseFrequency(raw.frequency);
+  if (!frequency) {
+    return {
+      ok: false,
+      error: `${label}: invalid frequency (use once, weekly, monthly, bimonthly, yearly)`,
+    };
+  }
+  const description = String(raw.description ?? "").slice(0, 500);
+  const received_at = parseDate(raw.received_at);
+  if (!received_at) {
+    return { ok: false, error: `${label}: invalid received_at (use YYYY-MM-DD)` };
+  }
+  let payment_day = null;
+  let payment_day_2 = null;
+  if (frequency === "bimonthly") {
+    const pd1 = tryParsePaymentDay(raw.payment_day);
+    if (!pd1.ok) return { ok: false, error: `${label}: ${PAYMENT_DAY_ERROR}` };
+    const pd2 = tryParsePaymentDay(raw.payment_day_2);
+    if (!pd2.ok) return { ok: false, error: `${label}: ${PAYMENT_DAY_2_ERROR}` };
+    if (pd1.value == null || pd2.value == null) {
+      return { ok: false, error: `${label}: ${BIMONTHLY_PAYMENT_DAYS_REQUIRED}` };
+    }
+    payment_day = pd1.value;
+    payment_day_2 = pd2.value;
+  }
+  return {
+    ok: true,
+    values: {
+      amount,
+      frequency,
+      description,
+      received_at,
+      payment_day,
+      payment_day_2,
+    },
   };
 }
 
@@ -410,6 +490,14 @@ backupRouter.get("/export", authRequired, async (req, res) => {
     );
     const paymentPlans = paymentPlanRows.map(normalizePaymentPlanRow);
 
+    const { rows: incomeRows } = await pool.query(
+      `SELECT amount, frequency, description, received_at, payment_day, payment_day_2
+       FROM income_entries WHERE user_id = $1
+       ORDER BY received_at ASC, id ASC`,
+      [req.userId]
+    );
+    const incomeEntries = incomeRows.map(normalizeIncomeRow);
+
     const accountLabel = email
       ? `${email} (user id ${userId})`
       : `User id ${userId}`;
@@ -432,6 +520,8 @@ backupRouter.get("/export", authRequired, async (req, res) => {
       prescriptions,
       paymentPlanCount: paymentPlans.length,
       paymentPlans,
+      incomeEntryCount: incomeEntries.length,
+      incomeEntries,
     };
     const day = new Date().toISOString().slice(0, 10);
     const fileTag = email
@@ -500,6 +590,18 @@ backupRouter.post(
         });
       }
     }
+    let incomeEntriesRaw = [];
+    if (fileVersion >= 4) {
+      if (body.incomeEntries !== undefined && !Array.isArray(body.incomeEntries)) {
+        return res.status(400).json({ error: "Backup must contain an incomeEntries array (use [] if none)" });
+      }
+      incomeEntriesRaw = Array.isArray(body.incomeEntries) ? body.incomeEntries : [];
+      if (incomeEntriesRaw.length > MAX_RESTORE_ROWS) {
+        return res.status(400).json({
+          error: `Too many income entries in file (max ${MAX_RESTORE_ROWS})`,
+        });
+      }
+    }
 
     const backupEmail = body?.account?.email ?? body?.email ?? null;
     const { rows: meRows } = await pool.query(`SELECT email FROM users WHERE id = $1`, [req.userId]);
@@ -544,11 +646,20 @@ backupRouter.post(
       }
       validatedPaymentPlans.push(result.values);
     }
+    const validatedIncomeEntries = [];
+    for (let i = 0; i < incomeEntriesRaw.length; i++) {
+      const result = validateIncomeForRestore(incomeEntriesRaw[i], i);
+      if (!result.ok) {
+        return res.status(400).json({ error: result.error });
+      }
+      validatedIncomeEntries.push(result.values);
+    }
 
     const restoredRenewals = validated.filter((v) => v.category === "renewal").length;
     const restoredExpenses = validated.length - restoredRenewals;
     const restoredPrescriptions = fileVersion >= 2 ? validatedPrescriptions.length : 0;
     const restoredPaymentPlans = fileVersion >= 3 ? validatedPaymentPlans.length : 0;
+    const restoredIncomeEntries = fileVersion >= 4 ? validatedIncomeEntries.length : 0;
 
     let recoveryPlain = null;
     const rawRecovery = body?.account?.recoveryCode;
@@ -571,6 +682,9 @@ backupRouter.post(
         }
         if (fileVersion >= 3) {
           await client.query(`DELETE FROM payment_plans WHERE user_id = $1`, [req.userId]);
+        }
+        if (fileVersion >= 4) {
+          await client.query(`DELETE FROM income_entries WHERE user_id = $1`, [req.userId]);
         }
       }
       for (const v of validated) {
@@ -642,6 +756,23 @@ backupRouter.post(
           );
         }
       }
+      if (fileVersion >= 4) {
+        for (const inc of validatedIncomeEntries) {
+          await client.query(
+            `INSERT INTO income_entries (user_id, amount, frequency, description, received_at, payment_day, payment_day_2)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              req.userId,
+              inc.amount,
+              inc.frequency,
+              inc.description,
+              inc.received_at,
+              inc.payment_day,
+              inc.payment_day_2,
+            ]
+          );
+        }
+      }
       if (recoveryPlain) {
         await persistRecoveryCodeForUser(client, req.userId, recoveryPlain);
       }
@@ -649,7 +780,8 @@ backupRouter.post(
       const restoredTotal =
         validated.length +
         (fileVersion >= 2 ? validatedPrescriptions.length : 0) +
-        (fileVersion >= 3 ? validatedPaymentPlans.length : 0);
+        (fileVersion >= 3 ? validatedPaymentPlans.length : 0) +
+        (fileVersion >= 4 ? validatedIncomeEntries.length : 0);
       res.json({
         ok: true,
         mode,
@@ -659,6 +791,7 @@ backupRouter.post(
           renewals: restoredRenewals,
           prescriptions: restoredPrescriptions,
           paymentPlans: restoredPaymentPlans,
+          incomeEntries: restoredIncomeEntries,
         },
       });
     } catch (e) {

@@ -1,5 +1,5 @@
-import jwt from "jsonwebtoken";
 import { createOAuthState, consumeOAuthState } from "./oauthState.js";
+import { issueUserSession } from "../userSecurity.js";
 import {
   exchangeGithubCode,
   exchangeGitlabCode,
@@ -59,11 +59,6 @@ function authorizeUrl(provider, { clientId, redirectUri, state }) {
     default:
       return null;
   }
-}
-
-function issueToken(user) {
-  const secret = process.env.JWT_SECRET;
-  return jwt.sign({ sub: user.id, email: user.email }, secret, { expiresIn: "7d" });
 }
 
 function redirectWithToken(res, token) {
@@ -154,7 +149,7 @@ export function registerOAuthRoutes(authRouter) {
       }
 
       const user = await findOrCreateUserFromOAuth(provider, profile.providerUserId, profile.email);
-      const token = issueToken(user);
+      const token = issueUserSession(user);
       return redirectWithToken(res, token);
     } catch (e) {
       console.error("OAuth callback error:", e);
