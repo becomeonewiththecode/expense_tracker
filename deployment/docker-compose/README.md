@@ -1,75 +1,86 @@
 # Deploy with Docker Compose
 
-This directory contains a **production-style** Compose file that runs:
+This directory has **two** full-stack Compose files (Postgres, Redis, API, nginx + static client). They use the **same** `container_name` and volume names — **run only one stack at a time** on a host.
 
-1. **PostgreSQL** — application database (persistent volume).
-2. **Redis** — optional report cache (persistent append-only file).
-3. **api** — Express API built from `deployment/docker/Dockerfile.api`.
-4. **web** — nginx serving the Vite production build from `deployment/docker/Dockerfile.web`, proxying `/api` to **api**.
+| File | Purpose |
+|------|---------|
+| **`docker-compose-build.yml`** | **Build** API and web images from this repo (`Dockerfile.api` / `Dockerfile.web`). For local dev, QA, or testing a branch. |
+| **`docker-compose-prod.yml`** | **Pull** pre-built **`expense-tracker-api`** / **`expense-tracker-web`** images (e.g. from Docker Hub). For production servers after you push tags. |
 
-The root `docker-compose.yml` (repository root) only starts PostgreSQL and Redis for **local development**. This file runs the **full application** in containers.
+The **repository root** [`docker-compose.yml`](../../docker-compose.yml) only starts PostgreSQL and Redis for **host-based** API + Vite development (no app containers).
 
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/) v2.
-- Repository clone with `server/package-lock.json` and `client/package-lock.json` present.
+- Repository clone with `server/package-lock.json` and `client/package-lock.json` present (for **build** compose only).
 
 ## Configure environment
 
-1. **Easiest:** from the repository root run **`npm run compose:prod`**. It runs **`node deployment/docker-compose/ensure-env.mjs`**, which creates **`deployment/docker-compose/.env`** from **`.env.example`** if needed and **generates a random `JWT_SECRET`** when the line is empty or too short. That value is written on your machine (gitignored), so it **stays stable across container rebuilds**.
-
-2. **Manual:** copy the example file and set secrets yourself:
+1. **Easiest:** copy the example and edit:
 
    ```bash
    cp deployment/docker-compose/.env.example deployment/docker-compose/.env
-   openssl rand -base64 32   # paste on JWT_SECRET= line (16+ characters)
    ```
 
-   If **`JWT_SECRET`** is empty or too short, the API **exits on startup** (`NODE_ENV=production`).
+2. Run **`node deployment/docker-compose/ensure-env.mjs`** (or use **`npm run compose:build`** / **`npm run compose:prod`**, which run it first). It creates **`.env`** when missing and **generates a random `JWT_SECRET`** when the line is empty or too short.
 
-   The **`api`** service loads this directory’s **`.env`** via **`env_file`** in `docker-compose.yml`, so **`JWT_SECRET`**, **`CLIENT_ORIGIN`**, and optional **`OAUTH_*`** reach the container reliably. Still use **`--env-file deployment/docker-compose/.env`** (or **`npm run compose:prod`**) so **`HTTP_PORT`** and Postgres-related defaults interpolate for the whole project.
+3. Set **`CLIENT_ORIGIN`** to the URL users open (e.g. `http://localhost:8080` if `HTTP_PORT=8080`).
 
-3. Edit the rest of **`deployment/docker-compose/.env`** as needed:
+4. The **`api`** service loads this directory’s **`.env`** via **`env_file`**, so **`JWT_SECRET`**, **`CLIENT_ORIGIN`**, and optional **`OAUTH_*`** reach the container. Always pass **`--env-file deployment/docker-compose/.env`** on **`docker compose`** (or use the npm scripts below) so **`${HTTP_PORT}`**, **`IMAGE_TAG`**, **`DOCKERHUB_USERNAME`**, and Postgres-related variables interpolate on the **host**.
 
-   - **`CLIENT_ORIGIN`** — Must equal the URL users use to open the app. If you map nginx to port 8080 on your machine, use `http://localhost:8080` (or your hostname and HTTPS URL in production).
-   - **`POSTGRES_PASSWORD`** — Change from the example for any non-local deployment.
-   - **OAuth variables** — Optional; set the `OAUTH_*` pairs for each provider you enable. Register redirect URLs with each provider as:
+### Variables by workflow
 
-     `{CLIENT_ORIGIN}/api/auth/oauth/<provider>/callback`
+**`docker-compose-build.yml`**
 
-     where `<provider>` is `google`, `github`, `gitlab`, or `microsoft`.
+- **`APP_VERSION`** (optional) — Baked into images at build and passed to the API. Default **`dev`**.
 
-## Build and start
+**`docker-compose-prod.yml`**
 
-From the **repository root**, recommended:
+- **`IMAGE_TAG`** — Tag for both **`${DOCKERHUB_USERNAME}/expense-tracker-api`** and **`…/expense-tracker-web`** (must match what you pushed). Default **`1.0`**.
+- **`DOCKERHUB_USERNAME`** — Registry namespace. Default **`maxwayne`**.
+- **`APP_VERSION`** (optional) — API/runtime display string for **`GET /health`** and the UI. If unset, defaults to **`IMAGE_TAG`**, then **`1.0`**.
 
-```bash
-npm run compose:prod
-```
+## npm scripts (from repository root)
 
-That ensures **`JWT_SECRET`** is set, then builds and starts the stack.
+| Script | Compose file | What it does |
+|--------|----------------|----------------|
+| **`npm run compose:build`** | `docker-compose-build.yml` | `ensure-env`, then **`up -d --build`** |
+| **`npm run compose:build:down`** | build | **`down`** |
+| **`npm run compose:build:logs`** | build | **`logs -f`** |
+| **`npm run compose:build:ps`** | build | **`ps`** |
+| **`npm run compose:prod`** | `docker-compose-prod.yml` | `ensure-env`, then **`up -d`** (no build) |
+| **`npm run compose:prod:pull`** | prod | **`pull`** (fetch newer images) |
+| **`npm run compose:prod:down`** | prod | **`down`** |
+| **`npm run compose:prod:logs`** | prod | **`logs -f`** |
+| **`npm run compose:prod:ps`** | prod | **`ps`** |
+| **`npm run compose:ensure-env`** | — | Only **`ensure-env.mjs`** |
 
-If you invoke **docker compose** directly, run **`node deployment/docker-compose/ensure-env.mjs`** first (or create **`.env`** and set **`JWT_SECRET`** yourself):
+## Manual `docker compose`
+
+**Build stack (from repo root):**
 
 ```bash
 node deployment/docker-compose/ensure-env.mjs
-docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build
+docker compose -f deployment/docker-compose/docker-compose-build.yml --env-file deployment/docker-compose/.env up -d --build
 ```
 
-Wait until **postgres** is healthy and **api** has started (first boot runs database migrations). Then open **`CLIENT_ORIGIN`** in a browser (for example `http://localhost:8080` if `HTTP_PORT=8080`).
+**Production images:**
 
-Services use **`restart: unless-stopped`** so they come back after a machine reboot (when Docker is enabled on boot).
+```bash
+node deployment/docker-compose/ensure-env.mjs
+docker compose -f deployment/docker-compose/docker-compose-prod.yml --env-file deployment/docker-compose/.env pull
+docker compose -f deployment/docker-compose/docker-compose-prod.yml --env-file deployment/docker-compose/.env up -d
+```
 
-### Manual `docker compose` (without `npm run compose:prod`)
+Wait until **postgres** is healthy and **api** has started (first boot runs migrations). Then open **`CLIENT_ORIGIN`**.
 
-- **`--env-file deployment/docker-compose/.env`** — Pass this on the **host** `docker compose` command so Compose can substitute **`${HTTP_PORT}`**, **`${POSTGRES_USER}`**, **`${POSTGRES_PASSWORD}`**, and **`${POSTGRES_DB}`** in `docker-compose.yml`. Without it, built-in defaults still apply (for example port **8080**), but values you set **only** in that `.env` file may not affect the published port or interpolated URLs. The **`api`** service’s **`env_file`** loads **`JWT_SECRET`** / **`CLIENT_ORIGIN`** into the container; that is separate from host-side interpolation.
-- **`ensure-env` —** **`npm run compose:prod`** runs **`node deployment/docker-compose/ensure-env.mjs`** first. If you call **`docker compose`** yourself, run that script first (or ensure **`.env`** exists with a valid **`JWT_SECRET`**) so behavior matches the npm workflow.
-- **Compose file path —** Either **`-f deployment/docker-compose/docker-compose.yml`** or **`-f deployment/docker-compose`** (directory; Compose discovers the YAML) is fine.
-- **Redeploy vs full teardown —** For routine image rebuilds or compose edits, **`docker compose … up -d --build`** recreates services whose configuration changed; you do **not** need **`down`** every time. Use **`down`** (or **`npm run compose:prod:down`**) when you want to stop and remove the stack, clear conflicting containers, or after a one-time change such as introducing fixed **`container_name`** values if old containers are still present.
+### Notes
+
+- **`--env-file`** is required for host-side substitution (ports, image tags, etc.). **`env_file`** inside the YAML is separate (secrets inside the **api** container).
+- For routine **build** stack updates, **`up -d --build`** is enough; use **`down`** when you want to remove containers.
+- **`down`** keeps volumes. To remove volumes: add **`-v`** (destructive).
 
 ## Container names
-
-Each service sets **`container_name`** with the **`expense-tracker-`** prefix so names are stable in **`docker ps`** and **`docker logs`**:
 
 | Service  | Container name             |
 |----------|----------------------------|
@@ -78,35 +89,28 @@ Each service sets **`container_name`** with the **`expense-tracker-`** prefix so
 | api      | `expense-tracker-api`      |
 | web      | `expense-tracker-web`      |
 
-Example: **`docker logs -f expense-tracker-api`**. Fixed names imply a single instance per service; **`docker compose up --scale`** cannot add extra replicas for a service that uses **`container_name`**.
-
 ## Verify
 
 - **Web:** Open the app URL; you should see the login page.
-- **API health:** `curl -sS http://localhost:8080/health` should return JSON with `"ok": true` (replace port with `HTTP_PORT`).
+- **API health:** `curl -sS http://localhost:8080/health` (adjust **`HTTP_PORT`**).
 
 ## Logs and stop
 
-```bash
-docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env logs -f api
-docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env down
-# or: npm run compose:prod:down
-```
-
-`down` keeps volumes (`pgdata`, `redisdata`). To remove volumes as well:
+Replace **`FILE`** with **`docker-compose-build.yml`** or **`docker-compose-prod.yml`**:
 
 ```bash
-docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env down -v
+docker compose -f deployment/docker-compose/FILE --env-file deployment/docker-compose/.env logs -f api
+docker compose -f deployment/docker-compose/FILE --env-file deployment/docker-compose/.env down
 ```
 
 ## HTTPS and a real domain
 
-Compose publishes HTTP on **`HTTP_PORT`**. For HTTPS, put a reverse proxy (Traefik, Caddy, nginx, or a cloud load balancer) in front with TLS certificates, and set **`CLIENT_ORIGIN`** to `https://your-domain.example`. Update OAuth redirect URIs in each identity provider to use `https`.
+Publish HTTP on **`HTTP_PORT`**. For HTTPS, terminate TLS in front (Traefik, Caddy, nginx, or a cloud load balancer) and set **`CLIENT_ORIGIN`** to `https://your-domain.example`. Update OAuth redirect URIs accordingly.
 
 ## Troubleshooting
 
-- **API exits or restarts:** Check `docker compose ... logs api`. Common causes: invalid **`DATABASE_URL`** (wait for postgres healthy), or **missing / weak `JWT_SECRET`** (the API refuses to start in production without it). Run **`npm run compose:ensure-env`** or **`npm run compose:prod`** to regenerate **`JWT_SECRET`** in **`deployment/docker-compose/.env`** when the line is empty.
-- **“Invalid token” when choosing Continue session** after rebuilding containers: the browser still has an old JWT signed with a **previous** secret. Set a **fixed** `JWT_SECRET` in `deployment/docker-compose/.env`, redeploy, then **sign out and sign in again** (or clear the site’s storage). Refresh only works if the token signature matches the server’s current secret.
-- **502 on `/api`:** Ensure the **api** service is running and nginx can resolve the hostname **`api`** on the Compose network (default service name).
+- **API exits:** Check **`docker compose … logs api`**. Common causes: invalid **`DATABASE_URL`**, weak **`JWT_SECRET`** in **`NODE_ENV=production`**. Run **`npm run compose:ensure-env`**.
+- **Prod stack pulls wrong version:** Set **`IMAGE_TAG`** (and **`DOCKERHUB_USERNAME`**) in **`.env`** to match Docker Hub.
+- **502 on `/api`:** Ensure **api** is running and nginx resolves hostname **`api`** on the Compose network.
 
 More context: [deployment/README.md](../README.md) and the root [README.md](../../README.md).

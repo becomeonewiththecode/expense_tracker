@@ -9,6 +9,9 @@ import { authRouter } from "./routes/auth.js";
 import { expensesRouter } from "./routes/expenses.js";
 import { importsRouter } from "./routes/imports.js";
 import { reportsRouter } from "./routes/reports.js";
+import { budgetsRouter } from "./routes/budgets.js";
+import { notificationsRouter } from "./routes/notifications.js";
+import { incomeRouter } from "./routes/income.js";
 import { backupRouter } from "./routes/backup.js";
 import { prescriptionsRouter } from "./routes/prescriptions.js";
 import { paymentPlansRouter } from "./routes/paymentPlans.js";
@@ -16,6 +19,7 @@ import { adminRouter } from "./routes/admin.js";
 import swaggerUi from "swagger-ui-express";
 import { openApiSpec } from "./openapi.js";
 import { startMonthlySummaryJob } from "./jobs/monthlySummary.js";
+import { getAppVersion } from "./appVersion.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsRoot = path.join(__dirname, "..", "uploads");
@@ -30,7 +34,7 @@ app.use(
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, version: getAppVersion() });
 });
 
 app.get("/api/openapi.json", (_req, res) => {
@@ -44,6 +48,9 @@ app.use("/api/auth", authRouter);
 app.use("/api/expenses", expensesRouter);
 app.use("/api/imports", importsRouter);
 app.use("/api/reports", reportsRouter);
+app.use("/api/budgets", budgetsRouter);
+app.use("/api/notifications", notificationsRouter);
+app.use("/api/income", incomeRouter);
 app.use("/api/backup", backupRouter);
 app.use("/api/prescriptions", prescriptionsRouter);
 app.use("/api/payment-plans", paymentPlansRouter);

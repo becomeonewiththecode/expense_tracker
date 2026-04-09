@@ -16,11 +16,13 @@ You can:
 - Open **Lists** → **Payment Plan** to track planned payments with category, schedule, priority, account, method, institution, tag, frequency, optional **# of payments** (remaining before paid off), amount, and notes; when **# of payments** hits **0**, the plan becomes **Cancelled (paid in full)** and is **hidden** from the table until you enable **Show cancelled (paid in full)**  
 - **Delete** expenses from the list  
 - **Lists** → **Reports** shows charts: daily, weekly, monthly, yearly, or a custom date range  
+- Open **Income** (first list link on wide layouts) to add, edit, and delete income entries, see **monthly cash flow** context on Reports, and the **recurring run-rate check** that compares income to combined obligations (expenses—including renewals—prescriptions, payment plans); details and diagrams in [Income versus spend](./INCOME_VS_SPEND.md)  
+- Use **Reports → Monthly** for **monthly budgets**, category lines, variance, threshold alerts, and CSV/PDF exports; see [Budgeting](./BUDGETING.md)  
 - See **stored monthly summaries** (totals computed by a background job on a schedule)
 
 The interface is **responsive**: it works on phones, tablets, and desktops.
 
-**Signed-in header navigation:** After **Import**, the five list screens (**Expenses**, **Renewals**, **Prescriptions**, **Payment Plan**, **Reports**) are available from the same routes everywhere. On **narrow** viewports (below the Tailwind **`lg`** breakpoint, 1024px) they are grouped under a **Lists** ▾ menu; on **wide** viewports (**`lg`** and up—typical laptops and desktops) they appear as **separate links** in the bar so you do not need the dropdown.
+**Signed-in header navigation:** After **Import**, the list screens (**Income**, **Expenses**, **Renewals**, **Prescriptions**, **Payment Plan**, **Reports**) are available from the same routes everywhere. On **narrow** viewports (below the Tailwind **`lg`** breakpoint, 1024px) they are grouped under a **Lists** ▾ menu; on **wide** viewports (**`lg`** and up—typical laptops and desktops) they appear as **separate links** in the bar so you do not need the dropdown.
 
 ---
 
@@ -48,11 +50,16 @@ If **port 4000** is already used by another program, the user interface may fail
 
 ### Production on one machine (Docker Compose)
 
-For a **built** client, API, PostgreSQL, and Redis in containers (nginx serves **`dist/`** and proxies **`/api`** and **`/health`** to the API):
+For a **built** client, API, PostgreSQL, and Redis in containers (nginx serves **`dist/`** and proxies **`/api`** and **`/health`** to the API), there are **two** Compose files in **`deployment/docker-compose/`** (use **one** at a time; same container names):
 
-1. From the **repository root**, run **`npm run compose:prod`**. It runs **`node deployment/docker-compose/ensure-env.mjs`**, which creates **`deployment/docker-compose/.env`** from **`.env.example`** if needed and fills a random **`JWT_SECRET`** when the line is empty or too short (written on your machine, gitignored—**keep the same file** across rebuilds so sessions and **Continue session** keep working).  
-2. Edit **`deployment/docker-compose/.env`**: set **`CLIENT_ORIGIN`** to the URL users open (for example `http://localhost:8080` if **`HTTP_PORT=8080`**). Adjust **`HTTP_PORT`**, **`POSTGRES_PASSWORD`**, and optional **`OAUTH_*`** as needed. To set **`JWT_SECRET`** yourself instead, use `openssl rand -base64 32` before the first `up`.  
-3. **Manual Compose** (without npm): run **`node deployment/docker-compose/ensure-env.mjs`**, then **`docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build`** (details in [deployment/docker-compose/README.md](../deployment/docker-compose/README.md)). The **api** service loads that **`.env`** via **`env_file`** so secrets are not wiped by empty Compose substitution.
+- **`npm run compose:build`** — Builds **api** and **web** images from this repo (**`docker-compose-build.yml`**, **`up -d --build`**). Use for local testing of containerized builds.  
+- **`npm run compose:prod`** — Pulls pre-built images (**`docker-compose-prod.yml`**, e.g. Docker Hub). Set **`IMAGE_TAG`** (and optional **`DOCKERHUB_USERNAME`**) in **`deployment/docker-compose/.env`** to match the tags you pushed. Run **`npm run compose:prod:pull`** before **`compose:prod`** when you want newer images.
+
+Both commands run **`node deployment/docker-compose/ensure-env.mjs`** first, which creates **`deployment/docker-compose/.env`** from **`.env.example`** if needed and fills a random **`JWT_SECRET`** when the line is empty or too short (gitignored—**keep the same file** across rebuilds so sessions remain valid until normal expiry).
+
+Edit **`deployment/docker-compose/.env`**: set **`CLIENT_ORIGIN`** to the URL users open (for example `http://localhost:8080` if **`HTTP_PORT=8080`**). Adjust **`HTTP_PORT`**, **`POSTGRES_PASSWORD`**, optional **`OAUTH_*`**, and (for prod images) **`IMAGE_TAG`**. To set **`JWT_SECRET`** yourself, use `openssl rand -base64 32` before the first `up`.
+
+**Manual Compose:** run **`ensure-env.mjs`**, then **`docker compose -f deployment/docker-compose/docker-compose-build.yml`** or **`docker-compose-prod.yml`** with **`--env-file deployment/docker-compose/.env`** (see [deployment/docker-compose/README.md](../deployment/docker-compose/README.md)). The **api** service loads that **`.env`** via **`env_file`** so secrets are not wiped by empty Compose substitution.
 
 Verify with **`curl -sS http://localhost:8080/health`** (adjust the port if you changed **`HTTP_PORT`**). OAuth redirect URIs must use the same origin as **`CLIENT_ORIGIN`**, for example `http://localhost:8080/api/auth/oauth/google/callback`.
 
@@ -66,6 +73,13 @@ Verify with **`curl -sS http://localhost:8080/health`** (adjust the port if you 
 4. After success you are signed in and taken to **Expenses** if you already have saved expenses, otherwise to **Import** (add or import).  
 
 To sign in later, use **Sign in** from the landing page or open `/login` directly with the same email and password.
+
+### User two-factor authentication (2FA)
+
+- Password sign-in now includes a second step with an authenticator app code.
+- First password sign-in for an account without 2FA opens **2FA setup** with a QR code and manual key, then you enter the 6-digit code to activate.
+- After setup, future password sign-ins require **Verify and sign in** with the current 6-digit code.
+- If the 2FA setup or verify challenge expires, start sign-in again.
 
 **Forgot your password?** If you previously generated a **recovery code** under **Profile**, use **Forgot password?** on the sign-in page (`/recover`). Paste the full code and choose a new password. **No email is sent.** Afterward, sign in with your **email** and the **new** password. If you use **single sign-on only** and have not set a password, sign in with your provider first, then open **Profile** to add a password and optionally create a recovery code.
 
@@ -83,7 +97,7 @@ For example, with `CLIENT_ORIGIN=http://localhost:5173` and Google, the redirect
 
 If you already registered with **email and password**, signing in with single sign-on using the **same email** links to the same account when the provider returns that email address.
 
-**Sign out** clears your session in the browser (you will need to sign in again to use **Import** and the list screens). If your **JSON Web Token** has expired but is still within the server’s refresh window, you may be offered **Continue session** instead of only seeing errors—see [Session and security](#session-and-security).
+**Sign out** clears your session in the browser (you will need to sign in again to use **Import** and the list screens).
 
 ---
 
@@ -304,7 +318,7 @@ The header shows **Import** and the five list destinations (**Expenses**, **Rene
 
 **Auto-hidden cancelled recurring items:** Under **Appearance**, a read-only list shows cancelled recurring expenses (including renewals and payment-plan-linked rows) that **Upcoming expenses** has auto-hidden after renewal—see the renewal reminders section above.
 
-**Backup and restore:** Download a **JSON** file (`expense-tracker-backup` format). Current exports use **`version`** **`3`**, which includes **`expenses`**, **`prescriptions`**, and **`paymentPlans`** (with **`renewalCount`**, **`prescriptionCount`**, **`paymentPlanCount`**). Older **`version`** **`1`** / **`2`** files still restore. **Renewals** are normal **`expenses`** with **`category`** **`renewal`** inside the **`expenses`** array. Each expense includes **`state`**: **`active`**, **`paused`**, or **`cancelled`** (matching the database and the app UI—**re-download** after a server update if an old file showed every row as **`active`** when some were cancelled). Each prescription includes the same **`state`** values. The file includes an **`account`** object (**`userId`**, **`email`**, and a human-readable **`label`**) so you can see which user the backup belongs to—downloads also use the email in the **filename**. **`account.hasRecoveryCode`** indicates whether a recovery code is on file; **`account.recoveryCode`** may contain the actual code (so you can restore password recovery after moving servers). Codes created before the server stored an exportable copy will show **`hasRecoveryCode`** without **`recoveryCode`** until you **replace** the code once. The top-level **`email`** field is still present for compatibility. Each expense object includes **`spent_at`**, **`frequency`**, **`state`**, category, institution, amount, description, optional **`website`** and **`renewal_kind`** when applicable, and denormalized **`payment_day`** / **`payment_month`**. Older backup files without **`state`** still restore successfully (**active** is assumed). **Restore** loads into the **currently signed-in** account. If the backup’s email does not match your session, the app asks you to confirm before importing. **Append** adds imported rows. **Replace** clears and reloads from the file according to **`version`**: **`1`**—**expenses** only; **`2`**—**expenses** and **prescriptions**; **`3`**—also **payment plans**. Each restore is limited to **25,000** rows per array and a **15 MB** request body. Store backup files securely. If **Download backup** or **Restore** reports **Invalid token**, try **Continue session** if a prompt appears; otherwise **sign out** and **sign in** again (or the server’s signing secret may have changed).
+**Backup and restore:** Download a **JSON** file (`expense-tracker-backup` format). Current exports use **`version`** **`4`**, which includes **`expenses`**, **`prescriptions`**, **`paymentPlans`**, and **`incomeEntries`** (with matching **`…Count`** fields). Older **`version`** **`1`**–**`3`** files still restore. **Renewals** are normal **`expenses`** with **`category`** **`renewal`** inside the **`expenses`** array. Each expense includes **`state`**: **`active`**, **`paused`**, or **`cancelled`** (matching the database and the app UI—**re-download** after a server update if an old file showed every row as **`active`** when some were cancelled). Each prescription includes the same **`state`** values. The file includes an **`account`** object (**`userId`**, **`email`**, and a human-readable **`label`**) so you can see which user the backup belongs to—downloads also use the email in the **filename**. **`account.hasRecoveryCode`** indicates whether a recovery code is on file; **`account.recoveryCode`** may contain the actual code (so you can restore password recovery after moving servers). Codes created before the server stored an exportable copy will show **`hasRecoveryCode`** without **`recoveryCode`** until you **replace** the code once. The top-level **`email`** field is still present for compatibility. Each expense object includes **`spent_at`**, **`frequency`**, **`state`**, category, institution, amount, description, optional **`website`** and **`renewal_kind`** when applicable, and denormalized **`payment_day`** / **`payment_month`**. Older backup files without **`state`** still restore successfully (**active** is assumed). **Restore** loads into the **currently signed-in** account. If the backup’s email does not match your session, the app asks you to confirm before importing. **Append** adds imported rows. **Replace** clears and reloads from the file according to **`version`**: **`1`**—**expenses** only; **`2`**—**expenses** and **prescriptions**; **`3`**—also **payment plans**; **`4`**—also **income entries**. Each restore is limited to **25,000** rows per array and a **15 MB** request body. Store backup files securely. If **Download backup** or **Restore** reports an auth/session error, sign in again (or the server’s signing secret may have changed).
 
 ---
 
@@ -335,7 +349,10 @@ The application includes an **admin site** at **`/admin`** for operators. It is 
 
 ## Session and security
 
-- After **email and password** login or **single sign-on** completion, the application stores a **JSON Web Token** in the browser (`localStorage`) and sends it on API requests. The session model is the same for both login types. Tokens **expire** after a period configured on the server; when an API call fails because the token is no longer valid, you may see a prompt asking whether to **continue the session**. Choosing **Continue session** requests a **new token** without leaving the page (if your old token is still within the allowed refresh window **and** the server still uses the same **`JWT_SECRET`** that signed it). For **Docker Compose**, **`npm run compose:prod`** seeds **`JWT_SECRET`** into **`deployment/docker-compose/.env`** when missing; do not delete that file between rebuilds unless you intend to invalidate sessions. If you **rotate** the secret or **Continue session** returns **Invalid token**, **sign out** and sign in again.  
+- After **email and password** 2FA verification (or **single sign-on**) the application stores a **JSON Web Token** in the browser (`localStorage`) and sends it on API requests.
+- User sessions end after **15 minutes of inactivity**. When this happens, protected requests fail and the browser redirects to **`/login?expired=1`**.
+- If the token signature is invalid (for example after rotating **`JWT_SECRET`**), the app also ends the browser session and sends you to sign in again.
+- For **Docker Compose** (**`npm run compose:build`** or **`compose:prod`**), **`ensure-env.mjs`** seeds **`JWT_SECRET`** into **`deployment/docker-compose/.env`** when missing; keep that file stable across rebuilds unless you intentionally want to invalidate sessions.
 - **Password accounts:** do not share your password; choose a strong password for your account.  
 - **Single sign-on accounts:** sign-in is delegated to Google, GitHub, GitLab, or Microsoft; use that provider’s account security settings (two-factor authentication, and so on) as appropriate.  
 - On a shared computer, **sign out** when finished (this clears the token from this browser).  

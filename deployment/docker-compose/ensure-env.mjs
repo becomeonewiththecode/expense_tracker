@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Ensures deployment/docker-compose/.env exists and has a strong JWT_SECRET.
- * Run automatically before `npm run compose:prod`, or manually:
+ * Run automatically before `npm run compose:build` / `npm run compose:prod`, or manually:
  *   node deployment/docker-compose/ensure-env.mjs
  *
  * Writes to the host .env file (gitignored) so the secret survives container rebuilds.

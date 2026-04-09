@@ -7,7 +7,7 @@ This directory holds **Dockerfiles** used to build container images for Expense 
 | **`Dockerfile.api`** | Multi-stage build: install production dependencies and run the Express API (`server/`). |
 | **`Dockerfile.web`** | Multi-stage build: run `npm run build` for the Vite client, then copy static assets into **nginx** with an `/api` (and `/health`) proxy to the API service. |
 
-The **production** Compose file at [`../docker-compose/docker-compose.yml`](../docker-compose/docker-compose.yml) builds **api** from `Dockerfile.api` and **web** from `Dockerfile.web`.
+**Local builds:** [`../docker-compose/docker-compose-build.yml`](../docker-compose/docker-compose-build.yml) builds **api** from `Dockerfile.api` and **web** from `Dockerfile.web`. **Registry images:** [`docker-compose-prod.yml`](../docker-compose/docker-compose-prod.yml) pulls pre-tagged images (see [docker-compose/README.md](../docker-compose/README.md)).
 
 For a higher-level map of deployment assets, see [`../README.md`](../README.md).
 
@@ -43,40 +43,37 @@ Install PostgreSQL and Redis locally, point **`DATABASE_URL`** / **`REDIS_URL`**
 You can verify the production Dockerfiles without starting the full stack:
 
 ```bash
-docker build -f deployment/docker/Dockerfile.api -t expense-tracker-api:local .
-docker build -f deployment/docker/Dockerfile.web -t expense-tracker-web:local .
+docker build -f deployment/docker/Dockerfile.api --build-arg APP_VERSION=local -t expense-tracker-api:local .
+docker build -f deployment/docker/Dockerfile.web --build-arg APP_VERSION=local -t expense-tracker-web:local .
 ```
+
+Omit **`--build-arg APP_VERSION=...`** to use the default (**`dev`**). The value is exposed as **`GET /health`**’s **`version`** field on the API and inlined into the static web bundle (**`VITE_APP_VERSION`**).
 
 You still need a running API URL and built client configuration for the web image to be useful on its own; the usual path is the Compose stack below.
 
 ---
 
-## Production environment
+## Full stack in Docker
 
-Run the **full stack** (Postgres, Redis, API container built from **`Dockerfile.api`**, nginx + static client from **`Dockerfile.web`**) with **Docker Compose**.
-
-### Recommended (repository root)
+### Build images locally (dev / QA)
 
 ```bash
-npm run compose:prod
+npm run compose:build
 ```
 
-This runs **`deployment/docker-compose/ensure-env.mjs`** (creates **`deployment/docker-compose/.env`** and bootstraps **`JWT_SECRET`** when needed), then builds and starts the stack defined in **`deployment/docker-compose/docker-compose.yml`**.
-
-Other helpers from the repo root:
+Runs **`ensure-env.mjs`**, then **`docker-compose-build.yml`** with **`up -d --build`**.
 
 | Script | Purpose |
 |--------|---------|
-| `npm run compose:ensure-env` | Only run the env bootstrap (no `docker compose up`). |
-| `npm run compose:prod:down` | Stop the stack (volumes kept by default). |
-| `npm run compose:prod:logs` | Follow logs. |
-| `npm run compose:prod:ps` | Show service status. |
+| `npm run compose:ensure-env` | Only the env bootstrap (no `docker compose up`). |
+| `npm run compose:build:down` / **`:logs`** / **`:ps`** | Match **`docker-compose-build.yml`**. |
+| `npm run compose:prod` / **`:pull`** / **`:down`** / … | Match **`docker-compose-prod.yml`** (registry images). See [docker-compose/README.md](../docker-compose/README.md). |
 
-### Manual Compose
+### Manual Compose (build stack)
 
 ```bash
 node deployment/docker-compose/ensure-env.mjs
-docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build
+docker compose -f deployment/docker-compose/docker-compose-build.yml --env-file deployment/docker-compose/.env up -d --build
 ```
 
 Set **`CLIENT_ORIGIN`** in **`deployment/docker-compose/.env`** to the URL users use (for example `http://localhost:8080` if **`HTTP_PORT=8080`**). In production behind TLS, use `https://your-domain`.

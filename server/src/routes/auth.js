@@ -4,11 +4,21 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import multer from "multer";
 import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
 import { registerOAuthRoutes } from "../oauth/oauthRoutes.js";
+import {
+  consumeUserChallenge,
+  createUserChallenge,
+  generateTotpSecret,
+  getUserChallenge,
+  issueUserSession,
+  revokeUserSession,
+  setUserChallengeSetupSecret,
+  verifyTotpCode,
+  verifyUserSessionToken,
+} from "../userSecurity.js";
 import {
   recoveryLookupFromCode,
   persistRecoveryCodeForUser,
@@ -61,11 +71,6 @@ function checkRecoverRateLimit(ip) {
   return true;
 }
 
-function signUserToken(user) {
-  const secret = process.env.JWT_SECRET;
-  return jwt.sign({ sub: user.id, email: user.email }, secret, { expiresIn: "7d" });
-}
-
 registerOAuthRoutes(authRouter);
 
 /** One-time random code; store hash + derived lookup + ciphertext for backup export. User must save the code—no email is sent. */
@@ -91,7 +96,7 @@ authRouter.delete("/recovery-code", authRequired, async (req, res) => {
     );
     const { rows } = await pool.query(
       `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
-        (recovery_lookup IS NOT NULL) AS has_recovery_code
+        (recovery_lookup IS NOT NULL) AS has_recovery_code, (totp_secret IS NOT NULL) AS has_2fa
       FROM users WHERE id = $1`,
       [req.userId]
     );
@@ -175,7 +180,7 @@ authRouter.patch("/profile", authRequired, async (req, res) => {
 
   try {
     const { rows: existing } = await pool.query(
-      `SELECT id, email, password_hash, avatar_url FROM users WHERE id = $1`,
+      `SELECT id, email, password_hash, avatar_url, totp_secret FROM users WHERE id = $1`,
       [req.userId]
     );
     const user = existing[0];
@@ -223,12 +228,12 @@ authRouter.patch("/profile", authRequired, async (req, res) => {
 
     const { rows: updated } = await pool.query(
       `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
-        (recovery_lookup IS NOT NULL) AS has_recovery_code
+        (recovery_lookup IS NOT NULL) AS has_recovery_code, (totp_secret IS NOT NULL) AS has_2fa
       FROM users WHERE id = $1`,
       [req.userId]
     );
     const u = updated[0];
-    const token = signUserToken(u);
+    const token = issueUserSession(u);
     res.json({ user: u, token });
   } catch (e) {
     console.error("auth/profile:", e);
@@ -269,7 +274,7 @@ authRouter.post(
       await pool.query(`UPDATE users SET avatar_url = $1 WHERE id = $2`, [avatar_url, req.userId]);
       const { rows } = await pool.query(
         `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
-          (recovery_lookup IS NOT NULL) AS has_recovery_code
+          (recovery_lookup IS NOT NULL) AS has_recovery_code, (totp_secret IS NOT NULL) AS has_2fa
         FROM users WHERE id = $1`,
         [req.userId]
       );
@@ -287,7 +292,7 @@ authRouter.delete("/avatar", authRequired, async (req, res) => {
     await pool.query(`UPDATE users SET avatar_url = NULL WHERE id = $1`, [req.userId]);
     const { rows } = await pool.query(
       `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
-        (recovery_lookup IS NOT NULL) AS has_recovery_code
+        (recovery_lookup IS NOT NULL) AS has_recovery_code, (totp_secret IS NOT NULL) AS has_2fa
       FROM users WHERE id = $1`,
       [req.userId]
     );
@@ -336,9 +341,9 @@ authRouter.post("/register", async (req, res) => {
       [email, hash]
     );
     const user = rows[0];
-    const token = signUserToken(user);
+    const token = issueUserSession(user);
     res.status(201).json({
-      user: { id: user.id, email: user.email, avatar_url: user.avatar_url, has_password: true },
+      user: { id: user.id, email: user.email, avatar_url: user.avatar_url, has_password: true, has_2fa: false },
       token,
     });
   } catch (e) {
@@ -370,7 +375,7 @@ authRouter.post("/login", async (req, res) => {
   let rows;
   try {
     const result = await pool.query(
-      `SELECT id, email, password_hash, avatar_url FROM users WHERE email = $1`,
+      `SELECT id, email, password_hash, avatar_url, totp_secret FROM users WHERE email = $1`,
       [email]
     );
     rows = result.rows;
@@ -396,16 +401,102 @@ authRouter.post("/login", async (req, res) => {
   if (!(await bcrypt.compare(password, user.password_hash))) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
-  const token = signUserToken(user);
+  const challengeId = createUserChallenge(user.id);
+  const needs2faSetup = !String(user.totp_secret || "").trim();
+  let setup = null;
+  if (needs2faSetup) {
+    const setupSecret = generateTotpSecret();
+    setUserChallengeSetupSecret(challengeId, setupSecret);
+    const issuer = encodeURIComponent("Expense Tracker");
+    const account = encodeURIComponent(user.email);
+    setup = {
+      manualKey: setupSecret,
+      otpauthUrl: `otpauth://totp/${issuer}:${account}?secret=${setupSecret}&issuer=${issuer}&algorithm=SHA1&digits=6&period=30`,
+    };
+  }
   res.json({
     user: {
       id: user.id,
       email: user.email,
       avatar_url: user.avatar_url,
       has_password: Boolean(user.password_hash),
+      has_2fa: Boolean(user.totp_secret),
     },
-    token,
+    challengeId,
+    requires2fa: !needs2faSetup,
+    needs2faSetup,
+    setup,
   });
+});
+
+authRouter.post("/verify-2fa", async (req, res) => {
+  const challengeId = String(req.body?.challengeId || "");
+  const code = String(req.body?.code || "");
+  if (!challengeId || !code) return res.status(400).json({ error: "challengeId and code are required" });
+  const challenge = consumeUserChallenge(challengeId);
+  if (!challenge) return res.status(401).json({ error: "2FA challenge expired" });
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, email, avatar_url, password_hash, recovery_lookup, totp_secret FROM users WHERE id = $1`,
+      [challenge.userId]
+    );
+    const user = rows[0];
+    if (!user) return res.status(401).json({ error: "Invalid challenge" });
+    if (!verifyTotpCode(user.totp_secret, code)) return res.status(401).json({ error: "Invalid 2FA code" });
+    const token = issueUserSession(user);
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        avatar_url: user.avatar_url,
+        has_password: Boolean(user.password_hash),
+        has_recovery_code: Boolean(user.recovery_lookup),
+        has_2fa: Boolean(user.totp_secret),
+      },
+    });
+  } catch (e) {
+    console.error("auth/verify-2fa:", e);
+    res.status(500).json({ error: "Could not verify 2FA" });
+  }
+});
+
+authRouter.post("/setup-2fa/verify", async (req, res) => {
+  const challengeId = String(req.body?.challengeId || "");
+  const code = String(req.body?.code || "");
+  if (!challengeId || !code) return res.status(400).json({ error: "challengeId and code are required" });
+  const challenge = getUserChallenge(challengeId);
+  if (!challenge) return res.status(401).json({ error: "2FA setup challenge expired" });
+  if (!challenge.setupSecret) return res.status(400).json({ error: "No pending 2FA setup for this challenge" });
+  if (!verifyTotpCode(challenge.setupSecret, code)) {
+    return res.status(401).json({ error: "Invalid 2FA code for setup" });
+  }
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users SET totp_secret = $1
+       WHERE id = $2
+       RETURNING id, email, avatar_url, password_hash, recovery_lookup, totp_secret`,
+      [challenge.setupSecret, challenge.userId]
+    );
+    const user = rows[0];
+    if (!user) return res.status(401).json({ error: "User not found" });
+    consumeUserChallenge(challengeId);
+    const token = issueUserSession(user);
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        avatar_url: user.avatar_url,
+        has_password: Boolean(user.password_hash),
+        has_recovery_code: Boolean(user.recovery_lookup),
+        has_2fa: Boolean(user.totp_secret),
+      },
+    });
+  } catch (e) {
+    console.error("auth/setup-2fa/verify:", e);
+    res.status(500).json({ error: "Could not complete 2FA setup" });
+  }
 });
 
 /**
@@ -425,16 +516,10 @@ authRouter.post("/refresh", async (req, res) => {
     });
   }
   let payload;
-  try {
-    payload = jwt.verify(token, secret, { ignoreExpiration: true });
-  } catch {
-    return res.status(401).json({ error: "Invalid token" });
-  }
-  const raw = payload.sub;
-  const userId = typeof raw === "string" ? parseInt(raw, 10) : Number(raw);
-  if (!Number.isInteger(userId) || userId < 1) {
-    return res.status(401).json({ error: "Invalid token" });
-  }
+  const verified = verifyUserSessionToken(token, { ignoreExpiration: true });
+  if (!verified.ok) return res.status(401).json({ error: verified.error });
+  payload = verified.payload;
+  const userId = verified.userId;
   /** Max time after `exp` (when present) that refresh is still allowed — limits stale stolen tokens. */
   const REFRESH_GRACE_SEC = 60 * 60 * 24 * 30;
   if (payload.exp != null && typeof payload.exp === "number") {
@@ -446,13 +531,14 @@ authRouter.post("/refresh", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
-        (recovery_lookup IS NOT NULL) AS has_recovery_code
+        (recovery_lookup IS NOT NULL) AS has_recovery_code, (totp_secret IS NOT NULL) AS has_2fa
       FROM users WHERE id = $1`,
       [userId]
     );
     if (!rows[0]) return res.status(401).json({ error: "Invalid token" });
     const u = rows[0];
-    const newToken = signUserToken(u);
+    revokeUserSession(verified.jti);
+    const newToken = issueUserSession(u);
     res.json({
       token: newToken,
       user: {

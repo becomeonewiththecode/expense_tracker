@@ -1,17 +1,17 @@
-# Full stack: PostgreSQL, Redis, API, nginx + static client.
+# Full stack from source: build API + web images locally (dev / QA).
 #
-# Copy deployment/docker-compose/.env.example to .env in this directory and set
-# JWT_SECRET (16+ chars) and CLIENT_ORIGIN. The api service loads that file via
-# env_file so JWT_SECRET reaches the container even when Compose variable
-# substitution would otherwise pass an empty value.
+# Same service names and volumes as docker-compose-prod.yml — do not run both stacks
+# on one host at the same time (container_name and volume names would clash).
 #
-# From repo root (recommended):
-#   npm run compose:prod
+# From repo root:
+#   npm run compose:build
 #   # or:
-#   docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build
+#   docker compose -f deployment/docker-compose/docker-compose-build.yml --env-file deployment/docker-compose/.env up -d --build
 #
-# Use --env-file (or npm script) so ${HTTP_PORT} and postgres defaults interpolate;
-# JWT_SECRET / CLIENT_ORIGIN still come from this folder’s .env inside the api container.
+# Optional: set APP_VERSION in deployment/docker-compose/.env so GET /health and the UI
+# match your test tag (defaults to "dev" when unset).
+#
+# Use --env-file so ${HTTP_PORT}, Postgres defaults, and build args interpolate on the host.
 
 services:
   postgres:
@@ -44,6 +44,8 @@ services:
     build:
       context: ../..
       dockerfile: deployment/docker/Dockerfile.api
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     env_file:
       - .env
     environment:
@@ -51,6 +53,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-expense}:${POSTGRES_PASSWORD:-expense}@postgres:5432/${POSTGRES_DB:-expense_tracker}
       REDIS_URL: redis://redis:6379
+      APP_VERSION: ${APP_VERSION:-dev}
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,6 +70,8 @@ services:
     build:
       context: ../..
       dockerfile: deployment/docker/Dockerfile.web
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     ports:
       - "${HTTP_PORT:-8080}:80"
     depends_on:

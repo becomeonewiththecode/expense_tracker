@@ -110,7 +110,7 @@ flowchart TB
 | Stage | What runs |
 |-------|-------------|
 | **Step 1 — Development** | The Vite development server with Hot Module Replacement; the browser uses the same origin for `/api`, which Vite forwards to Express; often plain HTTP on `localhost`. Typical commands: `npm run dev` in the `client` directory and `npm run dev` in the `server` directory. |
-| **Step 2 — Production** | Run `npm run build` in the `client` directory, then serve the **`client/dist/`** directory (the Vite development process does not run in production). Express runs behind Transport Layer Security; `/api` is reached through the edge or via Cross-Origin Resource Sharing if the static site and API use different origins. Set `NODE_ENV=production` (or your host’s equivalent) for the API process. **Concrete bundle:** **`deployment/docker-compose/`** builds **`dist/`** inside the **web** image, runs **nginx** plus the **api** container, and exposes one HTTP port. From the repo root, **`npm run compose:prod`** runs **`ensure-env.mjs`** then **`docker compose up`** (see **deployment/docker-compose/README.md**). |
+| **Step 2 — Production** | Run `npm run build` in the `client` directory, then serve the **`client/dist/`** directory (the Vite development process does not run in production). Express runs behind Transport Layer Security; `/api` is reached through the edge or via Cross-Origin Resource Sharing if the static site and API use different origins. Set `NODE_ENV=production` (or your host’s equivalent) for the API process. **Concrete bundle:** **`deployment/docker-compose/`** builds **`dist/`** inside the **web** image (or pulls a pre-built image), runs **nginx** plus the **api** container, and exposes one HTTP port. From the repo root, **`npm run compose:build`** or **`npm run compose:prod`** runs **`ensure-env.mjs`** then **`docker compose up`** (see **deployment/docker-compose/README.md**). |
 
 More detail: [ARCHITECTURE.md — From development to production](./ARCHITECTURE.md#from-development-to-production).
 
@@ -152,12 +152,15 @@ flowchart TB
   subgraph api [Express server/src/index.js]
     BOOT[index.js bootstrap]
     MW[CORS plus JSON body plus error handler]
-    R0["GET /health"]
+    R0["GET /health — ok + version string"]
     R0b["/api/docs + /api/openapi.json"]
     R1["/api/auth"]
     R2["/api/expenses"]
     R3["/api/imports"]
     R4["/api/reports"]
+    R4i["/api/income"]
+    R4b["/api/budgets"]
+    R4n["/api/notifications"]
     R5["/api/backup"]
     R6["/api/prescriptions"]
     R7["/api/payment-plans"]
@@ -169,6 +172,9 @@ flowchart TB
     MW --> R2
     MW --> R3
     MW --> R4
+    MW --> R4i
+    MW --> R4b
+    MW --> R4n
     MW --> R5
     MW --> R6
     MW --> R7
@@ -197,6 +203,9 @@ flowchart TB
   R3 --> CSV
   R3 --> PDF
   R4 --> JWT
+  R4i --> JWT
+  R4b --> JWT
+  R4n --> JWT
   R5 --> JWT
   R6 --> JWT
   R7 --> JWT
@@ -205,6 +214,9 @@ flowchart TB
   R2 --> PG
   R3 --> PG
   R4 --> PG
+  R4i --> PG
+  R4b --> PG
+  R4n --> PG
   R5 --> PG
   R6 --> PG
   R7 --> PG
@@ -217,6 +229,7 @@ flowchart TB
   end
   R2 --> EE
   R3 --> EE
+  R4i --> EE
   R5 --> EE
   R6 --> PE
   R7 --> PPE
@@ -240,22 +253,25 @@ flowchart TB
 
 | Module file | Role | Integrations |
 |--------|------|----------------|
-| `routes/auth.js` | Registration, login, **`me`**, **`POST /refresh`** (new JWT from expired-but-signed token within grace), **`PATCH /profile`**, recovery **`POST`/`DELETE /recovery-code`** (persists **`recovery_code_ciphertext`** via **`recoveryCodeStorage.js`**), **`POST /recover-password`**, **`POST`/`DELETE /avatar`**, static **`/uploads`** | `bcryptjs`, `jsonwebtoken`, `pg`, `multer`, `crypto`; mounts **`oauth/*`** from `oauth/oauthRoutes.js` |
+| `routes/auth.js` | Registration, password login challenge plus user 2FA verify/setup verify, **`me`**, **`POST /refresh`** (new JWT from expired-but-signed token within grace), **`PATCH /profile`**, recovery **`POST`/`DELETE /recovery-code`** (persists **`recovery_code_ciphertext`** via **`recoveryCodeStorage.js`**), **`POST /recover-password`**, **`POST`/`DELETE /avatar`**, static **`/uploads`** | `bcryptjs`, `pg`, `multer`, `crypto`; mounts **`oauth/*`** from `oauth/oauthRoutes.js`; uses `userSecurity.js` |
 | `oauth/oauthRoutes.js` together with `oauthService.js` and `oauthState.js` | Single sign-on: authorize and callback | `fetch` to identity providers, `pg` for **`oauth_identities`** |
 | `routes/expenses.js` | Expense create, read, update, delete; optional list filter **`?category=`** (for example **`renewal`**) | JSON Web Token middleware, `pg`, `expenseEnums.js` |
 | `routes/paymentPlans.js` | Payment plan create, read, update, delete | JSON Web Token middleware, `pg`, `paymentPlanEnums.js` |
 | `routes/imports.js` | Upload, staging, commit; staging **`PATCH`** supports **`renewal_kind`** and **`website`**; commit requires **`renewal_kind`** when **`category`** is **`renewal`** | JSON Web Token, `multer`, `visaStatement.js` for CSV and PDF, `pg` |
-| `routes/reports.js` | Aggregates and chart data | JSON Web Token, `pg`, optional `redis.js` |
-| `routes/backup.js` | **`GET /export`**, **`POST /restore`** (**`version`** **`1`**–**`3`**; **`2`** adds **`prescriptions`**; **`3`** adds **`paymentPlans`**; **replace** scope follows version; expense/prescription **`state`** in JSON matches DB **`active`**/**`paused`**/**`cancelled`** via **`normalizeExpenseStateForBackup`** / **`normalizePrescriptionStateForBackup`**; **`renewalCount`**; **`account`**; cross-account **409**) | JSON Web Token, `pg`, **`expenseEnums.js`**, **`prescriptionEnums.js`**, **`paymentPlanEnums.js`**, **`recoveryCodeStorage.js`** |
+| `routes/reports.js` | Aggregates and chart data; monthly CSV/PDF; **`/cashflow/monthly`**; **`/run-rate-vs-income`** | JSON Web Token, `pg`, optional `redis.js` |
+| `routes/income.js` | **`income_entries`** CRUD; **`frequency`** and bimonthly pay days via **`expenseEnums.js`** | JSON Web Token, `pg`, **`expenseEnums.js`** |
+| `routes/budgets.js` | Monthly **`budget_periods`** / **`budget_lines`**; threshold **`user_notifications`** sync | JSON Web Token, `pg` |
+| `routes/notifications.js` | List notifications; refresh budget alerts for current month | JSON Web Token, `pg` |
+| `routes/backup.js` | **`GET /export`**, **`POST /restore`** (**`version`** **`1`**–**`4`**; **`4`** adds **`incomeEntries`**; **replace** scope follows version; expense/prescription **`state`** normalized; **`renewalCount`**; **`account`**; cross-account **409**) | JSON Web Token, `pg`, **`expenseEnums.js`**, **`prescriptionEnums.js`**, **`paymentPlanEnums.js`**, **`recoveryCodeStorage.js`** |
 | `routes/prescriptions.js` | **`prescriptions`** CRUD — **`name`**, **`amount`**, **`renewal_period`**, **`next_renewal_date`**, **`vendor`**, **`notes`**, **`category`**, **`state`** | JSON Web Token, `pg`, **`prescriptionEnums.js`** |
 | `parsers/visaStatement.js` | Parse uploaded statements | `csv-parse/sync`, `pdf-parse` |
 | `jobs/monthlySummary.js` | Monthly rollup job | `node-cron`, `pg` writing **`monthly_summaries`** |
 | `db.js` | Connection pool and **`initDb()`** | `pg` |
-| `expenseEnums.js` | **Allow-lists** for **`category`** (including **`streaming_service`**, **`renewal`**, and **`payment_plan`**), **`renewal_kind`** (**`RENEWAL_KINDS`**), institution, frequency, **state**; **`spent_at`** → **`payment_day`** / **`payment_month`**; **`normalizeExpenseStateForBackup`** | **`routes/expenses.js`**, **`routes/imports.js`**, **`routes/backup.js`** |
-| `paymentPlanEnums.js` | Payment plan allow-lists and parsers (category, schedule, priority, **status** including **`paid_in_full`**, account type, payment method, institution, tag, frequency, **`remaining_payments`**); **`resolvePaymentPlanStatusForRemaining`** | **`routes/paymentPlans.js`**, **`routes/backup.js`** (restore **v3** **`paymentPlans`**) |
+| `expenseEnums.js` | **Allow-lists** for **`category`** (including **`streaming_service`**, **`renewal`**, and **`payment_plan`**), **`renewal_kind`** (**`RENEWAL_KINDS`**), institution, frequency, **state**; **`spent_at`** → **`payment_day`** / **`payment_month`**; **`normalizeExpenseStateForBackup`**; **`parseFrequency`** / pay days for **income** + backup restore | **`routes/expenses.js`**, **`routes/imports.js`**, **`routes/income.js`**, **`routes/backup.js`** |
+| `paymentPlanEnums.js` | Payment plan allow-lists and parsers (category, schedule, priority, **status** including **`paid_in_full`**, account type, payment method, institution, tag, frequency, **`remaining_payments`**); **`resolvePaymentPlanStatusForRemaining`** | **`routes/paymentPlans.js`**, **`routes/backup.js`** (restore **`paymentPlans`**) |
 | `prescriptionEnums.js` | **`PRESCRIPTION_CATEGORIES`**, **`PRESCRIPTION_RENEWAL_PERIODS`**, **state**; **`parseIsoDate`**; **`normalizePrescriptionStateForBackup`** | **`routes/prescriptions.js`**, **`routes/backup.js`** |
 | `recoveryCodeStorage.js` | Encrypt/decrypt recovery plaintext for **`users.recovery_code_ciphertext`**; **`persistRecoveryCodeForUser`** shared by **`auth`** and **`backup`** | `crypto`, `bcryptjs` |
-| `middleware/auth.js` | Bearer JSON Web Token to **`req.userId`** | `jsonwebtoken` |
+| `middleware/auth.js` | Bearer token to **`req.userId`** with server-side session inactivity checks | `userSecurity.js` |
 | `ensureJwtSecret.js` | Persist stable **`JWT_SECRET`** | filesystem write to `server/.env` |
 
 ---
@@ -266,15 +282,16 @@ These diagrams show how **React** pages map to backend routes. The HTTP client u
 
 **Route gate at `/`:** `AppShell` checks authentication state. Signed-out users who open `/` see `LandingPage`; signed-in users on `/` continue into the authenticated `Layout` shell (index redirect then sends them to `/expenses` or `/expenses/list`). Signed-out requests to authenticated routes (for example `/reports`) are redirected to `/login`.
 
-**Shell navigation (signed-in `Layout.jsx` header):** **Import** links to **`/expenses`**. The list destinations—**Expenses** (`/expenses/list`), **Renewals** (`/renewals`), **Prescriptions** (`/prescriptions`), **Payment Plan** (`/payment-plans`), and **Reports** (`/reports`)—appear as a **Lists** dropdown on **small/medium** viewports (below Tailwind **`lg`**, 1024px) and as **horizontal NavLinks** from **`lg`** and up (laptops and larger). **Profile** and **Sign out** live in the avatar **account menu**, not in the main nav bar.
+**Shell navigation (signed-in `Layout.jsx` header):** **Import** links to **`/expenses`**. The list destinations—**Income** first, then **Expenses** (`/expenses/list`), **Renewals**, **Prescriptions**, **Payment Plan**, and **Reports**—appear as a **Lists** dropdown below **`lg`** (1024px) and as **horizontal NavLinks** from **`lg`** up. **Profile** and **Sign out** live in the avatar **account menu**, not in the main nav bar.
 
 ```mermaid
 flowchart TB
   subgraph hdr ["Layout header (responsive)"]
     IMP[Import]
-    NAV["Lists dropdown or Expenses / Renewals / Prescriptions / Payment Plan / Reports links"]
+    NAV["Lists dropdown or Income / Expenses / Renewals / Prescriptions / Payment Plan / Reports"]
   end
   IMP -->|"/expenses"| EPn[ExpensesPage]
+  NAV --> L0["/income — IncomePage"]
   NAV --> L1["/expenses/list — YourExpensesPage"]
   NAV --> L2["/renewals — RenewalsPage"]
   NAV --> L3["/prescriptions — PrescriptionsPage"]
@@ -298,6 +315,7 @@ flowchart TB
     PSP["PrescriptionsPage — /prescriptions (read-only table; edit modal)"]
     PPP["PaymentPlansPage — /payment-plans (hide paid_in_full by default)"]
     RPg[ReportsPage]
+    IPg[IncomePage — /income]
     PP[ProfilePage]
   end
 
@@ -306,8 +324,10 @@ flowchart TB
     A1["/auth — login register refresh oauth profile avatar recovery"]
     A2["/expenses — CRUD list ?category=renewal"]
     A3["/imports — upload staging commit"]
-    A4["/reports"]
-    A5["/backup — export restore"]
+    A4["/reports — cashflow run-rate CSV PDF summary"]
+    A4i["/income — CRUD entries"]
+    A4b["/budgets/{year}/{month}"]
+    A5["/backup — export restore v4 + incomeEntries"]
     A6["/prescriptions — CRUD"]
     A7["/payment-plans — CRUD"]
     A8["/admin — auth health backup restore users"]
@@ -327,9 +347,12 @@ flowchart TB
   PSP --> A6
   PPP --> A7
   RPg --> A4
+  RPg --> A4b
+  IPg --> A4i
+  IPg --> A4
 ```
 
-**Expense, import, renewals, and backup at a glance:**
+**Expense, import, renewals, income, and backup at a glance:**
 
 ```mermaid
 flowchart LR
@@ -375,7 +398,14 @@ flowchart LR
     PPG2 --- PPGu["Header flashes update icon after successful save/add"]
   end
   PPPg --> PPX["/payment-plans CRUD"]
-  PP[ProfilePage] --> BK["/backup export · restore"]
+  subgraph IPg2["IncomePage — /income"]
+    direction TB
+    IG2["GET POST PATCH DELETE /income"]
+    IG2 --- IGrr["GET /reports/run-rate-vs-income banner"]
+    IG2 --- IGe["Edit action opens modal with same fields as Add"]
+  end
+  IPg2 --> INC["/api/income + /api/reports/run-rate-vs-income"]
+  PP[ProfilePage] --> BK["/backup export · restore v4"]
 ```
 
 ### Prescription reminders (client)
@@ -429,16 +459,16 @@ flowchart TD
 
 | Concern | Implementation |
 |---------|------------------|
-| HTTP client | `api.js` — Axios with `/api` base URL; `Authorization` from `localStorage`; **401 Invalid token** triggers session-expired flow (except auth endpoints such as **`/auth/refresh`**) |
+| HTTP client | `api.js` — Axios with `/api` base URL; `Authorization` from `localStorage`; fatal auth **401** responses (`missing token`, `invalid token`, `session expired`, inactivity timeout) clear local auth and redirect to `/login?expired=1` (except auth endpoints such as **`/auth/refresh`**) |
 | Authentication state | `auth.jsx` — `AuthProvider`, protected routes, registers the session-invalid handler for `api.js` |
-| Expired session prompt | `SessionExpiredModal.jsx` — **Continue session** → **`POST /auth/refresh`** → reload; **Sign out** → **`/login`** |
+| Expired session handling | Redirect to `/login?expired=1` for fatal auth 401s; `SessionExpiredModal.jsx` remains available for refresh-driven continuation flows |
 | Errors | `apiError.js` — network and proxy error messages |
 | Labels versus server enums | `expenseOptions.js` — categories (including **Streaming service**, **Renewal**, **Payment Plan**), **`RENEWAL_KIND_OPTIONS`** / **`formatRenewalKind`**, frequencies, institutions, **expense state** (**Active** / **Paused** / **Cancelled**; API `active` / `paused` / `cancelled`). **`paymentPlanOptions.js`** — payment plan **status** includes **Cancelled (paid in full)** (**`paid_in_full`**); add form uses **`PAYMENT_PLAN_STATUS_OPTIONS_FOR_ADD`** (omits **`paid_in_full`**). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
 | List edit modals (expenses / renewals) | **`ManualExpenseForm.jsx`** exports **`ManualExpenseFormFields`**; **`ExpenseEditModal.jsx`** wraps them for **`YourExpensesPage`** and **`RenewalsPage`** (**Escape**, backdrop, scroll lock). |
-| Main navigation (authenticated shell) | **`Layout.jsx`** — **Import**; **Lists** dropdown below **`lg`** or inline **Expenses** / **Renewals** / **Prescriptions** / **Payment Plan** / **Reports** at **`lg`+**; avatar **account menu** (**Profile**, **Upcoming expenses** when applicable, **Sign out**) |
+| Main navigation (authenticated shell) | **`Layout.jsx`** — **Import**; **Lists** dropdown below **`lg`** or inline **Income** / **Expenses** / **Renewals** / **Prescriptions** / **Payment Plan** / **Reports** at **`lg`+**; **`NotificationBell`** (**`/notifications`**); avatar **account menu** (**Profile**, **Upcoming expenses** when applicable, **Sign out**) |
 | Upcoming expenses | **`Layout.jsx`** (avatar menu, **badge** toggles tables, **`renewalTablesExpanded`**) + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** + **`renewalPreferences.js`** (window **1**/**3**/**5**/**7**/**10**/**14**/**21**/**30**/**40** days, default **7**, in-panel and Profile) + **`renewalHiddenPreferences.js`** (auto-hidden cancelled list for Profile) — all main shell routes; see [Renewal reminders (client)](#renewal-reminders-client) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
-| Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (client confirms when backup **`account.email`** differs from session); **Appearance** includes **Auto-hidden cancelled recurring items** (reads **`renewalHiddenPreferences.js`**); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
+| Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (backup **`version`** **4** includes **`incomeEntries`**; client confirms when backup **`account.email`** differs from session); **Appearance** includes **Auto-hidden cancelled recurring items** (reads **`renewalHiddenPreferences.js`**); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
 | Renewals (odd-interval contracts) | `RenewalsPage` at **`/renewals`** — **`GET /expenses?category=renewal`** (list includes **Cancelled** / **Paused** rows); manual add defaults to category **Renewal**; read-only **`ExpenseTable`** with **`showRenewalColumns`** and **`onRowProjection`**; **Edit** uses **`ExpenseEditModal`** + **`ManualExpenseFormFields`**. Combined header **Projection** and per-row **Projection** use **`projection.js`**; combined totals use **Active** rows only—non-**active** **`state`** excluded client-side. **Import** (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
 | Prescriptions (health / supplies) | `PrescriptionsPage` at **`/prescriptions`** — **`/api/prescriptions`** CRUD; read-only table; **Edit** opens a **modal** with shared **`PrescriptionFormFields`** (same as add). **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. Header flashes a short update icon on successful add/edit/renew saves. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
 | Expenses list (`/expenses/list`) | **`YourExpensesPage`** — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** and **`category !== payment_plan`** in the read-only table and in **combined Projection**; **Edit** opens **`ExpenseEditModal`** with **`ManualExpenseFormFields`** (same as add). Changing category to **Renewal** or **Payment Plan** on save moves the row to **`/renewals`** or **`/payment-plans`**. Header flashes a short update icon after successful save/add updates. |
@@ -463,7 +493,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  subgraph SRV["paymentPlans.js + backup restore"]
+  subgraph SRV["paymentPlans.js + backup restore (v4 incomeEntries)"]
     RP[remaining_payments + status from body or DB merge]
     RES[resolvePaymentPlanStatusForRemaining]
     RP --> RES --> DB[(payment_plans)]
@@ -523,6 +553,7 @@ erDiagram
     text password_hash
     text role
     text avatar_url
+    text totp_secret
     text recovery_lookup
     text recovery_token_hash
     text recovery_code_ciphertext
@@ -664,12 +695,14 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  PR[ProfilePage] --> EXP["GET /backup/export"]
-  EXP --> FILE["JSON v3: expenses + prescriptions + paymentPlans + account"]
-  FILE --> RST["POST /backup/restore"]
-  RST --> PG[(PostgreSQL expenses prescriptions payment_plans recovery)]
+  PR[ProfilePage] --> EXP["GET /api/backup/export"]
+  EXP --> FILE["JSON v4: expenses prescriptions paymentPlans incomeEntries account"]
+  FILE --> RST["POST /api/backup/restore"]
+  RST --> PG[(PostgreSQL + income_entries + recovery)]
   PR --> RST
 ```
+
+**Diagram file:** [`docs/diagrams/backup-export-restore.mmd`](./diagrams/backup-export-restore.mmd)
 
 **`expenses.payment_day` / `payment_month`:** Persisted for renewals, imports, and backup JSON; the API always sets them from **`spent_at`** (calendar day of month capped at **30**, month **1–12**). **`POST`/`PATCH /api/expenses`** and **`POST /api/backup/restore`** ignore body values for those columns.
 
@@ -679,9 +712,11 @@ flowchart LR
 
 **`expenses.website` / `renewal_kind`:** Optional portal or URL and renewal subtype; see [RENEWALS.md](./RENEWALS.md).
 
-**`prescriptions` in backup JSON:** Included when **`version`** ≥ **`2`**, with **`prescriptionCount`**; each row’s **`state`** uses **`normalizePrescriptionStateForBackup`**. Restore accepts **`version`** **`1`**–**`3`**. In **replace** mode, **`version`** **`1`** clears and restores **expenses** only; **`version`** **`2`** or **`3`** also clears and restores **`prescriptions`**.
+**`prescriptions` in backup JSON:** Included when **`version`** ≥ **`2`**, with **`prescriptionCount`**; each row’s **`state`** uses **`normalizePrescriptionStateForBackup`**. Restore accepts **`version`** **`1`**–**`4`**. In **replace** mode, **`version`** **`1`** clears and restores **expenses** only; **`version`** **`2`**+ also clears and restores **`prescriptions`** when applicable.
 
-**`paymentPlans` in backup JSON:** Included when **`version`** ≥ **`3`**, with **`paymentPlanCount`**. **Replace** with **`version`** **`3`** clears and restores **`payment_plans`** as well as **expenses** and **prescriptions**. Each restored plan is validated like **`POST /payment-plans`**, and **`status`** is adjusted with **`resolvePaymentPlanStatusForRemaining`** so **`remaining_payments`** and **`paid_in_full`** stay consistent.
+**`paymentPlans` in backup JSON:** Included when **`version`** ≥ **`3`**, with **`paymentPlanCount`**. **Replace** with **`version`** **`3`**+ clears and restores **`payment_plans`** when the file includes them. Each restored plan is validated like **`POST /payment-plans`**, with **`resolvePaymentPlanStatusForRemaining`**.
+
+**`incomeEntries` in backup JSON:** Included when **`version`** ≥ **`4`**, with **`incomeEntryCount`**. **Replace** with **`version`** **`4`** also clears and restores **`income_entries`**. Rows are validated like **`POST /income`** (including **bimonthly** pay days).
 
 **`users.recovery_code_ciphertext`:** Optional encrypted copy of the recovery code for **`GET /backup/export`** (see **`recoveryCodeStorage.js`**). **`users.recovery_lookup`** / **`recovery_token_hash`** remain the source of truth for **`POST /recover-password`**.
 

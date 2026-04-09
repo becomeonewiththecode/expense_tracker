@@ -9,6 +9,11 @@ COPY client/package.json client/package-lock.json ./
 RUN npm ci
 
 COPY client/ ./
+
+# Inlined into the static bundle (must match API APP_VERSION when both images are built together)
+ARG APP_VERSION=dev
+ENV VITE_APP_VERSION=${APP_VERSION}
+
 RUN npm run build
 
 FROM nginx:1.27-alpine

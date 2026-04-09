@@ -57,7 +57,7 @@ flowchart LR
 
 ### Backup and restore
 
-Renewal rows are included in **`expenses`** in the JSON backup (**`version`** ≥ **`1`**; current exports use **`version`** **`3`**). Each object includes **`state`** (**`active`**, **`paused`**, **`cancelled`**) matching PostgreSQL, plus optional **`website`** and **`renewal_kind`**. Restore validates: if **`category`** is **`renewal`**, **`renewal_kind`** must be present and valid.
+Renewal rows are included in **`expenses`** in the JSON backup (**`version`** ≥ **`1`**; current exports use **`version`** **`4`**). Each object includes **`state`** (**`active`**, **`paused`**, **`cancelled`**) matching PostgreSQL, plus optional **`website`** and **`renewal_kind`**. Restore validates: if **`category`** is **`renewal`**, **`renewal_kind`** must be present and valid.
 
 ---
 

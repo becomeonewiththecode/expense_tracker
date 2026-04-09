@@ -5,6 +5,10 @@
 FROM node:20-alpine
 WORKDIR /app
 
+# Set at image build time, e.g. docker compose build --build-arg APP_VERSION=1.2.3
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
+
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev
 

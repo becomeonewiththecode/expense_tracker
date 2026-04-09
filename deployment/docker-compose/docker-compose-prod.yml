@@ -1,17 +1,19 @@
-# Full stack: PostgreSQL, Redis, API, nginx + static client.
+# Production: PostgreSQL, Redis, API, and web from pre-built images (e.g. Docker Hub).
 #
-# Copy deployment/docker-compose/.env.example to .env in this directory and set
-# JWT_SECRET (16+ chars) and CLIENT_ORIGIN. The api service loads that file via
-# env_file so JWT_SECRET reaches the container even when Compose variable
-# substitution would otherwise pass an empty value.
+# Build and push images separately (see deployment/docker/Dockerfile.*), then set
+# DOCKERHUB_USERNAME / IMAGE_TAG in .env or rely on defaults below.
 #
-# From repo root (recommended):
+# Copy deployment/docker-compose/.env.example to .env and set JWT_SECRET (16+ chars)
+# and CLIENT_ORIGIN. The api service loads that file via env_file.
+#
+# From repo root:
 #   npm run compose:prod
-#   # or:
-#   docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build
+# Optional: npm run compose:prod:pull   # fetch newer images before up
 #
-# Use --env-file (or npm script) so ${HTTP_PORT} and postgres defaults interpolate;
-# JWT_SECRET / CLIENT_ORIGIN still come from this folder’s .env inside the api container.
+# Manual:
+#   docker compose -f deployment/docker-compose/docker-compose-prod.yml --env-file deployment/docker-compose/.env up -d
+#
+# Do not run this and docker-compose-build.yml on the same host at once (same container_name / volumes).
 
 services:
   postgres:
@@ -41,7 +43,7 @@ services:
   api:
     container_name: expense-tracker-api
     restart: unless-stopped
-    image: maxwayne/expense-tracker-api:1.0
+    image: ${DOCKERHUB_USERNAME:-maxwayne}/expense-tracker-api:${IMAGE_TAG:-1.0}
     env_file:
       - .env
     environment:
@@ -49,6 +51,8 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-expense}:${POSTGRES_PASSWORD:-expense}@postgres:5432/${POSTGRES_DB:-expense_tracker}
       REDIS_URL: redis://redis:6379
+      # Shown in GET /health and the UI footer; set to match what you deployed (e.g. same as IMAGE_TAG).
+      APP_VERSION: ${APP_VERSION:-${IMAGE_TAG:-1.0}}
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,7 +66,7 @@ services:
   web:
     container_name: expense-tracker-web
     restart: unless-stopped
-    image: maxwayne/expense-tracker-web:1.0
+    image: ${DOCKERHUB_USERNAME:-maxwayne}/expense-tracker-web:${IMAGE_TAG:-1.0}
     ports:
       - "${HTTP_PORT:-8080}:80"
     depends_on:

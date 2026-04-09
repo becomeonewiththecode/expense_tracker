@@ -1,0 +1,42 @@
+%% Budgeting: data model and user flow (Mermaid source for docs/BUDGETING.md)
+%% View: https://mermaid.live or VS Code Mermaid extension
+
+flowchart TB
+  subgraph user [User actions]
+    U1[Reports Monthly tab]
+    U2[Set budget total and optional category lines]
+    U3[Set alert percentages optional]
+    U4[Download CSV or PDF]
+  end
+
+  subgraph api [API]
+    BGET["GET /api/budgets/:year/:month"]
+    BPUT["PUT /api/budgets/:year/:month"]
+    BDEL["DELETE /api/budgets/:year/:month"]
+    SYNC[syncBudgetThresholdNotifications]
+    NGET["GET /api/notifications"]
+  end
+
+  subgraph db [PostgreSQL]
+    BP[budget_periods]
+    BL[budget_lines]
+    EX[expenses]
+    UN[user_notifications]
+  end
+
+  U1 --> BGET
+  U2 --> BPUT
+  U3 --> BPUT
+  BPUT --> BP
+  BPUT --> BL
+  BPUT --> SYNC
+  BGET --> BP
+  BGET --> BL
+  BGET --> EX
+  BGET --> SYNC
+  SYNC --> UN
+  NGET --> SYNC
+  NGET --> UN
+
+  BP -->|"total_amount, total_alert_threshold_percent"| BL
+  BL -->|"amount, alert_threshold_percent, category"| VAR[Variance vs actuals by month]

@@ -280,22 +280,35 @@ adminRouter.get("/backup/user/:userId", adminRequired, async (req, res) => {
   const userId = safeInt(req.params.userId);
   if (!userId) return res.status(400).json({ error: "Invalid userId" });
   try {
-    const [{ rows: userRows }, { rows: expenses }, { rows: prescriptions }, { rows: paymentPlans }] = await Promise.all([
+    const [
+      { rows: userRows },
+      { rows: expenses },
+      { rows: prescriptions },
+      { rows: paymentPlans },
+      { rows: incomeEntries },
+    ] = await Promise.all([
       pool.query(`SELECT id, email, role FROM users WHERE id = $1`, [userId]),
       pool.query(`SELECT * FROM expenses WHERE user_id = $1 ORDER BY id ASC`, [userId]),
       pool.query(`SELECT * FROM prescriptions WHERE user_id = $1 ORDER BY id ASC`, [userId]),
       pool.query(`SELECT * FROM payment_plans WHERE user_id = $1 ORDER BY id ASC`, [userId]),
+      pool.query(`SELECT * FROM income_entries WHERE user_id = $1 ORDER BY id ASC`, [userId]),
     ]);
     if (!userRows[0]) return res.status(404).json({ error: "User not found" });
     res.json({
       format: "expense-tracker-admin-user-backup",
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       user: userRows[0],
-      counts: { expenses: expenses.length, prescriptions: prescriptions.length, paymentPlans: paymentPlans.length },
+      counts: {
+        expenses: expenses.length,
+        prescriptions: prescriptions.length,
+        paymentPlans: paymentPlans.length,
+        incomeEntries: incomeEntries.length,
+      },
       expenses,
       prescriptions,
       paymentPlans,
+      incomeEntries,
     });
   } catch (e) {
     console.error("admin/backup/user:", e);
@@ -305,20 +318,22 @@ adminRouter.get("/backup/user/:userId", adminRequired, async (req, res) => {
 
 adminRouter.get("/backup/database", adminRequired, requireReauth, async (_req, res) => {
   try {
-    const [users, expenses, prescriptions, paymentPlans] = await Promise.all([
+    const [users, expenses, prescriptions, paymentPlans, incomeEntries] = await Promise.all([
       pool.query(`SELECT id, email, role, created_at FROM users ORDER BY id ASC`),
       pool.query(`SELECT * FROM expenses ORDER BY id ASC`),
       pool.query(`SELECT * FROM prescriptions ORDER BY id ASC`),
       pool.query(`SELECT * FROM payment_plans ORDER BY id ASC`),
+      pool.query(`SELECT * FROM income_entries ORDER BY id ASC`),
     ]);
     res.json({
       format: "expense-tracker-admin-db-backup",
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       users: users.rows,
       expenses: expenses.rows,
       prescriptions: prescriptions.rows,
       paymentPlans: paymentPlans.rows,
+      incomeEntries: incomeEntries.rows,
     });
   } catch (e) {
     console.error("admin/backup/database:", e);
@@ -332,10 +347,13 @@ adminRouter.post("/restore/preview", adminRequired, async (req, res) => {
   if (!format.startsWith("expense-tracker-admin")) {
     return res.status(400).json({ error: "Unsupported backup format" });
   }
+  const fileVer = Number(payload.version);
   const users = Array.isArray(payload.users) ? payload.users : [];
   const expenses = Array.isArray(payload.expenses) ? payload.expenses : [];
   const prescriptions = Array.isArray(payload.prescriptions) ? payload.prescriptions : [];
   const paymentPlans = Array.isArray(payload.paymentPlans) ? payload.paymentPlans : [];
+  const incomeEntries =
+    Number.isFinite(fileVer) && fileVer >= 2 && Array.isArray(payload.incomeEntries) ? payload.incomeEntries : [];
   const userIds = new Set(users.map((u) => Number(u?.id)).filter((n) => Number.isInteger(n) && n > 0));
   const refErrors = [];
   for (const row of expenses) {
@@ -347,11 +365,26 @@ adminRouter.post("/restore/preview", adminRequired, async (req, res) => {
   for (const row of paymentPlans) {
     if (!userIds.has(Number(row.user_id))) refErrors.push(`Payment plan ${row.id ?? "?"} has unknown user_id`);
   }
-  const affectedUserIds = [...new Set([...expenses, ...prescriptions, ...paymentPlans].map((r) => Number(r.user_id)).filter((n) => Number.isInteger(n) && n > 0))];
+  for (const row of incomeEntries) {
+    if (!userIds.has(Number(row.user_id))) refErrors.push(`Income entry ${row.id ?? "?"} has unknown user_id`);
+  }
+  const affectedUserIds = [
+    ...new Set(
+      [...expenses, ...prescriptions, ...paymentPlans, ...incomeEntries]
+        .map((r) => Number(r.user_id))
+        .filter((n) => Number.isInteger(n) && n > 0)
+    ),
+  ];
   res.json({
     ok: refErrors.length === 0,
     backupVersion: payload.version ?? null,
-    counts: { users: users.length, expenses: expenses.length, prescriptions: prescriptions.length, paymentPlans: paymentPlans.length },
+    counts: {
+      users: users.length,
+      expenses: expenses.length,
+      prescriptions: prescriptions.length,
+      paymentPlans: paymentPlans.length,
+      incomeEntries: incomeEntries.length,
+    },
     affectedUserIds,
     integrityErrors: refErrors,
   });
@@ -364,16 +397,20 @@ adminRouter.post("/restore/database", adminRequired, requireReauth, async (req, 
   if (String(payload.format || "") !== "expense-tracker-admin-db-backup") {
     return res.status(400).json({ error: "Unsupported backup format" });
   }
+  const dbFileVer = Number(payload.version);
   const users = Array.isArray(payload.users) ? payload.users : [];
   const expenses = Array.isArray(payload.expenses) ? payload.expenses : [];
   const prescriptions = Array.isArray(payload.prescriptions) ? payload.prescriptions : [];
   const paymentPlans = Array.isArray(payload.paymentPlans) ? payload.paymentPlans : [];
+  const incomeEntries =
+    Number.isFinite(dbFileVer) && dbFileVer >= 2 && Array.isArray(payload.incomeEntries) ? payload.incomeEntries : [];
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     await client.query(`DELETE FROM payment_plans`);
     await client.query(`DELETE FROM prescriptions`);
     await client.query(`DELETE FROM expenses`);
+    await client.query(`DELETE FROM income_entries`);
     await client.query(`DELETE FROM users`);
     for (const u of users) {
       await client.query(`INSERT INTO users (id, email, role, created_at) VALUES ($1, $2, $3, COALESCE($4::timestamptz, NOW()))`, [
@@ -423,11 +460,37 @@ adminRouter.post("/restore/database", adminRequired, requireReauth, async (req, 
         ]
       );
     }
+    for (const row of incomeEntries) {
+      await client.query(
+        `INSERT INTO income_entries (id, user_id, amount, frequency, description, received_at, payment_day, payment_day_2, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9::timestamptz,NOW()))`,
+        [
+          row.id,
+          row.user_id,
+          row.amount,
+          row.frequency,
+          row.description ?? "",
+          row.received_at,
+          row.payment_day ?? null,
+          row.payment_day_2 ?? null,
+          row.created_at ?? null,
+        ]
+      );
+    }
     await client.query(`SELECT setval(pg_get_serial_sequence('expenses', 'id'), COALESCE((SELECT MAX(id) FROM expenses), 1), TRUE)`);
     await client.query(`SELECT setval(pg_get_serial_sequence('prescriptions', 'id'), COALESCE((SELECT MAX(id) FROM prescriptions), 1), TRUE)`);
     await client.query(`SELECT setval(pg_get_serial_sequence('payment_plans', 'id'), COALESCE((SELECT MAX(id) FROM payment_plans), 1), TRUE)`);
+    await client.query(
+      `SELECT setval(pg_get_serial_sequence('income_entries', 'id'), COALESCE((SELECT MAX(id) FROM income_entries), 1), TRUE)`
+    );
 
-    const affectedUserIds = [...new Set([...expenses, ...prescriptions, ...paymentPlans].map((r) => Number(r.user_id)).filter((n) => Number.isInteger(n) && n > 0))];
+    const affectedUserIds = [
+      ...new Set(
+        [...expenses, ...prescriptions, ...paymentPlans, ...incomeEntries]
+          .map((r) => Number(r.user_id))
+          .filter((n) => Number.isInteger(n) && n > 0)
+      ),
+    ];
     for (const userId of affectedUserIds) {
       await client.query(
         `INSERT INTO admin_user_notifications (admin_id, user_id, event_type, payload) VALUES ($1, $2, $3, $4::jsonb)`,
@@ -435,7 +498,17 @@ adminRouter.post("/restore/database", adminRequired, requireReauth, async (req, 
       );
     }
     await client.query("COMMIT");
-    res.json({ ok: true, restored: { users: users.length, expenses: expenses.length, prescriptions: prescriptions.length, paymentPlans: paymentPlans.length }, affectedUsersNotified: affectedUserIds.length });
+    res.json({
+      ok: true,
+      restored: {
+        users: users.length,
+        expenses: expenses.length,
+        prescriptions: prescriptions.length,
+        paymentPlans: paymentPlans.length,
+        incomeEntries: incomeEntries.length,
+      },
+      affectedUsersNotified: affectedUserIds.length,
+    });
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("admin/restore/database:", e);

@@ -1,0 +1,28 @@
+%% Sequence: Income page loads list and run-rate summary (Mermaid source for docs/INCOME_VS_SPEND.md)
+
+sequenceDiagram
+  participant User
+  participant IncomePage
+  participant API as Express API
+  participant DB as PostgreSQL
+
+  User->>IncomePage: Open /income
+  IncomePage->>API: GET /api/income
+  API->>DB: SELECT income_entries
+  DB-->>API: rows
+  API-->>IncomePage: entries
+
+  IncomePage->>API: GET /api/reports/run-rate-vs-income
+  API->>DB: Parallel queries expenses prescriptions plans income
+  DB-->>API: rows
+  API->>API: buildRunRateVsIncomeSummary
+  API-->>IncomePage: summary JSON
+  IncomePage-->>User: Table plus banner under or over income
+
+  opt User edits an entry
+    User->>IncomePage: Edit row and save
+    IncomePage->>API: PATCH /api/income/:id
+    API->>DB: UPDATE income_entries
+    DB-->>API: updated row
+    API-->>IncomePage: updated entry
+  end

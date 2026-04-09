@@ -8,7 +8,7 @@ This document describes the **Prescriptions** area: health-related and supply it
 
 | Idea | Meaning |
 |------|---------|
-| **Prescription row** | A row in **`prescriptions`** owned by a user. Not an **`expenses`** row. **Import** does not cover prescriptions. **`GET /api/backup/export`** includes **`prescriptions`** when **`version`** ≥ **`2`** (current **`version`** **`3`**); each row’s **`state`** in JSON matches the database via **`normalizePrescriptionStateForBackup`**. **`POST /api/backup/restore`** restores them when the file **`version`** ≥ **`2`** (see [USER_GUIDE.md](./USER_GUIDE.md) **Backup and restore**). |
+| **Prescription row** | A row in **`prescriptions`** owned by a user. Not an **`expenses`** row. **Import** does not cover prescriptions. **`GET /api/backup/export`** includes **`prescriptions`** when **`version`** ≥ **`2`** (current **`version`** **`4`**); each row’s **`state`** in JSON matches the database via **`normalizePrescriptionStateForBackup`**. **`POST /api/backup/restore`** restores them when the file **`version`** ≥ **`2`** (see [USER_GUIDE.md](./USER_GUIDE.md) **Backup and restore**). |
 | **Category** | One of **`medical`**, **`dental`**, **`vision`**, **`supplements`**, **`equipment`** (allow-list in **`prescriptionEnums.js`**). |
 | **`renewal_period`** | How long one cycle lasts: **`one_month`** … **`eleven_months`**, then **`one_year`** … **`five_years`** (see **`PRESCRIPTION_RENEWAL_PERIODS`**). **Renewed** adds that many calendar months or years to **`next_renewal_date`** (client **`advanceNextRenewalDate`**). |
 | **`next_renewal_date`** | **`DATE`** — next refill, appointment, or reorder target. The client computes **days until** in local calendar math (**`prescriptionSchedule.js`**). |

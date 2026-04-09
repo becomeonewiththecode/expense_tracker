@@ -1,0 +1,31 @@
+%% Income versus spend: three comparison modes (Mermaid source for docs/INCOME_VS_SPEND.md)
+
+flowchart TB
+  subgraph sources [Stored data]
+    IE[income_entries]
+    EX[expenses]
+    PR[prescriptions]
+    PP[payment_plans]
+  end
+
+  subgraph modeA [Actuals in one calendar month]
+    CF["GET /api/reports/cashflow/monthly"]
+    CF -->|"sum by received_at and spent_at"| NET1[net = income minus spending]
+  end
+
+  subgraph modeB [Recurring run rate]
+    RR["GET /api/reports/run-rate-vs-income"]
+    RR --> RRlogic[runRateSummary.js annualize divide by 12]
+    IE --> RRlogic
+    EX --> RRlogic
+    PR --> RRlogic
+    PP --> RRlogic
+    RRlogic --> NET2[netMonthly overspending flag]
+  end
+
+  subgraph modeC [Projection modal from Reports]
+    PM[Client projection.js]
+    IE --> PM
+    EX --> PM
+    PM --> NET3[Net monthly run rate in UI]
+  end

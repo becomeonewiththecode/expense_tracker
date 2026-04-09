@@ -21,6 +21,7 @@ export async function initDb() {
     ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'manager', 'admin'));
     ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NULL;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_lookup TEXT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_token_hash TEXT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_ciphertext TEXT NULL;
@@ -180,6 +181,63 @@ export async function initDb() {
       payload JSONB NOT NULL DEFAULT '{}'::jsonb,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS budget_periods (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      year SMALLINT NOT NULL,
+      month SMALLINT NOT NULL CHECK (month >= 1 AND month <= 12),
+      total_amount NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (user_id, year, month)
+    );
+    CREATE INDEX IF NOT EXISTS idx_budget_periods_user ON budget_periods(user_id);
+    CREATE TABLE IF NOT EXISTS budget_lines (
+      id SERIAL PRIMARY KEY,
+      budget_period_id INTEGER NOT NULL REFERENCES budget_periods(id) ON DELETE CASCADE,
+      category TEXT NOT NULL,
+      amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
+      UNIQUE (budget_period_id, category)
+    );
+    ALTER TABLE budget_periods ADD COLUMN IF NOT EXISTS total_alert_threshold_percent SMALLINT NULL;
+    ALTER TABLE budget_periods DROP CONSTRAINT IF EXISTS budget_periods_total_alert_pct_check;
+    ALTER TABLE budget_periods ADD CONSTRAINT budget_periods_total_alert_pct_check
+      CHECK (total_alert_threshold_percent IS NULL OR (total_alert_threshold_percent >= 1 AND total_alert_threshold_percent <= 100));
+    ALTER TABLE budget_lines ADD COLUMN IF NOT EXISTS alert_threshold_percent SMALLINT NULL;
+    ALTER TABLE budget_lines DROP CONSTRAINT IF EXISTS budget_lines_alert_pct_check;
+    ALTER TABLE budget_lines ADD CONSTRAINT budget_lines_alert_pct_check
+      CHECK (alert_threshold_percent IS NULL OR (alert_threshold_percent >= 1 AND alert_threshold_percent <= 100));
+
+    CREATE TABLE IF NOT EXISTS user_notifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      dedupe_key TEXT NOT NULL,
+      read_at TIMESTAMPTZ NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (user_id, dedupe_key)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_notifications_user_created ON user_notifications(user_id, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS income_entries (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 0),
+      frequency TEXT NOT NULL DEFAULT 'once',
+      description TEXT DEFAULT '',
+      received_at DATE NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_income_user_received ON income_entries(user_id, received_at);
+    ALTER TABLE income_entries ADD COLUMN IF NOT EXISTS payment_day SMALLINT NULL;
+    ALTER TABLE income_entries DROP CONSTRAINT IF EXISTS income_entries_payment_day_range;
+    ALTER TABLE income_entries ADD CONSTRAINT income_entries_payment_day_range
+      CHECK (payment_day IS NULL OR (payment_day >= 1 AND payment_day <= 30));
+    ALTER TABLE income_entries ADD COLUMN IF NOT EXISTS payment_day_2 SMALLINT NULL;
+    ALTER TABLE income_entries DROP CONSTRAINT IF EXISTS income_entries_payment_day_2_range;
+    ALTER TABLE income_entries ADD CONSTRAINT income_entries_payment_day_2_range
+      CHECK (payment_day_2 IS NULL OR (payment_day_2 >= 1 AND payment_day_2 <= 30));
   `);
 
   const adminUsername = String(process.env.ADMIN_USERNAME || "").trim();
