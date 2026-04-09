@@ -39,7 +39,7 @@ const PAYMENT_SCHEDULES = [
 ];
 
 const PRIORITY_LEVELS = ["essential", "important", "optional"];
-const PAYMENT_PLAN_STATUSES = ["active", "pending", "paused", "completed"];
+const PAYMENT_PLAN_STATUSES = ["active", "pending", "paused", "completed", "paid_in_full"];
 const ACCOUNT_TYPES = ["checking", "savings", "credit_card", "investment", "cash"];
 const PAYMENT_METHODS = ["auto_pay", "manual", "direct_debit", "pre_authorized_payment"];
 const INSTITUTIONS = [
@@ -123,6 +123,35 @@ export function parsePaymentPlanTag(value) {
 }
 export function parsePaymentPlanFrequency(value) {
   return parseFrom(PAYMENT_PLAN_FREQUENCIES, value);
+}
+
+/** Terminal status when `remaining_payments === 0` (paid off; hidden from default Payment Plan list in the UI). */
+export const PAID_IN_FULL_STATUS = "paid_in_full";
+
+/**
+ * @param {number | null} remainingPayments
+ * @param {string} status
+ */
+export function resolvePaymentPlanStatusForRemaining(remainingPayments, status) {
+  if (remainingPayments === 0) return PAID_IN_FULL_STATUS;
+  if (status === PAID_IN_FULL_STATUS && remainingPayments !== 0) return "active";
+  return status;
+}
+
+/** Remaining payment count before the plan is paid off; null = not set / ongoing. */
+export const REMAINING_PAYMENTS_ERROR =
+  "remaining_payments must be a non-negative whole number, or null/empty for not set";
+
+/**
+ * @param {unknown} value
+ * @returns {{ ok: true, value: number | null } | { ok: false }}
+ */
+export function parseRemainingPayments(value) {
+  if (value === undefined || value === null) return { ok: true, value: null };
+  if (typeof value === "string" && value.trim() === "") return { ok: true, value: null };
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) return { ok: false };
+  return { ok: true, value: n };
 }
 
 export const PAYMENT_PLAN_CATEGORY_ERROR = `Invalid category (use ${PAYMENT_PLAN_CATEGORIES.join(", ")})`;

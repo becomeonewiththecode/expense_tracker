@@ -1,0 +1,75 @@
+# Full stack: PostgreSQL, Redis, API, nginx + static client.
+#
+# Copy deployment/docker-compose/.env.example to .env in this directory and set
+# JWT_SECRET (16+ chars) and CLIENT_ORIGIN. The api service loads that file via
+# env_file so JWT_SECRET reaches the container even when Compose variable
+# substitution would otherwise pass an empty value.
+#
+# From repo root (recommended):
+#   npm run compose:prod
+#   # or:
+#   docker compose -f deployment/docker-compose/docker-compose.yml --env-file deployment/docker-compose/.env up -d --build
+#
+# Use --env-file (or npm script) so ${HTTP_PORT} and postgres defaults interpolate;
+# JWT_SECRET / CLIENT_ORIGIN still come from this folder’s .env inside the api container.
+
+services:
+  postgres:
+    container_name: expense-tracker-postgres
+    restart: unless-stopped
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-expense}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-expense}
+      POSTGRES_DB: ${POSTGRES_DB:-expense_tracker}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-expense} -d ${POSTGRES_DB:-expense_tracker}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    container_name: expense-tracker-redis
+    restart: unless-stopped
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+
+  api:
+    container_name: expense-tracker-api
+    restart: unless-stopped
+    image: maxwayne/expense-tracker-api:1.0
+    env_file:
+      - .env
+    environment:
+      PORT: "4000"
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-expense}:${POSTGRES_PASSWORD:-expense}@postgres:5432/${POSTGRES_DB:-expense_tracker}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    expose:
+      - "4000"
+    volumes:
+      - api_uploads:/app/uploads
+
+  web:
+    container_name: expense-tracker-web
+    restart: unless-stopped
+    image: maxwayne/expense-tracker-web:1.0
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  pgdata:
+  redisdata:
+  api_uploads:

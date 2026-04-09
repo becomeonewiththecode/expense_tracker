@@ -13,7 +13,7 @@ This document describes the **Prescriptions** area: health-related and supply it
 | **`renewal_period`** | How long one cycle lasts: **`one_month`** … **`eleven_months`**, then **`one_year`** … **`five_years`** (see **`PRESCRIPTION_RENEWAL_PERIODS`**). **Renewed** adds that many calendar months or years to **`next_renewal_date`** (client **`advanceNextRenewalDate`**). |
 | **`next_renewal_date`** | **`DATE`** — next refill, appointment, or reorder target. The client computes **days until** in local calendar math (**`prescriptionSchedule.js`**). |
 | **State** | Same semantics as expenses: **`active`** (default), **`paused`**, or **`cancelled`**. Non-**active** rows are omitted from the **30-day reminder** banner. |
-| **Prescriptions page** | Client route **`/prescriptions`** (`PrescriptionsPage.jsx`). Full CRUD via **`/api/prescriptions`**. |
+| **Prescriptions page** | Client route **`/prescriptions`** (`PrescriptionsPage.jsx`). Full CRUD via **`/api/prescriptions`**. The **table is read-only**; **Actions** → **Edit** opens a **modal** with **`PrescriptionFormFields`** (same fields as **Add prescription**: name, amount, category, renewal period, next date, vendor, notes, state). **Close** / **Cancel** / **Escape** / backdrop dismiss unsaved edits; pagination clears an open edit dialog. |
 | **Prescription reminders** | **`PrescriptionReminders.jsx`** in **`Layout`**, above the page outlet. Fetches **`GET /api/prescriptions`**, shows a cyan banner when any **active** row is due within **30 days** or **1–14 days overdue**. In-app only (no email). Dispatches / listens for **`prescriptions-changed`** after saves so the banner refreshes. |
 
 ---
@@ -45,6 +45,18 @@ flowchart LR
   API --> DB[(prescriptions)]
   DB --> EV["window.dispatchEvent prescriptions-changed"]
   EV --> R[PrescriptionReminders refreshes]
+```
+
+### Edit a row (modal)
+
+```mermaid
+flowchart LR
+  U[User] --> A["Actions → Edit"]
+  A --> M["Modal: PrescriptionFormFields pre-filled"]
+  M --> S["Save changes"]
+  S --> PATCH["PATCH /api/prescriptions/:id"]
+  PATCH --> DB[(prescriptions)]
+  DB --> EV["prescriptions-changed"]
 ```
 
 ### Mark renewed (advance next date)
@@ -115,7 +127,7 @@ See the entity-relationship figure in [ARCHITECTURE_DIAGRAM.md § Data model](./
 | CRUD routes | `server/src/routes/prescriptions.js` |
 | Table DDL | `server/src/db.js` |
 | Mount **`/api/prescriptions`** | `server/src/index.js` |
-| Prescriptions page | `client/src/pages/PrescriptionsPage.jsx` |
+| Prescriptions page (add form, read-only table, **`PrescriptionFormFields`**, edit modal) | `client/src/pages/PrescriptionsPage.jsx` |
 | Reminder banner | `client/src/components/PrescriptionReminders.jsx` |
 | Labels | `client/src/prescriptionOptions.js` |
 | Day math + advance date | `client/src/prescriptionSchedule.js` |

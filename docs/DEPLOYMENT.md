@@ -40,6 +40,48 @@ Copy `server/.env.example` to `server/.env` and edit values as needed. The defau
 
 Must match the URL users type in the browser to open the single-page application, for example `http://localhost:5173`. This value is required for OAuth redirect URLs after single sign-on and for Cross-Origin Resource Sharing in setups that behave like production.
 
+### Admin site (`/admin`)
+
+The repository includes an **admin site** at **`/admin`** (a separate UI from the normal user app). It is backed by **`/api/admin/*`** endpoints and is designed for operational tasks:
+
+- **Backup and restore** (per-user and whole database)
+- **System health checks** (API, web UI, database connectivity, database sanity, and application resources)
+- **User account management** (reset passwords, modify permissions/roles)
+
+#### Admin environment variables
+
+For production Docker Compose, set these in **`deployment/docker-compose/.env`** (or the `.env` consumed by your Compose stack):
+
+- `ADMIN_USERNAME`: Bootstrap username (example: `admin`)
+- `ADMIN_PASSWORD`: Bootstrap password (**must be changed immediately after first login**)
+- `ADMIN_TOTP_SECRET` (optional): Base32 TOTP secret to pre-provision 2FA
+
+If `ADMIN_TOTP_SECRET` is **not** set, the first successful password login will prompt the admin UI to **enroll 2FA** (QR code + one-time code verification) before operations proceed.
+
+#### Web health probe (nginx / UI)
+
+The admin **System health** tab includes a **Web (UI)** probe. By default, the API checks:
+
+- **Production Compose:** `http://web/` (Compose service DNS)
+- **Other environments:** `CLIENT_ORIGIN`
+
+You can override the target URL with:
+
+- `ADMIN_WEB_HEALTH_URL` (for example `http://10.0.0.30:8080/`)
+
+#### Re-authentication and timeouts
+
+- Admin sessions time out after **15 minutes of inactivity**.
+- Sensitive operations (whole DB backup, restore, user password reset, permission changes) require **re-authentication** (password + 2FA) even during an active session.
+- Admin passwords can be rotated anytime from the **Session** tab (first login still enforces an immediate change).
+
+#### Swagger / OpenAPI docs
+
+The API serves interactive docs via Swagger UI:
+
+- **Swagger UI:** `/api/docs`
+- **OpenAPI JSON:** `/api/openapi.json`
+
 ### OAuth (optional)
 
 Set environment variables `OAUTH_GOOGLE_CLIENT_ID`, `OAUTH_GOOGLE_CLIENT_SECRET`, and the same pattern for GitHub, GitLab, and Microsoft as needed. Optional variables include `OAUTH_GITLAB_BASE_URL` (defaults to GitLab.com if unset) and `OAUTH_MICROSOFT_TENANT` (defaults to `common` if unset). See the comments in `server/.env.example` for the full list.

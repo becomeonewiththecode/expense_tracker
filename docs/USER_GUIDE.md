@@ -13,7 +13,7 @@ You can:
 - **Import** a **comma-separated values or PDF** statement, **review** each line, set **categories** (and adjust **frequency** if needed), then commit the import (see below); use category **Renewal** plus a **renewal type** for long-cycle renewals (see [Renewals screen](#renewals-screen))  
 - Open **Lists** → **Renewals** to work with renewal-tagged expenses only (annual fees, domains, policies, and similar)  
 - Open **Lists** → **Prescriptions** to track medical, dental, vision, supplements, and equipment on **irregular renewal cycles** (**1–11 months** in monthly steps, or **1–5 years**), with **next renewal date** reminders in the app  
-- Open **Lists** → **Payment Plan** to track planned payments with category, schedule, priority, account, method, institution, tag, frequency, amount, and notes  
+- Open **Lists** → **Payment Plan** to track planned payments with category, schedule, priority, account, method, institution, tag, frequency, optional **# of payments** (remaining before paid off), amount, and notes; when **# of payments** hits **0**, the plan becomes **Cancelled (paid in full)** and is **hidden** from the table until you enable **Show cancelled (paid in full)**  
 - **Delete** expenses from the list  
 - **Lists** → **Reports** shows charts: daily, weekly, monthly, yearly, or a custom date range  
 - See **stored monthly summaries** (totals computed by a background job on a schedule)
@@ -61,11 +61,11 @@ Verify with **`curl -sS http://localhost:8080/health`** (adjust the port if you 
 ## Account: register and sign in
 
 1. Open the application URL in your browser.  
-2. Choose **Create account** (or open the `/register` route).  
+2. If you are signed out, the `/` route shows a public landing page with **Get started** and **Log in** actions. Choose **Create account** (or open the `/register` route directly).  
 3. Enter **email** and **password** (minimum length is enforced on the form).  
 4. After success you are signed in and taken to **Expenses** if you already have saved expenses, otherwise to **Import** (add or import).  
 
-To sign in later, use **Sign in** and open the `/login` route with the same email and password.
+To sign in later, use **Sign in** from the landing page or open `/login` directly with the same email and password.
 
 **Forgot your password?** If you previously generated a **recovery code** under **Profile**, use **Forgot password?** on the sign-in page (`/recover`). Paste the full code and choose a new password. **No email is sent.** Afterward, sign in with your **email** and the **new** password. If you use **single sign-on only** and have not set a password, sign in with your provider first, then open **Profile** to add a password and optionally create a recovery code.
 
@@ -130,9 +130,9 @@ Fill in the form and click **Add expense**:
 #### Editing a row
 
 1. Open a row’s **Actions** menu and choose **Edit**.
-2. You can change: transaction date, amount, category, frequency, institution, State, and note.
-3. When the draft category is **Renewal**, extra columns appear for **Renewal type** and **Website**.
-4. While editing, **Save** and **Cancel** replace **Edit** and **Delete** in the Actions menu.
+2. A **dialog** opens with the **same fields as Add expense manually** (transaction date, amount, category, frequency, bi-monthly payment days when applicable, institution, state, note—and when category is **Renewal**, **renewal type** and **website**).
+3. **Save changes** sends a **PATCH**; **Close**, **Cancel**, **Escape**, or clicking the dimmed backdrop discards edits.
+4. The table stays read-only; pagination changes close an open edit dialog.
 5. After a successful save or add, the table header briefly flashes an update icon as confirmation.
 
 ---
@@ -145,11 +145,15 @@ For recurring expenses (Weekly, Monthly, Bi-monthly, Yearly), the app estimates 
 
 The **Upcoming expenses** panel shows at the top of: Import, all Lists destinations (Expenses, Renewals, Prescriptions, Payment Plan, Reports), and Profile.
 
+By default, the panel shows items due within **7 days**. You can change this with **Showing renewals within** in the panel header (next to **Show/Hide**) or in **Profile** → **Appearance** → **Upcoming renewals window (days)**. Choose **1**, **3**, **5**, **7**, **10**, **14**, **21**, **30**, or **40** days.
+
 | Days until renewal | Reminder tier | Wording example |
 |---|---|---|
 | **0 -- 14** | Final two weeks | Exact count, e.g. “in 12 days” |
 | **15 -- 24** | About two weeks | “about 15 days” |
 | **25 -- 40** | About a month | “about 30 days” |
+
+The selected window acts as a cap on those tiers (for example, a 7-day window shows only rows due in 0-7 days even though tier logic is defined up to 40 days).
 
 - **One-time** expenses are ignored.
 - After a renewal date passes, the line is hidden for about two weeks so the list does not immediately show the next cycle.
@@ -166,12 +170,15 @@ The **Upcoming expenses** panel shows at the top of: Import, all Lists destinati
 
 Lines marked **Cancelled** in State are shown with a **green background** so you can spot subscriptions you have cancelled while still seeing the computed renewal date.
 
+After a cancelled row is **at least one day past** its renewal date (and still within your selected window horizon), it is **removed from Upcoming expenses** and listed under **Profile** → **Appearance** → **Auto-hidden cancelled recurring items** (browser storage per account). That list applies to cancelled recurring **expenses**, **renewals**, and **payment-plan** rows the same way.
+
 #### Expanding, collapsing, and dismissing
 
 - Reminder tables start **collapsed**. Expand or collapse them with:
   - The **amber badge** next to the avatar
   - The panel’s **Show/Hide** control
   - **Double-clicking** the title row
+- Set **Showing renewals within** in the panel header to change how many upcoming days are displayed.
 - **Dismiss** hides a single line for this browser session.
 - **Dismiss all** hides every visible reminder.
 - If you dismiss all rows but qualifying renewals still exist, click the **amber badge** or open the **account menu** (avatar) and choose **Upcoming expenses** to restore them.
@@ -179,6 +186,7 @@ Lines marked **Cancelled** in State are shown with a **green background** so you
 #### Amber badge
 
 - While any qualifying renewals exist, a **count** appears in an **amber badge** to the right of the avatar.
+- The number **matches how many rows you see** in the reminder tables when at least one row is shown. If you **Dismiss** some lines in this session, the badge reflects **only the rows still visible**. If you **Dismiss all** while rows still qualify, the badge shows **how many still qualify** until you expand again from the badge or **Upcoming expenses** in the account menu.
 - **Click the badge** to toggle the reminder tables and total on or off.
 - The badge stays visible as you navigate between pages until you sign out or no rows qualify.
 - The **(i)** control next to “Upcoming expenses” toggles a detailed explanation of how bands, subtotals, and Cancelled rows work.
@@ -202,11 +210,10 @@ Click **Projection** in the table header to see a combined report:
 #### Per-row projection
 
 - Each row’s **Actions** menu includes **Projection** for that expense only (same numbers, single slice or small pie).
-- If you are editing a row, the per-row Projection uses your **unsaved draft values**.
 
 #### Other actions
 
-- **Edit** opens inline editing.
+- **Edit** opens the full-field edit dialog (see [Editing a row](#editing-a-row)).
 - **Delete** asks for confirmation.
 - If you have no expenses yet, the page shows the manual form and a link to Import.
 
@@ -225,7 +232,7 @@ Parsing uses **date, amount, and description** from the file; **comma-separated 
 
 ## Renewals screen
 
-**Lists** → **Renewals** (**`/renewals`**) lists only expenses whose **category** is **Renewal**—use it for items that renew on unusual schedules (often **Yearly** or longer horizons in practice). Each row has the same core fields as on **Expenses**, plus **Renewal type** and optional **Website**. **Projection** in the table header opens a **combined** report for **Active** renewal items only—rows with **State** **Cancelled** or **Paused** are listed in the table but **not** included in the combined projection totals (same idea as **Upcoming expenses** subtotals). The row **Actions** menu also includes **Projection** for that row (and **Edit** / **Delete**). The **Actions** column stays visible when you scroll horizontally (sticky on the right), like the other list tables. Successful saves/adds briefly flash an update icon in the renewal table header.
+**Lists** → **Renewals** (**`/renewals`**) lists only expenses whose **category** is **Renewal**—use it for items that renew on unusual schedules (often **Yearly** or longer horizons in practice). Each row has the same core fields as on **Expenses**, plus **Renewal type** and optional **Website**. **Edit** opens the same **dialog** as on **Expenses** (full manual-expense field set, pre-filled). **Projection** in the table header opens a **combined** report for **Active** renewal items only—rows with **State** **Cancelled** or **Paused** are listed in the table but **not** included in the combined projection totals (same idea as **Upcoming expenses** subtotals). The row **Actions** menu also includes **Projection** for that row (and **Edit** / **Delete**). The **Actions** column stays visible when you scroll horizontally (sticky on the right), like the other list tables. Successful saves/adds briefly flash an update icon in the renewal table header.
 
 - **Add renewal manually** (or the form when the list is empty) defaults to category **Renewal** and frequency **Yearly**; you must pick a **renewal type**.  
 - **Import:** On **Import**, set a row’s category to **Renewal**, choose the **renewal type**, optionally add a **website**, then commit—those lines appear here; they do **not** appear in the main **Expenses** table (only on **Renewals**).  
@@ -235,7 +242,11 @@ Parsing uses **date, amount, and description** from the file; **comma-separated 
 
 ## Payment Plan screen
 
-**Lists** → **Payment Plan** (**`/payment-plans`**) tracks planned payments in a dedicated table with fields such as category, schedule, priority, status, account type, payment method, institution, tag, frequency, amount, and notes.
+**Lists** → **Payment Plan** (**`/payment-plans`**) tracks planned payments in a dedicated table with fields such as category, schedule, priority, status, account type, payment method, institution, tag, frequency, optional **# of payments** (remaining count before the plan is paid off; leave blank for ongoing), amount, and notes.
+
+- **Paid in full** — When **# of payments** reaches **0**, the plan is marked **Cancelled (paid in full)** and is **hidden** from the table by default. Turn on **Show cancelled (paid in full)** in the table header to list or edit those rows. Combined **Projection** only includes plans that are currently visible in the table.
+
+- **Edit** — **Actions** → **Edit** opens a full-screen-style dialog with the **same fields as Add payment plan** (name, amount, category, schedule, priority, status including **Cancelled (paid in full)** when applicable, account, method, institution, tag, frequency, **# of payments**, notes). **Save changes** sends a **PATCH**; **Close**, **Cancel**, **Escape**, or clicking the dimmed backdrop discards edits.
 
 - **Add payment plan** — The header card has **Show** / **Hide** for the inline add form (always available). With **no** plans yet, the form starts **open**; the **first** time you have at least one plan (after load or after saving), the add section **collapses** automatically—you can tap **Show** anytime to open it again.
 - **Edit** / **Delete** — Open the row **Actions** menu.
@@ -253,7 +264,8 @@ Technical detail: [PAYMENT_PLANS.md](./PAYMENT_PLANS.md).
 **Lists** → **Prescriptions** (**`/prescriptions`**) is for items that **do not** follow the same model as bank-card **expenses**: you set a **renewal period** (**1–11 months** in monthly steps, then **1–5 years**), a **next renewal date**, and optional **vendor** and **notes**. **Categories** are **Medical**, **Dental**, **Vision**, **Supplements**, and **Equipment**. **State** works like expenses (**Active** / **Paused** / **Cancelled**); non-**active** lines stay in the list but **do not** appear in the reminder banner.
 
 - **Add prescription** — Fill **name**, **amount**, **category**, **renewal period**, **next renewal date**, **vendor**, **notes**, and **state**, then save.  
-- **Edit** / **Delete** — Open the row **Actions** menu.  
+- **Edit** — **Actions** → **Edit** opens a **dialog** with the **same fields as Add prescription**, pre-filled; **Save changes**, **Close** / **Cancel** / **Escape** / backdrop work like other list edit dialogs.  
+- **Delete** — Open the row **Actions** menu.  
 - **Renewed** — After a refill or visit, click **Renewed** to move **next renewal date** forward by one **renewal period** (you can still edit the date manually).  
 - **Update indicator** — Successful add/edit/renew updates flash a brief icon in the table header so you can confirm the Prescriptions table changed.
 - **Reminders** — When an **active** item is due within about **30 days**, or is **1–14 days overdue**, a **cyan** **Prescription renewals** panel appears **above the page** (on **Import**, **Lists** destinations, **Profile**). It is **in-app only** (not email). Use **Dismiss for this visit** to hide it until you reload or change prescriptions. Saving on this page updates the banner for the same session.
@@ -288,7 +300,36 @@ The header shows **Import** and the five list destinations (**Expenses**, **Rene
 
 **Table display:** Expenses (`/expenses/list`), Renewals (`/renewals`), and Prescriptions (`/prescriptions`) tables paginate client-side. Default is **10 rows per page** with pagination controls at the bottom, plus a **Rows** selector in the table footer. Supported limits are **5**, **10**, **25**, **50**, and **100**. You can change the value in this section or directly from the table footer selector.
 
+**Upcoming renewals window:** The **Upcoming expenses** panel uses a saved day window (default **7** days). You can change it in **Profile** → **Appearance** or directly in the panel header via **Showing renewals within**. Supported values are **1**, **3**, **5**, **7**, **10**, **14**, **21**, **30**, and **40** days.
+
+**Auto-hidden cancelled recurring items:** Under **Appearance**, a read-only list shows cancelled recurring expenses (including renewals and payment-plan-linked rows) that **Upcoming expenses** has auto-hidden after renewal—see the renewal reminders section above.
+
 **Backup and restore:** Download a **JSON** file (`expense-tracker-backup` format). Current exports use **`version`** **`3`**, which includes **`expenses`**, **`prescriptions`**, and **`paymentPlans`** (with **`renewalCount`**, **`prescriptionCount`**, **`paymentPlanCount`**). Older **`version`** **`1`** / **`2`** files still restore. **Renewals** are normal **`expenses`** with **`category`** **`renewal`** inside the **`expenses`** array. Each expense includes **`state`**: **`active`**, **`paused`**, or **`cancelled`** (matching the database and the app UI—**re-download** after a server update if an old file showed every row as **`active`** when some were cancelled). Each prescription includes the same **`state`** values. The file includes an **`account`** object (**`userId`**, **`email`**, and a human-readable **`label`**) so you can see which user the backup belongs to—downloads also use the email in the **filename**. **`account.hasRecoveryCode`** indicates whether a recovery code is on file; **`account.recoveryCode`** may contain the actual code (so you can restore password recovery after moving servers). Codes created before the server stored an exportable copy will show **`hasRecoveryCode`** without **`recoveryCode`** until you **replace** the code once. The top-level **`email`** field is still present for compatibility. Each expense object includes **`spent_at`**, **`frequency`**, **`state`**, category, institution, amount, description, optional **`website`** and **`renewal_kind`** when applicable, and denormalized **`payment_day`** / **`payment_month`**. Older backup files without **`state`** still restore successfully (**active** is assumed). **Restore** loads into the **currently signed-in** account. If the backup’s email does not match your session, the app asks you to confirm before importing. **Append** adds imported rows. **Replace** clears and reloads from the file according to **`version`**: **`1`**—**expenses** only; **`2`**—**expenses** and **prescriptions**; **`3`**—also **payment plans**. Each restore is limited to **25,000** rows per array and a **15 MB** request body. Store backup files securely. If **Download backup** or **Restore** reports **Invalid token**, try **Continue session** if a prompt appears; otherwise **sign out** and **sign in** again (or the server’s signing secret may have changed).
+
+---
+
+## Admin site (operators)
+
+The application includes an **admin site** at **`/admin`** for operators. It is separate from normal user accounts and uses **admin credentials** plus **two-factor authentication**.
+
+### First-time login and 2FA enrollment
+
+1. Enter **`ADMIN_USERNAME`** and **`ADMIN_PASSWORD`** (set by the server operator in environment variables).
+2. On first login, if 2FA has not been configured for that admin, the page shows a **QR code** to scan with an authenticator app. Scan it, then enter the 6-digit code to **Activate 2FA**.
+3. After enrollment, future logins require the 6-digit code (**Verify 2FA**).
+
+### Session timeout and re-authentication
+
+- Admin sessions end after **15 minutes of inactivity**.
+- Sensitive operations require **re-authentication** (admin password + 2FA) even within an active session.
+- The **Session** tab always includes an admin password change form. On first login it is marked as required; after that it remains available for routine password rotation.
+
+### Tabs and operations
+
+- **System health:** Runs automatically and shows API health, **web UI reachability**, database connectivity, basic database sanity, and application resources.
+- **Backup & restore:** Per-user and whole-database backups (JSON downloads), restore preview and restore apply.
+- **User accounts:** View users, reset passwords, modify roles/permissions (requires re-authentication).
+- **Swagger:** Embedded API documentation for all endpoints (backed by `/api/docs` and `/api/openapi.json`).
 
 ---
 

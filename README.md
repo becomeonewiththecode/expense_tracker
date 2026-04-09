@@ -64,6 +64,10 @@ npm run dev
 
 Open **http://localhost:5173** in your browser. The Vite dev server proxies `/api` requests to the backend. Set `API_PROXY_TARGET` in `client/.env` if the API does not listen on port 4000.
 
+**Routes:** Visitors who are not signed in see a public **landing page** at `/` (register and sign-in links go to `/register` and `/login`). After authentication, `/` routes into the main app (same behavior as before for signed-in users). Other app paths (for example `/reports`) redirect to the login page when accessed while signed out.
+
+**Static landing previews:** Additional standalone HTML variants for design comparison are in [`client/public/landings/`](./client/public/landings/) and are served by Vite at paths such as `/landings/01-aurora-glass.html`.
+
 ## API overview
 
 All paths are under the `/api` prefix. During development, the Vite proxy forwards them to the Node server.

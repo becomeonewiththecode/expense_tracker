@@ -1,6 +1,7 @@
 export const CATEGORIES = new Set([
   "home",
   "entertainment",
+  "streaming_service",
   "personal",
   "business",
   "education",
@@ -142,7 +143,7 @@ export function tryParsePaymentMonth(raw) {
 }
 
 export const CATEGORY_ERROR =
-  "Invalid category (use home, entertainment, personal, business, education, rent, mortgage, insurance, subscription, renewal, payment_plan, condo_fees)";
+  "Invalid category (use home, entertainment, streaming_service, personal, business, education, rent, mortgage, insurance, subscription, renewal, payment_plan, condo_fees)";
 
 export const RENEWAL_KIND_ERROR = "Invalid renewal_kind (unknown renewal type)";
 

@@ -11,6 +11,8 @@ import {
   parseInstitution,
   parsePaymentPlanTag,
   parsePaymentPlanFrequency,
+  parseRemainingPayments,
+  resolvePaymentPlanStatusForRemaining,
   PAYMENT_PLAN_CATEGORY_ERROR,
   PAYMENT_SCHEDULE_ERROR,
   PRIORITY_LEVEL_ERROR,
@@ -20,6 +22,7 @@ import {
   INSTITUTION_ERROR,
   PAYMENT_PLAN_TAG_ERROR,
   PAYMENT_PLAN_FREQUENCY_ERROR,
+  REMAINING_PAYMENTS_ERROR,
 } from "../paymentPlanEnums.js";
 
 const badId = "Invalid id";
@@ -41,6 +44,7 @@ function normalizeRow(row) {
     institution: row.institution,
     tag: row.tag,
     frequency: row.frequency,
+    remaining_payments: row.remaining_payments != null ? Number(row.remaining_payments) : null,
     notes: row.notes ?? "",
     created_at: row.created_at,
   };
@@ -50,7 +54,7 @@ paymentPlansRouter.get("/", async (req, res) => {
   const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
   const { rows } = await pool.query(
     `SELECT id, name, amount, category, payment_schedule, priority_level, status,
-            account_type, payment_method, institution, tag, frequency, notes, created_at
+            account_type, payment_method, institution, tag, frequency, remaining_payments, notes, created_at
      FROM payment_plans WHERE user_id = $1
      ORDER BY id DESC
      LIMIT $2`,
@@ -72,6 +76,8 @@ paymentPlansRouter.post("/", async (req, res) => {
   const tag = parsePaymentPlanTag(req.body?.tag);
   const frequency = parsePaymentPlanFrequency(req.body?.frequency);
   const notes = String(req.body?.notes ?? "").slice(0, 2000);
+  const rpParsed = parseRemainingPayments(req.body?.remaining_payments);
+  if (!rpParsed.ok) return res.status(400).json({ error: REMAINING_PAYMENTS_ERROR });
 
   if (!name) return res.status(400).json({ error: "Name is required" });
   if (!Number.isFinite(amount) || amount < 0) return res.status(400).json({ error: "Invalid amount" });
@@ -85,13 +91,15 @@ paymentPlansRouter.post("/", async (req, res) => {
   if (!tag) return res.status(400).json({ error: PAYMENT_PLAN_TAG_ERROR });
   if (!frequency) return res.status(400).json({ error: PAYMENT_PLAN_FREQUENCY_ERROR });
 
+  const resolvedStatus = resolvePaymentPlanStatusForRemaining(rpParsed.value, status);
+
   const { rows } = await pool.query(
     `INSERT INTO payment_plans (
       user_id, name, amount, category, payment_schedule, priority_level, status,
-      account_type, payment_method, institution, tag, frequency, notes
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      account_type, payment_method, institution, tag, frequency, remaining_payments, notes
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
      RETURNING id, name, amount, category, payment_schedule, priority_level, status,
-               account_type, payment_method, institution, tag, frequency, notes, created_at`,
+               account_type, payment_method, institution, tag, frequency, remaining_payments, notes, created_at`,
     [
       req.userId,
       name,
@@ -99,12 +107,13 @@ paymentPlansRouter.post("/", async (req, res) => {
       category,
       payment_schedule,
       priority_level,
-      status,
+      resolvedStatus,
       account_type,
       payment_method,
       institution,
       tag,
       frequency,
+      rpParsed.value,
       notes,
     ]
   );
@@ -115,91 +124,126 @@ paymentPlansRouter.patch("/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
 
-  const { rows: existing } = await pool.query(
-    `SELECT id FROM payment_plans WHERE id = $1 AND user_id = $2`,
+  const { rows: curRows } = await pool.query(
+    `SELECT id, name, amount, category, payment_schedule, priority_level, status,
+            account_type, payment_method, institution, tag, frequency, remaining_payments, notes, created_at
+     FROM payment_plans WHERE id = $1 AND user_id = $2`,
     [id, req.userId]
   );
-  if (!existing[0]) return res.status(404).json({ error: "Not found" });
+  const cur = curRows[0];
+  if (!cur) return res.status(404).json({ error: "Not found" });
+
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const curRem = cur.remaining_payments != null ? Number(cur.remaining_payments) : null;
+
+  const next = {
+    name: cur.name,
+    amount: Number(cur.amount),
+    category: cur.category,
+    payment_schedule: cur.payment_schedule,
+    priority_level: cur.priority_level,
+    status: cur.status,
+    account_type: cur.account_type,
+    payment_method: cur.payment_method,
+    institution: cur.institution,
+    tag: cur.tag,
+    frequency: cur.frequency,
+    remaining_payments: curRem,
+    notes: cur.notes ?? "",
+  };
+
+  if (body.name !== undefined) {
+    const name = String(body.name || "").trim().slice(0, 200);
+    if (!name) return res.status(400).json({ error: "Name is required" });
+    next.name = name;
+  }
+  if (body.amount !== undefined) {
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount < 0) return res.status(400).json({ error: "Invalid amount" });
+    next.amount = amount;
+  }
+  if (body.category !== undefined) {
+    const x = parsePaymentPlanCategory(body.category);
+    if (!x) return res.status(400).json({ error: PAYMENT_PLAN_CATEGORY_ERROR });
+    next.category = x;
+  }
+  if (body.payment_schedule !== undefined) {
+    const x = parsePaymentSchedule(body.payment_schedule);
+    if (!x) return res.status(400).json({ error: PAYMENT_SCHEDULE_ERROR });
+    next.payment_schedule = x;
+  }
+  if (body.priority_level !== undefined) {
+    const x = parsePriorityLevel(body.priority_level);
+    if (!x) return res.status(400).json({ error: PRIORITY_LEVEL_ERROR });
+    next.priority_level = x;
+  }
+  if (body.status !== undefined) {
+    const x = parsePaymentPlanStatus(body.status);
+    if (!x) return res.status(400).json({ error: PAYMENT_PLAN_STATUS_ERROR });
+    next.status = x;
+  }
+  if (body.account_type !== undefined) {
+    const x = parseAccountType(body.account_type);
+    if (!x) return res.status(400).json({ error: ACCOUNT_TYPE_ERROR });
+    next.account_type = x;
+  }
+  if (body.payment_method !== undefined) {
+    const x = parsePaymentMethod(body.payment_method);
+    if (!x) return res.status(400).json({ error: PAYMENT_METHOD_ERROR });
+    next.payment_method = x;
+  }
+  if (body.institution !== undefined) {
+    const x = parseInstitution(body.institution);
+    if (!x) return res.status(400).json({ error: INSTITUTION_ERROR });
+    next.institution = x;
+  }
+  if (body.tag !== undefined) {
+    const x = parsePaymentPlanTag(body.tag);
+    if (!x) return res.status(400).json({ error: PAYMENT_PLAN_TAG_ERROR });
+    next.tag = x;
+  }
+  if (body.frequency !== undefined) {
+    const x = parsePaymentPlanFrequency(body.frequency);
+    if (!x) return res.status(400).json({ error: PAYMENT_PLAN_FREQUENCY_ERROR });
+    next.frequency = x;
+  }
+  if (body.remaining_payments !== undefined) {
+    const pr = parseRemainingPayments(body.remaining_payments);
+    if (!pr.ok) return res.status(400).json({ error: REMAINING_PAYMENTS_ERROR });
+    next.remaining_payments = pr.value;
+  }
+  if (body.notes !== undefined) {
+    next.notes = String(body.notes ?? "").slice(0, 2000);
+  }
+
+  next.status = resolvePaymentPlanStatusForRemaining(next.remaining_payments, next.status);
 
   const updates = [];
   const params = [];
   let i = 1;
+  const push = (col, val) => {
+    updates.push(`${col} = $${i++}`);
+    params.push(val);
+  };
 
-  if (req.body.name !== undefined) {
-    const name = String(req.body.name || "").trim().slice(0, 200);
-    if (!name) return res.status(400).json({ error: "Name is required" });
-    updates.push(`name = $${i++}`);
-    params.push(name);
-  }
-  if (req.body.amount !== undefined) {
-    const amount = Number(req.body.amount);
-    if (!Number.isFinite(amount) || amount < 0) return res.status(400).json({ error: "Invalid amount" });
-    updates.push(`amount = $${i++}`);
-    params.push(amount);
-  }
-  if (req.body.category !== undefined) {
-    const x = parsePaymentPlanCategory(req.body.category);
-    if (!x) return res.status(400).json({ error: PAYMENT_PLAN_CATEGORY_ERROR });
-    updates.push(`category = $${i++}`);
-    params.push(x);
-  }
-  if (req.body.payment_schedule !== undefined) {
-    const x = parsePaymentSchedule(req.body.payment_schedule);
-    if (!x) return res.status(400).json({ error: PAYMENT_SCHEDULE_ERROR });
-    updates.push(`payment_schedule = $${i++}`);
-    params.push(x);
-  }
-  if (req.body.priority_level !== undefined) {
-    const x = parsePriorityLevel(req.body.priority_level);
-    if (!x) return res.status(400).json({ error: PRIORITY_LEVEL_ERROR });
-    updates.push(`priority_level = $${i++}`);
-    params.push(x);
-  }
-  if (req.body.status !== undefined) {
-    const x = parsePaymentPlanStatus(req.body.status);
-    if (!x) return res.status(400).json({ error: PAYMENT_PLAN_STATUS_ERROR });
-    updates.push(`status = $${i++}`);
-    params.push(x);
-  }
-  if (req.body.account_type !== undefined) {
-    const x = parseAccountType(req.body.account_type);
-    if (!x) return res.status(400).json({ error: ACCOUNT_TYPE_ERROR });
-    updates.push(`account_type = $${i++}`);
-    params.push(x);
-  }
-  if (req.body.payment_method !== undefined) {
-    const x = parsePaymentMethod(req.body.payment_method);
-    if (!x) return res.status(400).json({ error: PAYMENT_METHOD_ERROR });
-    updates.push(`payment_method = $${i++}`);
-    params.push(x);
-  }
-  if (req.body.institution !== undefined) {
-    const x = parseInstitution(req.body.institution);
-    if (!x) return res.status(400).json({ error: INSTITUTION_ERROR });
-    updates.push(`institution = $${i++}`);
-    params.push(x);
-  }
-  if (req.body.tag !== undefined) {
-    const x = parsePaymentPlanTag(req.body.tag);
-    if (!x) return res.status(400).json({ error: PAYMENT_PLAN_TAG_ERROR });
-    updates.push(`tag = $${i++}`);
-    params.push(x);
-  }
-  if (req.body.frequency !== undefined) {
-    const x = parsePaymentPlanFrequency(req.body.frequency);
-    if (!x) return res.status(400).json({ error: PAYMENT_PLAN_FREQUENCY_ERROR });
-    updates.push(`frequency = $${i++}`);
-    params.push(x);
-  }
-  if (req.body.notes !== undefined) {
-    updates.push(`notes = $${i++}`);
-    params.push(String(req.body.notes ?? "").slice(0, 2000));
-  }
+  if (next.name !== cur.name) push("name", next.name);
+  if (Number(next.amount) !== Number(cur.amount)) push("amount", next.amount);
+  if (next.category !== cur.category) push("category", next.category);
+  if (next.payment_schedule !== cur.payment_schedule) push("payment_schedule", next.payment_schedule);
+  if (next.priority_level !== cur.priority_level) push("priority_level", next.priority_level);
+  if (next.status !== cur.status) push("status", next.status);
+  if (next.account_type !== cur.account_type) push("account_type", next.account_type);
+  if (next.payment_method !== cur.payment_method) push("payment_method", next.payment_method);
+  if (next.institution !== cur.institution) push("institution", next.institution);
+  if (next.tag !== cur.tag) push("tag", next.tag);
+  if (next.frequency !== cur.frequency) push("frequency", next.frequency);
+  if (next.remaining_payments !== curRem) push("remaining_payments", next.remaining_payments);
+  if (next.notes !== (cur.notes ?? "")) push("notes", next.notes);
 
   if (updates.length === 0) {
     const { rows } = await pool.query(
       `SELECT id, name, amount, category, payment_schedule, priority_level, status,
-              account_type, payment_method, institution, tag, frequency, notes, created_at
+              account_type, payment_method, institution, tag, frequency, remaining_payments, notes, created_at
        FROM payment_plans WHERE id = $1 AND user_id = $2`,
       [id, req.userId]
     );
@@ -211,7 +255,7 @@ paymentPlansRouter.patch("/:id", async (req, res) => {
     `UPDATE payment_plans SET ${updates.join(", ")}
      WHERE id = $${i++} AND user_id = $${i++}
      RETURNING id, name, amount, category, payment_schedule, priority_level, status,
-               account_type, payment_method, institution, tag, frequency, notes, created_at`,
+               account_type, payment_method, institution, tag, frequency, remaining_payments, notes, created_at`,
     params
   );
   res.json(normalizeRow(rows[0]));

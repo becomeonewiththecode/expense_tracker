@@ -5,6 +5,13 @@ import { useAuth } from "../auth.jsx";
 import { getRowsPerPage, setRowsPerPage, TABLE_ROWS_PER_PAGE_OPTIONS } from "../tablePreferences.js";
 import { useTheme } from "../ThemeContext.jsx";
 import { THEME_OPTIONS } from "../themePreferences.js";
+import {
+  getRenewalReminderWindowDays,
+  setRenewalReminderWindowDays,
+  RENEWAL_REMINDER_WINDOW_DAYS_OPTIONS,
+} from "../renewalPreferences.js";
+import { getHiddenCancelledRenewalsForUser } from "../renewalHiddenPreferences.js";
+import { formatProjectionCurrency } from "../projection.js";
 
 export default function ProfilePage() {
   const { user, setSession, token, refreshUser } = useAuth();
@@ -22,6 +29,10 @@ export default function ProfilePage() {
   const [previewUrl, setPreviewUrl] = useState(null);
 
   const [rowsPerPage, setRowsPerPageUi] = useState(() => getRowsPerPage());
+  const [renewalReminderWindowDays, setRenewalReminderWindowDaysUi] = useState(() =>
+    getRenewalReminderWindowDays()
+  );
+  const [hiddenCancelledRenewals, setHiddenCancelledRenewals] = useState([]);
   const { theme, setTheme } = useTheme();
 
   const [recoveryLoading, setRecoveryLoading] = useState(false);
@@ -53,6 +64,25 @@ export default function ProfilePage() {
     window.addEventListener("tableRowsPerPage-changed", onChange);
     return () => window.removeEventListener("tableRowsPerPage-changed", onChange);
   }, []);
+
+  useEffect(() => {
+    const onChange = () => setRenewalReminderWindowDaysUi(getRenewalReminderWindowDays());
+    window.addEventListener("renewalReminderWindowDays-changed", onChange);
+    return () => window.removeEventListener("renewalReminderWindowDays-changed", onChange);
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (!user?.id) {
+        setHiddenCancelledRenewals([]);
+        return;
+      }
+      setHiddenCancelledRenewals(getHiddenCancelledRenewalsForUser(user.id));
+    };
+    refresh();
+    window.addEventListener("renewalHiddenItems-changed", refresh);
+    return () => window.removeEventListener("renewalHiddenItems-changed", refresh);
+  }, [user?.id]);
 
   useEffect(() => {
     return () => {
@@ -493,6 +523,61 @@ export default function ProfilePage() {
           </select>
           <p className="text-[10px] text-th-muted mt-2">
             Default is 10. Tables will page at the bottom of the list.
+          </p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-th-subtle mb-1">
+            Upcoming renewals window (days)
+          </label>
+          <select
+            value={renewalReminderWindowDays}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              setRenewalReminderWindowDaysUi(next);
+              setRenewalReminderWindowDays(next);
+            }}
+            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          >
+            {RENEWAL_REMINDER_WINDOW_DAYS_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <p className="text-[10px] text-th-muted mt-2">
+            Options: 1, 3, 5, 7, 10, 14, 21, 30, or 40 days (default 7). This controls which rows appear in the Upcoming
+            expenses reminders.
+          </p>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-th-subtle mb-1">
+            Auto-hidden cancelled recurring items
+          </label>
+          {hiddenCancelledRenewals.length === 0 ? (
+            <p className="text-[11px] text-th-muted">
+              No cancelled recurring items are currently hidden.
+            </p>
+          ) : (
+            <div className="rounded-lg border border-th-border-bright bg-th-input overflow-hidden">
+              <ul className="divide-y divide-th-border">
+                {hiddenCancelledRenewals.map((row) => (
+                  <li key={row.expenseId} className="px-3 py-2.5 text-xs text-th-secondary">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm text-white truncate">{row.title || `Expense #${row.expenseId}`}</p>
+                        <p className="text-th-muted">
+                          {row.institution || "Unknown institution"} · last renewal {row.lastRenewalDate || "unknown"}
+                        </p>
+                      </div>
+                      <p className="shrink-0 tabular-nums text-white">{formatProjectionCurrency(row.amount)}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="text-[10px] text-th-muted mt-2">
+            Cancelled expenses, renewals, and payment plans are hidden from Upcoming expenses after they are at least one day past renewal.
           </p>
         </div>
       </div>

@@ -40,6 +40,8 @@ import {
   parseInstitution,
   parsePaymentPlanTag,
   parsePaymentPlanFrequency,
+  parseRemainingPayments,
+  resolvePaymentPlanStatusForRemaining,
   PAYMENT_PLAN_CATEGORY_ERROR,
   PAYMENT_SCHEDULE_ERROR,
   PRIORITY_LEVEL_ERROR,
@@ -49,6 +51,7 @@ import {
   INSTITUTION_ERROR,
   PAYMENT_PLAN_TAG_ERROR,
   PAYMENT_PLAN_FREQUENCY_ERROR,
+  REMAINING_PAYMENTS_ERROR,
 } from "../paymentPlanEnums.js";
 import { syncPaymentPlanForExpense } from "../paymentPlanSync.js";
 
@@ -162,6 +165,7 @@ function normalizePaymentPlanRow(row) {
     institution: row.institution,
     tag: row.tag,
     frequency: row.frequency,
+    remaining_payments: row.remaining_payments != null ? Number(row.remaining_payments) : null,
     notes: row.notes ?? "",
   };
 }
@@ -337,7 +341,10 @@ function validatePaymentPlanForRestore(raw, index) {
   if (!tag) return { ok: false, error: `${label}: ${PAYMENT_PLAN_TAG_ERROR}` };
   const frequency = parsePaymentPlanFrequency(raw.frequency);
   if (!frequency) return { ok: false, error: `${label}: ${PAYMENT_PLAN_FREQUENCY_ERROR}` };
+  const rpParsed = parseRemainingPayments(raw.remaining_payments);
+  if (!rpParsed.ok) return { ok: false, error: `${label}: ${REMAINING_PAYMENTS_ERROR}` };
   const notes = String(raw.notes ?? "").slice(0, 2000);
+  const statusResolved = resolvePaymentPlanStatusForRemaining(rpParsed.value, status);
   return {
     ok: true,
     values: {
@@ -346,12 +353,13 @@ function validatePaymentPlanForRestore(raw, index) {
       category,
       payment_schedule,
       priority_level,
-      status,
+      status: statusResolved,
       account_type,
       payment_method,
       institution,
       tag,
       frequency,
+      remaining_payments: rpParsed.value,
       notes,
     },
   };
@@ -395,7 +403,7 @@ backupRouter.get("/export", authRequired, async (req, res) => {
     const prescriptions = prescRows.map(normalizePrescriptionRow);
 
     const { rows: paymentPlanRows } = await pool.query(
-      `SELECT name, amount, category, payment_schedule, priority_level, status, account_type, payment_method, institution, tag, frequency, notes
+      `SELECT name, amount, category, payment_schedule, priority_level, status, account_type, payment_method, institution, tag, frequency, remaining_payments, notes
        FROM payment_plans WHERE user_id = $1
        ORDER BY id ASC`,
       [req.userId]
@@ -613,8 +621,8 @@ backupRouter.post(
         for (const p of validatedPaymentPlans) {
           await client.query(
             `INSERT INTO payment_plans
-              (user_id, name, amount, category, payment_schedule, priority_level, status, account_type, payment_method, institution, tag, frequency, notes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+              (user_id, name, amount, category, payment_schedule, priority_level, status, account_type, payment_method, institution, tag, frequency, remaining_payments, notes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
             [
               req.userId,
               p.name,
@@ -628,6 +636,7 @@ backupRouter.post(
               p.institution,
               p.tag,
               p.frequency,
+              p.remaining_payments,
               p.notes,
             ]
           );

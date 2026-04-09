@@ -1,0 +1,210 @@
+.landing-editorial {
+  --lp-paper: #faf8f5;
+  --lp-ink: #1a1714;
+  --lp-muted: #5c5650;
+  --lp-line: #e8e4dc;
+  --lp-emerald-accent: #059669;
+  --lp-sage: #3d5a4a;
+  --lp-cream: #f0ebe3;
+
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Inter", system-ui, sans-serif;
+  background: var(--lp-paper);
+  color: var(--lp-ink);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.landing-editorial .lp-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.landing-editorial .lp-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--lp-line);
+  margin-bottom: 2.5rem;
+}
+
+.landing-editorial .lp-brand {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.landing-editorial .lp-brand span {
+  color: var(--lp-emerald-accent);
+}
+
+.landing-editorial .lp-header nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.landing-editorial .lp-header nav a {
+  color: var(--lp-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.landing-editorial .lp-header nav a:hover {
+  color: var(--lp-ink);
+}
+
+.landing-editorial .lp-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 1.15rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.landing-editorial .lp-btn-fill {
+  background: var(--lp-ink);
+  color: var(--lp-paper);
+}
+
+.landing-editorial .lp-btn-fill:hover {
+  background: var(--lp-sage);
+  color: #fff;
+}
+
+.landing-editorial .lp-btn-outline {
+  border: 1px solid var(--lp-line);
+  color: var(--lp-ink);
+  background: transparent;
+}
+
+.landing-editorial .lp-btn-outline:hover {
+  border-color: var(--lp-ink);
+}
+
+.landing-editorial .lp-hero-bento {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 2.5rem;
+}
+
+@media (min-width: 800px) {
+  .landing-editorial .lp-hero-bento {
+    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-rows: auto auto;
+  }
+
+  .landing-editorial .lp-hero-main {
+    grid-row: span 2;
+  }
+}
+
+.landing-editorial .lp-tile {
+  background: var(--lp-paper);
+  padding: 1.75rem 1.5rem;
+  border: 1px solid var(--lp-line);
+  border-radius: 24px;
+}
+
+.landing-editorial .lp-hero-main h1 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(2rem, 4.2vw, 2.85rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  margin: 0 0 1rem;
+}
+
+.landing-editorial .lp-hero-main h1 i {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--lp-emerald-accent);
+}
+
+.landing-editorial .lp-hero-main .lp-lede {
+  margin: 0 0 1.5rem;
+  color: var(--lp-muted);
+  font-size: 1.02rem;
+  max-width: 36ch;
+}
+
+.landing-editorial .lp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.landing-editorial .lp-tile-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 140px;
+  background: var(--lp-cream);
+}
+
+.landing-editorial .lp-tile-side .lp-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--lp-muted);
+}
+
+.landing-editorial .lp-tile-quote {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--lp-sage);
+  line-height: 1.45;
+}
+
+.landing-editorial .lp-grid-3 {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 700px) {
+  .landing-editorial .lp-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.landing-editorial .lp-card {
+  border: 1px solid var(--lp-line);
+  border-radius: 24px;
+  padding: 1.35rem 1.25rem;
+  background: #fff;
+}
+
+.landing-editorial .lp-card h3 {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.landing-editorial .lp-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--lp-muted);
+}
+
+.landing-editorial .lp-footer-copy {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--lp-line);
+  font-size: 0.8rem;
+  color: var(--lp-muted);
+  text-align: center;
+}

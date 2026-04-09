@@ -1,4 +1,5 @@
 import pg from "pg";
+import bcrypt from "bcryptjs";
 
 const { Pool } = pg;
 
@@ -12,8 +13,12 @@ export async function initDb() {
       id SERIAL PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT,
+      role TEXT NOT NULL DEFAULT 'user',
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+    ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'manager', 'admin'));
     ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_lookup TEXT NULL;
@@ -150,5 +155,45 @@ export async function initDb() {
       ON payment_plans(user_id, source_expense_id)
       WHERE source_expense_id IS NOT NULL;
     CREATE INDEX IF NOT EXISTS idx_payment_plans_user_id_desc ON payment_plans(user_id, id DESC);
+    ALTER TABLE payment_plans ADD COLUMN IF NOT EXISTS remaining_payments INTEGER NULL;
+    ALTER TABLE payment_plans DROP CONSTRAINT IF EXISTS payment_plans_remaining_payments_check;
+    ALTER TABLE payment_plans ADD CONSTRAINT payment_plans_remaining_payments_check
+      CHECK (remaining_payments IS NULL OR remaining_payments >= 0);
+
+    CREATE TABLE IF NOT EXISTS admins (
+      id SERIAL PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      totp_secret TEXT,
+      must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    ALTER TABLE admins ALTER COLUMN totp_secret DROP NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS admin_user_notifications (
+      id SERIAL PRIMARY KEY,
+      admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
+
+  const adminUsername = String(process.env.ADMIN_USERNAME || "").trim();
+  const adminPassword = String(process.env.ADMIN_PASSWORD || "");
+  const adminTotpSecret = String(process.env.ADMIN_TOTP_SECRET || "").trim();
+  if (adminUsername && adminPassword) {
+    const { rows } = await pool.query(`SELECT id FROM admins WHERE username = $1`, [adminUsername]);
+    if (!rows[0]) {
+      const hash = await bcrypt.hash(adminPassword, 10);
+      await pool.query(
+        `INSERT INTO admins (username, password_hash, totp_secret, must_change_password) VALUES ($1, $2, $3, TRUE)`,
+        [adminUsername, hash, adminTotpSecret || null]
+      );
+      console.log(`Default admin account created for username "${adminUsername}"`);
+    }
+  }
 }

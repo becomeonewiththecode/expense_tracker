@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api";
+import ExpenseEditModal from "../components/ExpenseEditModal.jsx";
 import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
 import ExpenseTable from "../components/ExpenseTable.jsx";
 import ProjectionModal from "../components/ProjectionModal.jsx";
@@ -98,10 +99,10 @@ export default function RenewalsPage() {
     });
   }
 
-  function cancelExpenseEdit() {
+  const cancelExpenseEdit = useCallback(() => {
     setExpenseEditId(null);
     setExpenseEditDraft(null);
-  }
+  }, []);
 
   async function saveExpenseEdit() {
     if (!expenseEditId || !expenseEditDraft) return;
@@ -277,13 +278,8 @@ export default function RenewalsPage() {
       {!loading && items.length > 0 && (
         <ExpenseTable
           items={filteredItems}
-          expenseEditId={expenseEditId}
-          expenseEditDraft={expenseEditDraft}
-          setExpenseEditDraft={setExpenseEditDraft}
-          expenseSaving={expenseSaving}
-          openExpenseEdit={openExpenseEdit}
-          cancelExpenseEdit={cancelExpenseEdit}
-          saveExpenseEdit={saveExpenseEdit}
+          onEdit={openExpenseEdit}
+          onCancelEditSession={cancelExpenseEdit}
           remove={remove}
           onProjection={() => setProjectionTarget({ kind: "all" })}
           onRowProjection={(row) => setProjectionTarget({ kind: "row", row })}
@@ -295,6 +291,16 @@ export default function RenewalsPage() {
           updateFlashToken={tableUpdateFlashToken}
         />
       )}
+
+      <ExpenseEditModal
+        open={expenseEditId != null && expenseEditDraft != null}
+        title="Edit renewal"
+        draft={expenseEditDraft}
+        setDraft={setExpenseEditDraft}
+        saving={expenseSaving}
+        onSave={saveExpenseEdit}
+        onClose={cancelExpenseEdit}
+      />
 
       <ProjectionModal
         open={projectionTarget != null}

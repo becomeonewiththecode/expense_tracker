@@ -10,16 +10,12 @@ import {
   TABLE,
   TABLE_BODY,
   TABLE_CARD,
-  TABLE_FIELD_INPUT,
-  TABLE_FIELD_INPUT_NUM,
   TABLE_HEAD,
   TABLE_HEADER_BAR,
   TABLE_ROW,
-  TABLE_ROW_EDITING,
   TABLE_SCROLL,
   TABLE_TD,
   TABLE_TD_STICKY_ACTIONS_DEFAULT,
-  TABLE_TD_STICKY_ACTIONS_EDITING,
   TABLE_TH,
   TABLE_TH_STICKY_ACTIONS,
 } from "../tableStyles.js";
@@ -41,22 +37,6 @@ function prescriptionRowsForProjection(rows) {
   return rows.filter((r) => r.state === "active");
 }
 
-function prescriptionRowSnapshotForProjection(row, draft) {
-  if (!draft) return row;
-  const amt = Number(draft.amount);
-  return {
-    ...row,
-    name: draft.name.trim(),
-    amount: Number.isFinite(amt) ? amt : row.amount,
-    renewal_period: draft.renewal_period,
-    category: draft.category,
-    state: draft.state,
-    next_renewal_date: draft.next_renewal_date,
-    vendor: draft.vendor ?? "",
-    notes: draft.notes ?? "",
-  };
-}
-
 function projectionContextLabel(row) {
   const n = row.name?.trim();
   return n ? `Prescription — ${n}` : "Prescription";
@@ -75,6 +55,114 @@ function emptyForm() {
   };
 }
 
+const prescInputClass =
+  "w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm";
+
+/** Shared fields for add form and edit modal. */
+function PrescriptionFormFields({ form, setForm, autoFocusName = false }) {
+  return (
+    <>
+      <div className="sm:col-span-2">
+        <label className="text-xs text-th-muted block mb-1">Name</label>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          className={prescInputClass}
+          placeholder="e.g. Contact lenses, maintenance medication"
+          required
+          autoFocus={autoFocusName}
+        />
+      </div>
+      <div>
+        <label className="text-xs text-th-muted block mb-1">Amount</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={form.amount}
+          onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+          className={prescInputClass}
+          placeholder="0.00"
+          required
+        />
+      </div>
+      <div>
+        <label className="text-xs text-th-muted block mb-1">Category</label>
+        <select
+          value={form.category}
+          onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+          className={prescInputClass}
+        >
+          {PRESCRIPTION_CATEGORY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs text-th-muted block mb-1">Renewal period</label>
+        <select
+          value={form.renewal_period}
+          onChange={(e) => setForm((f) => ({ ...f, renewal_period: e.target.value }))}
+          className={prescInputClass}
+        >
+          {PRESCRIPTION_RENEWAL_PERIOD_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-xs text-th-muted block mb-1">Next renewal date</label>
+        <input
+          type="date"
+          value={form.next_renewal_date}
+          onChange={(e) => setForm((f) => ({ ...f, next_renewal_date: e.target.value }))}
+          className={prescInputClass}
+          required
+        />
+      </div>
+      <div>
+        <label className="text-xs text-th-muted block mb-1">Vendor</label>
+        <input
+          type="text"
+          value={form.vendor}
+          onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
+          className={prescInputClass}
+          placeholder="Pharmacy, clinic, supplier"
+        />
+      </div>
+      <div className="sm:col-span-2">
+        <label className="text-xs text-th-muted block mb-1">Notes</label>
+        <input
+          type="text"
+          value={form.notes}
+          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+          className={prescInputClass}
+          placeholder="Optional"
+        />
+      </div>
+      <div>
+        <label className="text-xs text-th-muted block mb-1">State</label>
+        <select
+          value={form.state}
+          onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
+          className={prescInputClass}
+        >
+          {EXPENSE_STATE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
+  );
+}
+
 export default function PrescriptionsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +178,11 @@ export default function PrescriptionsPage() {
   const rowsPerPage = useTableRowsPerPage();
   const [page, setPage] = useState(1);
   const [tableUpdateFlashToken, setTableUpdateFlashToken] = useState(0);
+
+  const cancelEdit = useCallback(() => {
+    setEditId(null);
+    setEditDraft(null);
+  }, []);
 
   const load = useCallback(async () => {
     setError("");
@@ -117,6 +210,24 @@ export default function PrescriptionsPage() {
   useEffect(() => {
     if (items.length === 0) setProjectionTarget(null);
   }, [items.length]);
+
+  useEffect(() => {
+    if (!editId) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [editId]);
+
+  useEffect(() => {
+    if (!editId) return;
+    function onKeyDown(e) {
+      if (e.key === "Escape") cancelEdit();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editId, cancelEdit]);
 
   useEffect(() => {
     setPage(1);
@@ -177,11 +288,6 @@ export default function PrescriptionsPage() {
       category: row.category,
       state: row.state || "active",
     });
-  }
-
-  function cancelEdit() {
-    setEditId(null);
-    setEditDraft(null);
   }
 
   async function saveEdit() {
@@ -303,117 +409,22 @@ export default function PrescriptionsPage() {
       ) : null}
 
       {addFormOpen ? (
-      <form
-        id="prescriptions-add-form"
-        onSubmit={addPrescription}
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-end bg-th-surface/50 border border-th-border rounded-xl p-4"
-      >
-        <div className="sm:col-span-2">
-          <label className="text-xs text-th-muted block mb-1">Name</label>
-          <input
-            type="text"
-            value={addForm.name}
-            onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
-            placeholder="e.g. Contact lenses, maintenance medication"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-xs text-th-muted block mb-1">Amount</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={addForm.amount}
-            onChange={(e) => setAddForm((f) => ({ ...f, amount: e.target.value }))}
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
-            placeholder="0.00"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-xs text-th-muted block mb-1">Category</label>
-          <select
-            value={addForm.category}
-            onChange={(e) => setAddForm((f) => ({ ...f, category: e.target.value }))}
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
-          >
-            {PRESCRIPTION_CATEGORY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-th-muted block mb-1">Renewal period</label>
-          <select
-            value={addForm.renewal_period}
-            onChange={(e) => setAddForm((f) => ({ ...f, renewal_period: e.target.value }))}
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
-          >
-            {PRESCRIPTION_RENEWAL_PERIOD_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-th-muted block mb-1">Next renewal date</label>
-          <input
-            type="date"
-            value={addForm.next_renewal_date}
-            onChange={(e) => setAddForm((f) => ({ ...f, next_renewal_date: e.target.value }))}
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-xs text-th-muted block mb-1">Vendor</label>
-          <input
-            type="text"
-            value={addForm.vendor}
-            onChange={(e) => setAddForm((f) => ({ ...f, vendor: e.target.value }))}
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
-            placeholder="Pharmacy, clinic, supplier"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-xs text-th-muted block mb-1">Notes</label>
-          <input
-            type="text"
-            value={addForm.notes}
-            onChange={(e) => setAddForm((f) => ({ ...f, notes: e.target.value }))}
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
-            placeholder="Optional"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-th-muted block mb-1">State</label>
-          <select
-            value={addForm.state}
-            onChange={(e) => setAddForm((f) => ({ ...f, state: e.target.value }))}
-            className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-white text-sm"
-          >
-            {EXPENSE_STATE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-end">
-          <button
-            type="submit"
-            disabled={addSaving}
-            className="rounded-lg bg-cyan-700/90 hover:bg-cyan-600 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
-          >
-            {addSaving ? "Saving…" : "Add prescription"}
-          </button>
-        </div>
-      </form>
+        <form
+          id="prescriptions-add-form"
+          onSubmit={addPrescription}
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-end bg-th-surface/50 border border-th-border rounded-xl p-4"
+        >
+          <PrescriptionFormFields form={addForm} setForm={setAddForm} />
+          <div className="flex items-end">
+            <button
+              type="submit"
+              disabled={addSaving}
+              className="rounded-lg bg-cyan-700/90 hover:bg-cyan-600 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
+            >
+              {addSaving ? "Saving…" : "Add prescription"}
+            </button>
+          </div>
+        </form>
       ) : null}
 
       {!loading && items.length === 0 && (
@@ -463,215 +474,71 @@ export default function PrescriptionsPage() {
               </thead>
               <tbody className={TABLE_BODY}>
                 {pageItems.map((row) => {
-                  const editing = editId === row.id;
-                  const d = editing ? editDraft : null;
-                  const projectionRow = prescriptionRowSnapshotForProjection(row, d);
                   const days = daysUntilPrescriptionRenewal(row.next_renewal_date);
                   return (
-                    <tr key={row.id} className={editing ? TABLE_ROW_EDITING : TABLE_ROW}>
-                      <td className={`${TABLE_TD} text-th-secondary`}>
-                        {editing && d ? (
-                          <input
-                            value={d.name}
-                            onChange={(e) => setEditDraft((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
-                            className={`w-full min-w-[8rem] ${TABLE_FIELD_INPUT}`}
-                          />
-                        ) : (
-                          row.name
-                        )}
-                      </td>
+                    <tr key={row.id} className={TABLE_ROW}>
+                      <td className={`${TABLE_TD} text-th-secondary`}>{row.name}</td>
                       <td className={`${TABLE_TD} text-th-tertiary`}>
-                        {editing && d ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={d.amount}
-                            onChange={(e) =>
-                              setEditDraft((prev) => (prev ? { ...prev, amount: e.target.value } : prev))
-                            }
-                            className={`w-24 ${TABLE_FIELD_INPUT_NUM}`}
-                          />
-                        ) : (
-                          <span className="font-medium text-white tabular-nums">
-                            ${Number(row.amount).toFixed(2)}
-                          </span>
-                        )}
+                        <span className="font-medium text-white tabular-nums">${Number(row.amount).toFixed(2)}</span>
                       </td>
                       <td className={TABLE_TD}>
-                        {editing && d ? (
-                          <select
-                            value={d.category}
-                            onChange={(e) =>
-                              setEditDraft((prev) => (prev ? { ...prev, category: e.target.value } : prev))
-                            }
-                            className={`max-w-[9rem] ${TABLE_FIELD_INPUT}`}
-                          >
-                            {PRESCRIPTION_CATEGORY_OPTIONS.map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="text-th-tertiary">{formatPrescriptionCategory(row.category)}</span>
-                        )}
+                        <span className="text-th-tertiary">{formatPrescriptionCategory(row.category)}</span>
                       </td>
                       <td className={TABLE_TD}>
-                        {editing && d ? (
-                          <select
-                            value={d.renewal_period}
-                            onChange={(e) =>
-                              setEditDraft((prev) => (prev ? { ...prev, renewal_period: e.target.value } : prev))
-                            }
-                            className={`max-w-[9rem] ${TABLE_FIELD_INPUT}`}
-                          >
-                            {PRESCRIPTION_RENEWAL_PERIOD_OPTIONS.map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="text-th-tertiary">{formatRenewalPeriod(row.renewal_period)}</span>
-                        )}
+                        <span className="text-th-tertiary">{formatRenewalPeriod(row.renewal_period)}</span>
                       </td>
                       <td className={TABLE_TD}>
-                        {editing && d ? (
-                          <input
-                            type="date"
-                            value={d.next_renewal_date}
-                            onChange={(e) =>
-                              setEditDraft((prev) =>
-                                prev ? { ...prev, next_renewal_date: e.target.value } : prev
-                              )
-                            }
-                            className={TABLE_FIELD_INPUT}
-                          />
-                        ) : (
-                          <span className="text-th-tertiary">
-                            {String(row.next_renewal_date).slice(0, 10)}
-                            {days != null && row.state === "active" ? (
-                              <span className="text-th-muted text-xs ml-1">
-                                (
-                                {days < 0
-                                  ? `${-days}d overdue`
-                                  : days === 0
-                                    ? "today"
-                                    : `${days}d`}
-                                )
-                              </span>
-                            ) : null}
-                          </span>
-                        )}
+                        <span className="text-th-tertiary">
+                          {String(row.next_renewal_date).slice(0, 10)}
+                          {days != null && row.state === "active" ? (
+                            <span className="text-th-muted text-xs ml-1">
+                              (
+                              {days < 0 ? `${-days}d overdue` : days === 0 ? "today" : `${days}d`})
+                            </span>
+                          ) : null}
+                        </span>
                       </td>
-                      <td className={`${TABLE_TD} text-th-subtle hidden md:table-cell`}>
-                        {editing && d ? (
-                          <input
-                            value={d.vendor}
-                            onChange={(e) =>
-                              setEditDraft((prev) => (prev ? { ...prev, vendor: e.target.value } : prev))
-                            }
-                            className={`w-full max-w-xs ${TABLE_FIELD_INPUT}`}
-                          />
-                        ) : (
-                          row.vendor || "—"
-                        )}
-                      </td>
+                      <td className={`${TABLE_TD} text-th-subtle hidden md:table-cell`}>{row.vendor || "—"}</td>
                       <td className={`${TABLE_TD} text-th-muted hidden lg:table-cell max-w-[12rem] truncate`}>
-                        {editing && d ? (
-                          <input
-                            value={d.notes}
-                            onChange={(e) =>
-                              setEditDraft((prev) => (prev ? { ...prev, notes: e.target.value } : prev))
-                            }
-                            className={`w-full ${TABLE_FIELD_INPUT} text-th-tertiary`}
-                          />
-                        ) : (
-                          row.notes || "—"
-                        )}
+                        {row.notes || "—"}
                       </td>
                       <td className={TABLE_TD}>
-                        {editing && d ? (
-                          <select
-                            value={d.state}
-                            onChange={(e) =>
-                              setEditDraft((prev) => (prev ? { ...prev, state: e.target.value } : prev))
-                            }
-                            className={TABLE_FIELD_INPUT}
-                          >
-                            {EXPENSE_STATE_OPTIONS.map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className={row.state === "active" ? "text-th-tertiary" : "text-emerald-400/90"}>
-                            {formatExpenseState(row.state)}
-                          </span>
-                        )}
+                        <span className={row.state === "active" ? "text-th-tertiary" : "text-emerald-400/90"}>
+                          {formatExpenseState(row.state)}
+                        </span>
                       </td>
-                      <td
-                        className={`${
-                          editing && d ? TABLE_TD_STICKY_ACTIONS_EDITING : TABLE_TD_STICKY_ACTIONS_DEFAULT
-                        } whitespace-nowrap`}
-                      >
-                        {editing && d ? (
-                          <div className="flex justify-end">
-                            <RowActionsMenu
-                              items={[
-                                {
-                                  key: "save",
-                                  label: editSaving ? "Saving…" : "Save",
-                                  disabled: editSaving,
-                                  className: "text-emerald-400",
-                                  onClick: saveEdit,
-                                },
-                                {
-                                  key: "cancel",
-                                  label: "Cancel",
-                                  disabled: editSaving,
-                                  className: "text-th-subtle",
-                                  onClick: cancelEdit,
-                                },
-                              ]}
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex justify-end">
-                            <RowActionsMenu
-                              items={[
-                                {
-                                  key: "projection",
-                                  label: "Projection",
-                                  className: "text-violet-400",
-                                  onClick: () =>
-                                    setProjectionTarget({ kind: "row", row: projectionRow }),
-                                },
-                                {
-                                  key: "edit",
-                                  label: "Edit",
-                                  className: "text-sky-400",
-                                  onClick: () => startEdit(row),
-                                },
-                                {
-                                  key: "delete",
-                                  label: "Delete",
-                                  className: "text-rose-400",
-                                  onClick: () => remove(row.id),
-                                },
-                                {
-                                  key: "renewed",
-                                  label: "Renewed",
-                                  title: "Advance next renewal by one cycle",
-                                  className: "text-cyan-400",
-                                  onClick: () => markRenewed(row),
-                                },
-                              ]}
-                            />
-                          </div>
-                        )}
+                      <td className={`${TABLE_TD_STICKY_ACTIONS_DEFAULT} whitespace-nowrap`}>
+                        <div className="flex justify-end">
+                          <RowActionsMenu
+                            items={[
+                              {
+                                key: "projection",
+                                label: "Projection",
+                                className: "text-violet-400",
+                                onClick: () => setProjectionTarget({ kind: "row", row }),
+                              },
+                              {
+                                key: "edit",
+                                label: "Edit",
+                                className: "text-sky-400",
+                                onClick: () => startEdit(row),
+                              },
+                              {
+                                key: "delete",
+                                label: "Delete",
+                                className: "text-rose-400",
+                                onClick: () => remove(row.id),
+                              },
+                              {
+                                key: "renewed",
+                                label: "Renewed",
+                                title: "Advance next renewal by one cycle",
+                                className: "text-cyan-400",
+                                onClick: () => markRenewed(row),
+                              },
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   );
@@ -691,6 +558,68 @@ export default function PrescriptionsPage() {
           ) : null}
         </div>
       )}
+
+      {editId != null && editDraft != null ? (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm px-4 py-8 sm:py-12"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) cancelEdit();
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="prescription-edit-title"
+            className="w-full max-w-5xl rounded-xl border border-th-border bg-th-surface/95 shadow-xl p-4 sm:p-6 my-auto"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h2 id="prescription-edit-title" className="text-lg font-semibold text-white">
+                  Edit prescription
+                </h2>
+                <p className="text-xs text-th-muted mt-1">
+                  Update any field, then save. Press Escape, Close, or click outside to cancel.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="text-th-muted text-sm hover:text-th-tertiary shrink-0"
+              >
+                Close
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void saveEdit();
+              }}
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-end"
+            >
+              <PrescriptionFormFields form={editDraft} setForm={setEditDraft} autoFocusName />
+              <div className="flex flex-wrap gap-2 items-end sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  className="rounded-lg bg-cyan-700/90 hover:bg-cyan-600 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
+                >
+                  {editSaving ? "Saving…" : "Save changes"}
+                </button>
+                <button
+                  type="button"
+                  disabled={editSaving}
+                  onClick={cancelEdit}
+                  className="rounded-lg border border-th-border-bright text-th-secondary text-sm font-medium px-4 py-2 hover:bg-th-surface disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       <ProjectionModal
         open={projectionTarget != null}
