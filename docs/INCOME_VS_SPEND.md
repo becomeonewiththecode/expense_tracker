@@ -10,9 +10,9 @@ Standalone guide to **how income is recorded** and **three different ways** the 
 
 | Mode | Question it answers | Primary API / UI |
 |------|---------------------|------------------|
-| **Cash flow (actuals)** | In this calendar month, how much came in vs went out? | `GET /api/reports/cashflow/monthly` — **Reports → Monthly** |
+| **Cash flow (actuals)** | In this calendar month, how much came in vs went out? | `GET /api/reports/cashflow/monthly` — **Budget** hub **Budget** tab (or **Reports** tab → **Monthly**, or **`/reports`**) |
 | **Recurring run rate** | If recurring income and obligations stayed steady, would I be under or over per month? | `GET /api/reports/run-rate-vs-income` — **Income** page banner |
-| **Projection (modal)** | Quick net run rate in the chart tool | Client [`projection.js`](../client/src/projection.js) from **Reports** |
+| **Projection (modal)** | Quick net run rate in the chart tool | Client [`projection.js`](../client/src/projection.js) from **Budget** / **Reports** chart views |
 
 ```mermaid
 flowchart TB
@@ -38,7 +38,7 @@ flowchart TB
     RRlogic --> NET2[netMonthly overspending flag]
   end
 
-  subgraph modeC [Projection modal from Reports]
+  subgraph modeC [Projection modal from Budget or Reports]
     PM[Client projection.js]
     IE --> PM
     EX --> PM
@@ -64,7 +64,7 @@ flowchart TB
 
 - Sums **`income_entries.received_at`** in the selected month vs **expenses** with **`spent_at`** in that month.
 - Does **not** use budget lines; it is literal calendar-month totals.
-- Used on **Reports → Monthly** for the cash-flow card / narrative.
+- Used on the **Budget** hub (**Budget** tab and **Reports** → **Monthly**) and standalone **`/reports`** for the cash-flow card / narrative.
 
 ---
 
@@ -112,7 +112,7 @@ sequenceDiagram
 
 ## Projection modal
 
-- Uses recurring expense run rate and recurring income run rate to show **net monthly** in the chart dialog on Reports.
+- Uses recurring expense run rate and recurring income run rate to show **net monthly** in the chart dialog on **Budget** / **Reports** views.
 - Implementation: [`client/src/projection.js`](../client/src/projection.js).
 
 ---

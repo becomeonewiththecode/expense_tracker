@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../api";
 import ProjectionModal from "../components/ProjectionModal.jsx";
 import {
@@ -80,8 +80,44 @@ function buildMonthlyChartSeries(year, month, series, budgetTotal, dim) {
   return out;
 }
 
-export default function ReportsPage() {
-  const [tab, setTab] = useState("daily");
+/**
+ * @param {{ variant?: "full" | "monthly_budget", embedded?: boolean }} props
+ * `monthly_budget` locks the page to the monthly view (budget, cash flow, chart). `embedded` hides the standalone Reports title (used under Budget hub).
+ */
+export default function ReportsPage({ variant = "full", embedded = false }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => {
+    if (variant === "monthly_budget") return "monthly";
+    const t = searchParams.get("tab");
+    return t && tabs.some((x) => x.id === t) ? t : "daily";
+  });
+
+  useEffect(() => {
+    if (variant === "monthly_budget") {
+      setTab("monthly");
+      return;
+    }
+    const t = searchParams.get("tab");
+    const next = t && tabs.some((x) => x.id === t) ? t : "daily";
+    setTab(next);
+  }, [searchParams, variant]);
+
+  const selectTab = useCallback(
+    (id) => {
+      if (variant === "monthly_budget") return;
+      setTab(id);
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          if (id === "daily") p.delete("tab");
+          else p.set("tab", id);
+          return p;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams, variant]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
@@ -382,28 +418,37 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Reports</h1>
-        <p className="text-sm text-th-subtle mt-1">Spending trends by period.</p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl font-semibold text-white">Reports</h1>
+          <p className="text-sm text-th-subtle mt-1">Spending trends by period.</p>
+          <p className="text-xs text-th-muted mt-2">
+            <Link to="/budget" className="text-emerald-400/90 hover:text-emerald-300 hover:underline">
+              ← Budget &amp; reports home
+            </Link>
+          </p>
+        </div>
+      )}
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={[
-              "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-              tab === t.id
-                ? "bg-emerald-600 text-white"
-                : "bg-th-surface-alt text-th-tertiary hover:bg-th-border-bright",
-            ].join(" ")}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {variant !== "monthly_budget" && (
+        <div className="flex flex-wrap gap-2">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => selectTab(t.id)}
+              className={[
+                "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                tab === t.id
+                  ? "bg-emerald-600 text-white"
+                  : "bg-th-surface-alt text-th-tertiary hover:bg-th-border-bright",
+              ].join(" ")}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-4 items-end bg-th-surface/40 border border-th-border rounded-xl p-4">
         {tab === "daily" && (
@@ -481,7 +526,7 @@ export default function ReportsPage() {
           <p className="text-sm font-medium text-white">Cash flow (this month)</p>
           <p className="text-xs text-th-muted">
             Totals for {cashflow.start} through {cashflow.end}. Log income on the{" "}
-            <Link to="/income" className="text-sky-400 hover:underline">
+            <Link to="/budget?view=income" className="text-sky-400 hover:underline">
               Income
             </Link>{" "}
             page.

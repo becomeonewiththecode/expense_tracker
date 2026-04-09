@@ -131,7 +131,7 @@ See the entity-relationship figure in [ARCHITECTURE_DIAGRAM.md § Data model](./
 | Reminder banner | `client/src/components/PrescriptionReminders.jsx` |
 | Labels | `client/src/prescriptionOptions.js` |
 | Day math + advance date | `client/src/prescriptionSchedule.js` |
-| Nav + shell | `client/src/components/Layout.jsx` — **Import**; **Lists** ▾ below **`lg`** or inline **Expenses** / **Renewals** / **Prescriptions** / **Reports** at **`lg`**+ |
+| Nav + shell | `client/src/components/Layout.jsx` — **Import**; **Lists** ▾ below **`lg`** or inline **Income** / **Savings** / **Expenses** / **Renewals** / **Prescriptions** / **Payment Plan** / **Budget** at **`lg`**+ |
 | Route **`/prescriptions`** | `client/src/App.jsx` |
 
 ---

@@ -9,6 +9,8 @@ import {
   RENEWAL_KIND_OPTIONS,
 } from "../expenseOptions.js";
 import ManualExpenseForm, { createEmptyManualExpenseForm } from "../components/ManualExpenseForm.jsx";
+import ImportRulesPanel from "../components/ImportRulesPanel.jsx";
+import ImportAiSuggestModal from "../components/ImportAiSuggestModal.jsx";
 import {
   TABLE,
   TABLE_BODY,
@@ -38,6 +40,8 @@ export default function ExpensesPage() {
   const [committing, setCommitting] = useState(false);
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [importFormOpen, setImportFormOpen] = useState(true);
+  const [aiSuggestOpen, setAiSuggestOpen] = useState(false);
+  const [applyingRules, setApplyingRules] = useState(false);
 
   const loadStaging = useCallback(async () => {
     try {
@@ -188,9 +192,14 @@ export default function ExpensesPage() {
     setCommitting(true);
     try {
       const { data } = await api.post(`/imports/batches/${staging.batch.id}/commit`);
-      setImportNotice(
-        `Added ${data.added} expense(s).${data.skipped ? ` ${data.skipped} row(s) had no category and were skipped.` : ""}`
-      );
+      const parts = [`Added ${data.added} expense(s).`];
+      if (data.rules_matched) {
+        parts.push(`${data.rules_matched} row(s) matched your rules before commit.`);
+      }
+      if (data.skipped) {
+        parts.push(`${data.skipped} row(s) had no category and were skipped.`);
+      }
+      setImportNotice(parts.join(" "));
       setStaging(null);
       await loadStaging();
       await load();
@@ -199,6 +208,26 @@ export default function ExpensesPage() {
       setError(err.response?.data?.error || "Could not commit import");
     } finally {
       setCommitting(false);
+    }
+  }
+
+  async function runRulesOnStaging() {
+    if (!staging?.batch?.id) return;
+    setError("");
+    setApplyingRules(true);
+    try {
+      const { data } = await api.post(`/imports/batches/${staging.batch.id}/apply-rules`);
+      const { data: latest } = await api.get("/imports/latest");
+      setStaging(latest);
+      setImportNotice(
+        data.matched
+          ? `Rules matched ${data.matched} uncategorized row(s). Review the table, then commit.`
+          : "No rules matched uncategorized rows (add rules under Category rules, or nothing to match)."
+      );
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not apply rules");
+    } finally {
+      setApplyingRules(false);
     }
   }
 
@@ -298,9 +327,11 @@ export default function ExpensesPage() {
         </div>
         {importFormOpen ? (
         <>
+        <ImportRulesPanel />
         <p className="text-xs text-th-muted mt-1 max-w-2xl">
           Upload a <strong className="text-th-subtle">CSV</strong> or <strong className="text-th-subtle">PDF</strong>. Parsed rows appear in the <strong className="text-th-subtle">review table</strong> below.
           Set defaults for <strong className="text-th-subtle">institution</strong> and <strong className="text-th-subtle">frequency</strong> before upload. Each row’s <strong className="text-th-subtle">posted date</strong> comes from the statement. In <strong className="text-th-subtle">Review import</strong>, set <strong className="text-th-subtle">category</strong> (required). For <strong className="text-th-subtle">Renewal</strong>, also choose a <strong className="text-th-subtle">renewal type</strong> and optionally a <strong className="text-th-subtle">website</strong>; those rows appear under <strong className="text-th-subtle">Renewals</strong>. Adjust per-row <strong className="text-th-subtle">frequency</strong> if needed. Saved expenses derive recurring metadata from each line’s posted date. Only rows with a category (and a renewal type when category is Renewal) are saved when you commit. Credits / payments are skipped during parsing.
+          Your <strong className="text-th-subtle">category rules</strong> run automatically on commit (and you can run them early with <strong className="text-th-subtle">Run rules</strong>). Optional <strong className="text-th-subtle">AI suggest</strong> fills uncategorized rows for you to confirm before applying.
         </p>
         <form onSubmit={runImportUpload} className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
           <div className="w-full sm:w-auto">
@@ -373,6 +404,22 @@ export default function ExpensesPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={applyingRules}
+                onClick={() => void runRulesOnStaging()}
+                className="rounded-lg border border-amber-700/50 bg-amber-950/30 text-amber-100 text-sm px-3 py-1.5 hover:bg-amber-950/50 disabled:opacity-50"
+              >
+                {applyingRules ? "Running rules…" : "Run rules"}
+              </button>
+              <button
+                type="button"
+                disabled={uncategorizedCount === 0}
+                onClick={() => setAiSuggestOpen(true)}
+                className="rounded-lg border border-sky-800/50 bg-sky-950/30 text-sky-100 text-sm px-3 py-1.5 hover:bg-sky-950/50 disabled:opacity-40"
+              >
+                AI suggest…
+              </button>
               <button
                 type="button"
                 onClick={discardStaging}
@@ -504,6 +551,16 @@ export default function ExpensesPage() {
           {error}
         </p>
       )}
+
+      <ImportAiSuggestModal
+        open={aiSuggestOpen}
+        batchId={staging?.batch?.id ?? null}
+        rows={staging?.rows || []}
+        onClose={() => setAiSuggestOpen(false)}
+        onApplied={() => {
+          void loadStaging();
+        }}
+      />
     </div>
   );
 }

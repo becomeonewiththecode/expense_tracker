@@ -14,6 +14,8 @@ import {
   paymentMetaFromSpentAt,
 } from "../expenseEnums.js";
 import { syncPaymentPlanForExpense } from "../paymentPlanSync.js";
+import { applyImportRulesToBatch } from "../importRulesEngine.js";
+import { suggestCategoriesForImportRows, openAiConfigured } from "../aiImportSuggestions.js";
 
 export const importsRouter = Router();
 importsRouter.use(authRequired);
@@ -220,6 +222,71 @@ importsRouter.patch("/rows/:rowId", async (req, res) => {
   res.json(normalizeStagingRow(rows[0]));
 });
 
+importsRouter.post("/batches/:batchId/apply-rules", async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!Number.isFinite(batchId)) {
+    return res.status(400).json({ error: "Invalid batch id" });
+  }
+  const { rows: check } = await pool.query(
+    `SELECT id FROM import_batches WHERE id = $1 AND user_id = $2`,
+    [batchId, req.userId]
+  );
+  if (!check[0]) {
+    return res.status(404).json({ error: "Import batch not found" });
+  }
+  const { matched } = await applyImportRulesToBatch(pool, req.userId, batchId);
+  res.json({ matched });
+});
+
+importsRouter.post("/batches/:batchId/suggest-categories", async (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!Number.isFinite(batchId)) {
+    return res.status(400).json({ error: "Invalid batch id" });
+  }
+  const { rows: check } = await pool.query(
+    `SELECT id FROM import_batches WHERE id = $1 AND user_id = $2`,
+    [batchId, req.userId]
+  );
+  if (!check[0]) {
+    return res.status(404).json({ error: "Import batch not found" });
+  }
+  if (!openAiConfigured()) {
+    return res.status(503).json({
+      error: "AI suggestions require OPENAI_API_KEY on the server",
+      configured: false,
+    });
+  }
+
+  const rawIds = req.body?.row_ids;
+  const rowIds =
+    Array.isArray(rawIds) && rawIds.length
+      ? rawIds.map((x) => Number(x)).filter((n) => Number.isFinite(n))
+      : null;
+
+  let q = `SELECT id, description, amount::float AS amount, spent_at::text AS spent_at
+     FROM import_staging_rows
+     WHERE batch_id = $1 AND user_id = $2 AND category IS NULL`;
+  const params = [batchId, req.userId];
+  if (rowIds?.length) {
+    q += ` AND id = ANY($3::int[])`;
+    params.push(rowIds);
+  }
+  const { rows } = await pool.query(q, params);
+
+  try {
+    const suggestions = await suggestCategoriesForImportRows(rows);
+    res.json({ configured: true, suggestions });
+  } catch (e) {
+    const code = e?.statusCode || 500;
+    const msg = e?.message || "Suggestion request failed";
+    console.error("suggest-categories:", e?.detail || e);
+    res.status(code).json({
+      error: msg,
+      configured: true,
+    });
+  }
+});
+
 importsRouter.post("/batches/:batchId/commit", async (req, res) => {
   const batchId = Number(req.params.batchId);
   if (!Number.isFinite(batchId)) {
@@ -239,6 +306,8 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+
+    const { matched: rules_matched } = await applyImportRulesToBatch(client, req.userId, batchId);
 
     const { rows: toInsert } = await client.query(
       `SELECT s.id, s.spent_at, s.amount, s.description, s.category,
@@ -296,7 +365,12 @@ importsRouter.post("/batches/:batchId/commit", async (req, res) => {
     ]);
 
     await client.query("COMMIT");
-    res.json({ added, skipped, message: skipped ? `${skipped} row(s) had no category and were not imported.` : null });
+    res.json({
+      added,
+      skipped,
+      rules_matched,
+      message: skipped ? `${skipped} row(s) had no category and were not imported.` : null,
+    });
   } catch (e) {
     await client.query("ROLLBACK");
     console.error("commit import error:", e);

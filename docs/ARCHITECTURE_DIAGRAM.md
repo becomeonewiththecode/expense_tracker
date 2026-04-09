@@ -280,23 +280,24 @@ flowchart TB
 
 These diagrams show how **React** pages map to backend routes. The HTTP client uses Axios with `baseURL: "/api"`.
 
-**Route gate at `/`:** `AppShell` checks authentication state. Signed-out users who open `/` see `LandingPage`; signed-in users on `/` continue into the authenticated `Layout` shell (index redirect then sends them to `/expenses` or `/expenses/list`). Signed-out requests to authenticated routes (for example `/reports`) are redirected to `/login`.
+**Route gate at `/`:** `AppShell` checks authentication state. Signed-out users who open `/` see `LandingPage`; signed-in users on `/` continue into the authenticated `Layout` shell (index redirect then sends them to `/expenses` or `/expenses/list`). Signed-out requests to authenticated routes (for example `/budget` or `/reports`) are redirected to `/login`.
 
-**Shell navigation (signed-in `Layout.jsx` header):** **Import** links to **`/expenses`**. The list destinations—**Income** first, then **Expenses** (`/expenses/list`), **Renewals**, **Prescriptions**, **Payment Plan**, and **Reports**—appear as a **Lists** dropdown below **`lg`** (1024px) and as **horizontal NavLinks** from **`lg`** up. **Profile** and **Sign out** live in the avatar **account menu**, not in the main nav bar.
+**Shell navigation (signed-in `Layout.jsx` header):** **Import** links to **`/expenses`**. The list destinations—**Income**, **Savings**, **Expenses** (`/expenses/list`), **Renewals**, **Prescriptions**, **Payment Plan**, and **Budget** (`/budget`)—appear as a **Lists** dropdown below **`lg`** (1024px) and as **horizontal NavLinks** from **`lg`** up. There is no **Reports** item in the bar; open **`/reports`** directly or use **Budget** → **Reports** tab. **Profile**, **Upcoming expenses** (when applicable), and **Sign out** live in the avatar **account menu**; **theme** is under **Profile** → **Appearance**, not in that menu.
 
 ```mermaid
 flowchart TB
   subgraph hdr ["Layout header (responsive)"]
     IMP[Import]
-    NAV["Lists dropdown or Income / Expenses / Renewals / Prescriptions / Payment Plan / Reports"]
+    NAV["Lists dropdown or Income / Savings / Expenses / Renewals / Prescriptions / Payment Plan / Budget"]
   end
   IMP -->|"/expenses"| EPn[ExpensesPage]
   NAV --> L0["/income — IncomePage"]
+  NAV --> Ls["/savings — SavingsGoalsPage"]
   NAV --> L1["/expenses/list — YourExpensesPage"]
   NAV --> L2["/renewals — RenewalsPage"]
   NAV --> L3["/prescriptions — PrescriptionsPage"]
   NAV --> L4["/payment-plans — PaymentPlansPage"]
-  NAV --> L5["/reports — ReportsPage"]
+  NAV --> L5["/budget — BudgetHubPage"]
 ```
 
 **Pages and primary API mounts:**
@@ -314,8 +315,10 @@ flowchart TB
     NRP[RenewalsPage — /renewals]
     PSP["PrescriptionsPage — /prescriptions (read-only table; edit modal)"]
     PPP["PaymentPlansPage — /payment-plans (hide paid_in_full by default)"]
-    RPg[ReportsPage]
+    BHP["BudgetHubPage — /budget embeds ReportsPage"]
+    RPg["ReportsPage — /reports or embedded monthly_budget / full"]
     IPg[IncomePage — /income]
+    SGP["SavingsGoalsPage — /savings"]
     PP[ProfilePage]
   end
 
@@ -327,6 +330,7 @@ flowchart TB
     A4["/reports — cashflow run-rate CSV PDF summary"]
     A4i["/income — CRUD entries"]
     A4b["/budgets/{year}/{month}"]
+    A4s["/savings-goals — CRUD"]
     A5["/backup — export restore v4 + incomeEntries"]
     A6["/prescriptions — CRUD"]
     A7["/payment-plans — CRUD"]
@@ -346,10 +350,13 @@ flowchart TB
   NRP --> A2
   PSP --> A6
   PPP --> A7
+  BHP --> A4
+  BHP --> A4b
   RPg --> A4
   RPg --> A4b
   IPg --> A4i
   IPg --> A4
+  SGP --> A4s
 ```
 
 **Expense, import, renewals, income, and backup at a glance:**
@@ -427,7 +434,7 @@ flowchart TD
 
 ### Renewal reminders (client)
 
-**Upcoming expenses** are computed entirely in the browser from saved expenses (no dedicated API). **`Layout`** always renders **`RenewalReminders`** then **`PrescriptionReminders`** above the page **`Outlet`** on every authenticated shell route (**`/expenses`**, **`/expenses/list`**, **`/renewals`**, **`/prescriptions`**, **`/payment-plans`**, **`/reports`**, **`/profile`**, and the index redirect). It loads expenses and keeps **`renewalSchedule.js`** in sync with the same **frequency** + **`spent_at`** rules as the server’s derived **`payment_day`** / **`payment_month`**. Matching rows are **grouped by financial institution** (display labels from **`expenseOptions.js`**): each group is a **section** with its own **sortable** **table** (expense, transaction date, amount, **state** (`active` / `paused` / `cancelled`), renews, **Dismiss**), a **Subtotal** footer, then a **Total (all institutions)** bar (**`formatProjectionCurrency`** in **`projection.js`**); both totals sum **active** rows only—**cancelled** and **paused** lines are excluded from amounts. For rows where **`category = payment_plan`**, the amount cell also shows an **info glyph (i)** that exposes payment frequency. Rows that are not **active** use **emerald** (green) styling. For about **two weeks** after a renewal date, the **25–40 day** reminder band is suppressed so the row stays off the list until the next charge is closer (**`isEarlyRenewalTierSuppressedAfterRecentOccurrence`** in **`renewalSchedule.js`**). **Cancelled** recurring rows (**`state = cancelled`**) are **removed from this panel** once they are at least **one day** past the last renewal occurrence **and** within the selected window horizon (same cap as **Showing renewals within**); those rows are listed under **Profile** → **Appearance** → **Auto-hidden cancelled recurring items** (**`renewalHiddenPreferences.js`**, per-user **`localStorage`**). A saved display preference (**`renewalPreferences.js`**) caps reminders to a selected day horizon (**default 7** days; discrete options **1**, **3**, **5**, **7**, **10**, **14**, **21**, **30**, **40**) and can be changed in-panel (**Showing renewals within**) or in **Profile** → **Appearance**. **`Layout`** holds **`renewalTablesExpanded`** and passes it to **`RenewalReminders`**. Whenever eligible renewals exist, **`RenewalReminders`** passes **`onRenewalChipChange`** to **`Layout`** with a **count** and callbacks; the **amber badge** number **matches the number of rows currently shown** in the reminder tables when at least one row is visible, and **matches total eligible** when every row is **Dismiss**’d for the session (so you still see how many qualify until you expand from the menu or badge). **`Layout`** shows the badge to the **right** of the avatar and an **account menu** (avatar **`details`**) with **Profile**, **Upcoming expenses** (to **show** tables or restore after all rows dismissed), and **Sign out**; choosing **Upcoming expenses** can clear **`sessionStorage`** dismiss keys and **`expandPanel`** so the panel reappears.
+**Upcoming expenses** are computed entirely in the browser from saved expenses (no dedicated API). **`Layout`** always renders **`RenewalReminders`** then **`PrescriptionReminders`** above the page **`Outlet`** on every authenticated shell route (**`/expenses`**, **`/expenses/list`**, **`/income`**, **`/savings`**, **`/renewals`**, **`/prescriptions`**, **`/payment-plans`**, **`/budget`**, **`/reports`**, **`/profile`**, and the index redirect). It loads expenses and keeps **`renewalSchedule.js`** in sync with the same **frequency** + **`spent_at`** rules as the server’s derived **`payment_day`** / **`payment_month`**. Matching rows are **grouped by financial institution** (display labels from **`expenseOptions.js`**): each group is a **section** with its own **sortable** **table** (expense, transaction date, amount, **state** (`active` / `paused` / `cancelled`), renews, **Dismiss**), a **Subtotal** footer, then a **Total (all institutions)** bar (**`formatProjectionCurrency`** in **`projection.js`**); both totals sum **active** rows only—**cancelled** and **paused** lines are excluded from amounts. For rows where **`category = payment_plan`**, the amount cell also shows an **info glyph (i)** that exposes payment frequency. Rows that are not **active** use **emerald** (green) styling. For about **two weeks** after a renewal date, the **25–40 day** reminder band is suppressed so the row stays off the list until the next charge is closer (**`isEarlyRenewalTierSuppressedAfterRecentOccurrence`** in **`renewalSchedule.js`**). **Cancelled** recurring rows (**`state = cancelled`**) are **removed from this panel** once they are at least **one day** past the last renewal occurrence **and** within the selected window horizon (same cap as **Showing renewals within**); those rows are listed under **Profile** → **Appearance** → **Auto-hidden cancelled recurring items** (**`renewalHiddenPreferences.js`**, per-user **`localStorage`**). A saved display preference (**`renewalPreferences.js`**) caps reminders to a selected day horizon (**default 7** days; discrete options **1**, **3**, **5**, **7**, **10**, **14**, **21**, **30**, **40**) and can be changed in-panel (**Showing renewals within**) or in **Profile** → **Appearance**. **`Layout`** holds **`renewalTablesExpanded`** and passes it to **`RenewalReminders`**. Whenever eligible renewals exist, **`RenewalReminders`** passes **`onRenewalChipChange`** to **`Layout`** with a **count** and callbacks; the **amber badge** number **matches the number of rows currently shown** in the reminder tables when at least one row is visible, and **matches total eligible** when every row is **Dismiss**’d for the session (so you still see how many qualify until you expand from the menu or badge). **`Layout`** shows the badge to the **right** of the avatar and an **account menu** (avatar **`details`**) with **Profile**, **Upcoming expenses** (to **show** tables or restore after all rows dismissed), and **Sign out**; choosing **Upcoming expenses** can clear **`sessionStorage`** dismiss keys and **`expandPanel`** so the panel reappears.
 
 ```mermaid
 flowchart TD
@@ -465,7 +472,7 @@ flowchart TD
 | Errors | `apiError.js` — network and proxy error messages |
 | Labels versus server enums | `expenseOptions.js` — categories (including **Streaming service**, **Renewal**, **Payment Plan**), **`RENEWAL_KIND_OPTIONS`** / **`formatRenewalKind`**, frequencies, institutions, **expense state** (**Active** / **Paused** / **Cancelled**; API `active` / `paused` / `cancelled`). **`paymentPlanOptions.js`** — payment plan **status** includes **Cancelled (paid in full)** (**`paid_in_full`**); add form uses **`PAYMENT_PLAN_STATUS_OPTIONS_FOR_ADD`** (omits **`paid_in_full`**). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
 | List edit modals (expenses / renewals) | **`ManualExpenseForm.jsx`** exports **`ManualExpenseFormFields`**; **`ExpenseEditModal.jsx`** wraps them for **`YourExpensesPage`** and **`RenewalsPage`** (**Escape**, backdrop, scroll lock). |
-| Main navigation (authenticated shell) | **`Layout.jsx`** — **Import**; **Lists** dropdown below **`lg`** or inline **Income** / **Expenses** / **Renewals** / **Prescriptions** / **Payment Plan** / **Reports** at **`lg`+**; **`NotificationBell`** (**`/notifications`**); avatar **account menu** (**Profile**, **Upcoming expenses** when applicable, **Sign out**) |
+| Main navigation (authenticated shell) | **`Layout.jsx`** — **Import**; **Lists** dropdown below **`lg`** or inline **Income** / **Savings** / **Expenses** / **Renewals** / **Prescriptions** / **Payment Plan** / **Budget** at **`lg`+**; **`NotificationBell`** (**`/notifications`**); avatar **account menu** (**Profile**, **Upcoming expenses** when applicable, **Sign out** — **theme** only on **Profile** → **Appearance**) |
 | Upcoming expenses | **`Layout.jsx`** (avatar menu, **badge** toggles tables, **`renewalTablesExpanded`**) + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** + **`renewalPreferences.js`** (window **1**/**3**/**5**/**7**/**10**/**14**/**21**/**30**/**40** days, default **7**, in-panel and Profile) + **`renewalHiddenPreferences.js`** (auto-hidden cancelled list for Profile) — all main shell routes; see [Renewal reminders (client)](#renewal-reminders-client) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads the JSON Web Token from the query string after the API redirect; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (backup **`version`** **4** includes **`incomeEntries`**; client confirms when backup **`account.email`** differs from session); **Appearance** includes **Auto-hidden cancelled recurring items** (reads **`renewalHiddenPreferences.js`**); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |

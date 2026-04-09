@@ -238,6 +238,60 @@ export async function initDb() {
     ALTER TABLE income_entries DROP CONSTRAINT IF EXISTS income_entries_payment_day_2_range;
     ALTER TABLE income_entries ADD CONSTRAINT income_entries_payment_day_2_range
       CHECK (payment_day_2 IS NULL OR (payment_day_2 >= 1 AND payment_day_2 <= 30));
+
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS bank_import_ref TEXT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_user_bank_import_ref
+      ON expenses(user_id, bank_import_ref);
+
+    CREATE TABLE IF NOT EXISTS bank_connections (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL DEFAULT 'plaid',
+      plaid_item_id TEXT NOT NULL,
+      access_token TEXT NOT NULL,
+      institution_name TEXT NOT NULL DEFAULT '',
+      transactions_cursor TEXT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (plaid_item_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_bank_connections_user ON bank_connections(user_id);
+
+    CREATE TABLE IF NOT EXISTS advisor_share_links (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT NOT NULL,
+      label TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (token)
+    );
+    CREATE INDEX IF NOT EXISTS idx_advisor_share_links_user ON advisor_share_links(user_id);
+
+    CREATE TABLE IF NOT EXISTS import_category_rules (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      match_type TEXT NOT NULL DEFAULT 'contains',
+      pattern TEXT NOT NULL,
+      category TEXT NOT NULL,
+      renewal_kind TEXT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      CONSTRAINT import_category_rules_match_type_check CHECK (match_type IN ('contains', 'starts_with', 'exact')),
+      CONSTRAINT import_category_rules_renewal_check CHECK (category <> 'renewal' OR renewal_kind IS NOT NULL)
+    );
+    CREATE INDEX IF NOT EXISTS idx_import_category_rules_user ON import_category_rules(user_id, sort_order, id);
+
+    CREATE TABLE IF NOT EXISTS savings_goals (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      target_amount NUMERIC(12, 2) NOT NULL CHECK (target_amount > 0),
+      current_amount NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (current_amount >= 0),
+      target_date DATE NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_savings_goals_user ON savings_goals(user_id);
   `);
 
   const adminUsername = String(process.env.ADMIN_USERNAME || "").trim();

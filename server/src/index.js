@@ -16,6 +16,11 @@ import { backupRouter } from "./routes/backup.js";
 import { prescriptionsRouter } from "./routes/prescriptions.js";
 import { paymentPlansRouter } from "./routes/paymentPlans.js";
 import { adminRouter } from "./routes/admin.js";
+import { bankRouter } from "./routes/bank.js";
+import { advisorSharesRouter } from "./routes/advisorShares.js";
+import { publicShareRouter } from "./routes/publicShare.js";
+import { importRulesRouter } from "./routes/importRules.js";
+import { savingsGoalsRouter } from "./routes/savingsGoals.js";
 import swaggerUi from "swagger-ui-express";
 import { openApiSpec } from "./openapi.js";
 import { startMonthlySummaryJob } from "./jobs/monthlySummary.js";
@@ -55,6 +60,11 @@ app.use("/api/backup", backupRouter);
 app.use("/api/prescriptions", prescriptionsRouter);
 app.use("/api/payment-plans", paymentPlansRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/bank", bankRouter);
+app.use("/api/advisor-shares", advisorSharesRouter);
+app.use("/api/public", publicShareRouter);
+app.use("/api/import-rules", importRulesRouter);
+app.use("/api/savings-goals", savingsGoalsRouter);
 
 app.use((err, _req, res, _next) => {
   console.error("unhandled:", err);

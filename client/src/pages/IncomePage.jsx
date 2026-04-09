@@ -131,7 +131,8 @@ function IncomeFormFields({ draft, setDraft }) {
   );
 }
 
-export default function IncomePage() {
+/** @param {{ embedded?: boolean }} props When true, hide the page title (used under Budget hub). */
+export default function IncomePage({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [runRate, setRunRate] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -282,14 +283,16 @@ export default function IncomePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Income</h1>
-        <p className="text-sm text-th-subtle mt-1">
-          Log paychecks, transfers in, and other income. Amounts count toward monthly cash flow on Reports and toward
-          projection net when you open the projection view from Reports. For bi-monthly income, enter the two calendar
-          days of the month you are paid (same idea as expenses).
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl font-semibold text-white">Income</h1>
+          <p className="text-sm text-th-subtle mt-1">
+            Log paychecks, transfers in, and other income. Amounts count toward monthly cash flow on Reports and toward
+            projection net when you open the projection view from Reports. For bi-monthly income, enter the two calendar
+            days of the month you are paid (same idea as expenses).
+          </p>
+        </div>
+      )}
 
       {runRate && !loading && (
         <div className="space-y-3">

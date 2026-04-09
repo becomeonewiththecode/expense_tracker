@@ -7,7 +7,8 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import ExpensesPage from "./pages/ExpensesPage.jsx";
 import YourExpensesPage from "./pages/YourExpensesPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
-import IncomePage from "./pages/IncomePage.jsx";
+import BudgetHubPage from "./pages/BudgetHubPage.jsx";
+import SavingsGoalsPage from "./pages/SavingsGoalsPage.jsx";
 import RenewalsPage from "./pages/RenewalsPage.jsx";
 import PrescriptionsPage from "./pages/PrescriptionsPage.jsx";
 import PaymentPlansPage from "./pages/PaymentPlansPage.jsx";
@@ -17,6 +18,7 @@ import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
 import RecoverPasswordPage from "./pages/RecoverPasswordPage.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
 import AdminLoginPage from "./pages/AdminLoginPage.jsx";
+import AdvisorShareViewPage from "./pages/AdvisorShareViewPage.jsx";
 
 /** Logged-out users see the landing page at `/`; other app paths redirect to login. */
 function AppShell() {
@@ -46,6 +48,7 @@ export default function App() {
       <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
       <Route path="/admin/login" element={<AdminLoginPage />} />
       <Route path="/admin" element={<AdminPage />} />
+      <Route path="/share/:token" element={<AdvisorShareViewPage />} />
       <Route path="/" element={<AppShell />}>
         <Route index element={<PostLoginRedirect />} />
         <Route path="expenses/list" element={<YourExpensesPage />} />
@@ -53,8 +56,10 @@ export default function App() {
         <Route path="renewals" element={<RenewalsPage />} />
         <Route path="prescriptions" element={<PrescriptionsPage />} />
         <Route path="payment-plans" element={<PaymentPlansPage />} />
+        <Route path="budget" element={<BudgetHubPage />} />
         <Route path="reports" element={<ReportsPage />} />
-        <Route path="income" element={<IncomePage />} />
+        <Route path="income" element={<Navigate to="/budget?view=income" replace />} />
+        <Route path="savings" element={<SavingsGoalsPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

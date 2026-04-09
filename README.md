@@ -66,7 +66,7 @@ npm run dev
 
 Open **http://localhost:5173** in your browser. The Vite dev server proxies `/api` requests to the backend. Set `API_PROXY_TARGET` in `client/.env` if the API does not listen on port 4000.
 
-**Routes:** Visitors who are not signed in see a public **landing page** at `/` (register and sign-in links go to `/register` and `/login`). After authentication, `/` routes into the main app (same behavior as before for signed-in users). Other app paths (for example `/reports`) redirect to the login page when accessed while signed out.
+**Routes:** Visitors who are not signed in see a public **landing page** at `/` (register and sign-in links go to `/register` and `/login`). After authentication, `/` routes into the main app (same behavior as before for signed-in users). Other app paths (for example `/budget`, `/reports`, `/income`) redirect to the login page when accessed while signed out. The **Budget** hub is at **`/budget`** (tabs **Budget** | **Reports**); **`/reports`** remains a standalone reports page.
 
 **Static landing previews:** Additional standalone HTML variants for design comparison are in [`client/public/landings/`](./client/public/landings/) and are served by Vite at paths such as `/landings/01-aurora-glass.html`.
 
@@ -80,6 +80,9 @@ All paths are under the `/api` prefix. During development, the Vite proxy forwar
 - **Expenses** — CRUD at `/api/expenses` and `/api/expenses/:id`. Frequencies: `once`, `weekly`, `monthly`, `bimonthly` (twice per month), `yearly`. States: `active`, `paused`, `cancelled`. Bimonthly expenses require two payment days (`payment_day` and `payment_day_2`, each 1-30).
 - **Imports** — Upload statements via `POST /api/imports`, review staging rows, commit to expenses
 - **Reports** — Daily, weekly, monthly, yearly, and custom range endpoints under `/api/reports/`
+- **Budgets** — `GET`/`PUT`/`DELETE /api/budgets/:year/:month` for monthly budget periods and category lines
+- **Notifications** — `GET /api/notifications`, mark read for budget alerts
+- **Savings goals** — CRUD at `/api/savings-goals`
 - **Backup** — `GET /api/backup/export` and `POST /api/backup/restore` (JSON format, versions 1–4; v4 adds income entries)
 - **API docs** — When signed in (or from **Admin → Swagger**), open **`/api/docs`** for Swagger UI or **`/api/openapi.json`** for the OpenAPI 3 spec (includes backup schemas and **`info`** notes for **`GET /health`** at the site root).
 

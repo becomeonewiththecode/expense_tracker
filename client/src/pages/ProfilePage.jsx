@@ -12,6 +12,8 @@ import {
 } from "../renewalPreferences.js";
 import { getHiddenCancelledRenewalsForUser } from "../renewalHiddenPreferences.js";
 import { formatProjectionCurrency } from "../projection.js";
+import BankSyncSection from "../components/BankSyncSection.jsx";
+import AdvisorShareSection from "../components/AdvisorShareSection.jsx";
 
 export default function ProfilePage() {
   const { user, setSession, token, refreshUser } = useAuth();
@@ -704,6 +706,9 @@ export default function ProfilePage() {
           </>
         )}
       </form>
+
+      <BankSyncSection />
+      <AdvisorShareSection />
 
       <div className="bg-th-surface border border-th-border rounded-xl p-6 shadow-xl space-y-4">
         <div className="flex items-center justify-between gap-3">

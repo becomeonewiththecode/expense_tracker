@@ -9,7 +9,7 @@ Standalone guide to **monthly budgets**, **category lines**, **variance**, **thr
 - You set a **monthly total** and optional **per-category caps** for a calendar month.
 - The app compares those targets to **actual spending** (expenses with `spent_at` in that month, grouped by category).
 - Optional **alert percentages** create **in-app notifications** when total or a line crosses a threshold.
-- **Reports → Monthly** shows budget fields, a **composed chart** (budget vs actual), variance, and links to **CSV** and **PDF** exports.
+- **Budget** (nav) → **Budget** tab on **`/budget`** shows budget fields, a **composed chart** (budget vs actual), variance, and links to **CSV** and **PDF** exports. The same monthly UI is available under **Budget** → **Reports** tab → **Monthly** period tab, or from the standalone **`/reports`** route.
 
 Related but different: **Income vs spend** (cash-flow actuals, recurring run rate, projection) is documented in [INCOME_VS_SPEND.md](./INCOME_VS_SPEND.md).
 
@@ -20,7 +20,7 @@ Related but different: **Income vs spend** (cash-flow actuals, recurring run rat
 ```mermaid
 flowchart TB
   subgraph user [User actions]
-    U1[Reports Monthly tab]
+    U1[Budget hub Budget tab or Reports Monthly]
     U2[Set budget total and optional category lines]
     U3[Set alert percentages optional]
     U4[Download CSV or PDF]
@@ -61,6 +61,19 @@ flowchart TB
 
 **Diagram file:** [`docs/diagrams/budgeting-overview.mmd`](./diagrams/budgeting-overview.mmd)
 
+**Navigation (Budget vs Reports tabs):**
+
+```mermaid
+flowchart TB
+  Menu[Header: Budget] --> Hub["/budget — BudgetHubPage"]
+  Hub --> TabB["Tab: Budget — default"]
+  Hub --> TabR[Tab: Reports]
+  TabB --> EmbB["ReportsPage monthly_budget embedded"]
+  TabR --> EmbR["ReportsPage full embedded"]
+```
+
+**Diagram file:** [`docs/diagrams/budget-reports-hub.mmd`](./diagrams/budget-reports-hub.mmd)
+
 ---
 
 ## How actuals compare to budget
@@ -80,7 +93,7 @@ flowchart LR
   V --> TOT[Total variance remaining percentUsed status]
   V --> CAT[Per line actual vs budgeted]
 
-  TOT --> UI[Reports sidebar and suggestions]
+  TOT --> UI[Budget monthly sidebar and suggestions]
   CAT --> UI
 
   TOT --> TH{Thresholds set?}
@@ -118,15 +131,16 @@ Implementation: [`server/src/routes/budgets.js`](../server/src/routes/budgets.js
 
 ## UI
 
-- **Reports** → **Monthly** tab: month picker, budget editor, chart, variance, export buttons.
-- **Notification bell** (header): unread budget-threshold notifications (`budget_total_threshold` / `budget_category_threshold`); mark one read or **Mark all read**.
-- Client: [`client/src/pages/ReportsPage.jsx`](../client/src/pages/ReportsPage.jsx), [`client/src/components/NotificationBell.jsx`](../client/src/components/NotificationBell.jsx).
+- **Budget** (main nav) → **`/budget`**: top **tabs** — **Budget** (default) and **Reports**. The **Budget** tab shows the monthly picker, cash flow card, budget editor, chart, variance, and export buttons via [`BudgetHubPage.jsx`](../client/src/pages/BudgetHubPage.jsx) embedding **`ReportsPage`** with **`variant="monthly_budget"`**. The **Reports** tab embeds **`ReportsPage`** with **`variant="full"`** (Daily … Custom period tabs; URL query **`?tab=`**). Standalone **`/reports`** keeps the full **Reports** page title and the link **← Budget & reports home**.
+- **Notification bell** (header): unread budget-threshold notifications (`budget_total_threshold` / `budget_category_threshold`); mark one read or **Mark all read**. Footer link **Open monthly budget** goes to **`/budget`**.
+- **Theme** (Midnight / Ember / Daylight) is configured under **Profile** → **Appearance**, not in the avatar menu.
+- Client: [`client/src/pages/BudgetHubPage.jsx`](../client/src/pages/BudgetHubPage.jsx), [`client/src/pages/ReportsPage.jsx`](../client/src/pages/ReportsPage.jsx), [`client/src/components/NotificationBell.jsx`](../client/src/components/NotificationBell.jsx).
 
 ---
 
 ## Exports
 
-- **CSV** — monthly report download from Reports (includes budget-related columns where applicable).
+- **CSV** — monthly report download from the **Budget** tab (includes budget-related columns where applicable).
 - **PDF** — monthly summary via server PDF route (see [ARCHITECTURE.md](./ARCHITECTURE.md) API table).
 
 ---

@@ -5,6 +5,7 @@ import { authRequired } from "../middleware/auth.js";
 import { cacheGet, cacheSet } from "../redis.js";
 import { loadBudgetPayload, monthRangeStrings } from "./budgets.js";
 import { buildRunRateVsIncomeSummary } from "../runRateSummary.js";
+import { buildMonthlyExpensePayload } from "../monthlyExpenseAggregate.js";
 
 export const reportsRouter = Router();
 reportsRouter.use(authRequired);
@@ -97,38 +98,11 @@ reportsRouter.get("/monthly", async (req, res) => {
   if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
     return res.status(400).json({ error: "Invalid year/month" });
   }
-  const pad = (m) => String(m).padStart(2, "0");
-  const startStr = `${year}-${pad(month)}-01`;
-  const last = new Date(Date.UTC(year, month, 0));
-  const endStr = `${year}-${pad(month)}-${String(last.getUTCDate()).padStart(2, "0")}`;
   const cacheKey = `r:monthly:v2:${req.userId}:${year}-${month}`;
   const cached = await cacheGet(cacheKey);
   if (cached) return res.json(cached);
 
-  const { rows } = await pool.query(
-    `SELECT spent_at::text AS day, SUM(amount)::float AS total FROM expenses
-     WHERE user_id = $1 AND spent_at >= $2 AND spent_at <= $3
-     GROUP BY spent_at ORDER BY spent_at`,
-    [req.userId, startStr, endStr]
-  );
-  const { rows: byCat } = await pool.query(
-    `SELECT category, SUM(amount)::float AS total FROM expenses
-     WHERE user_id = $1 AND spent_at >= $2 AND spent_at <= $3
-     GROUP BY category ORDER BY total DESC`,
-    [req.userId, startStr, endStr]
-  );
-  const series = rows.map((r) => ({ label: r.day, total: r.total }));
-  const total = series.reduce((s, p) => s + p.total, 0);
-  const payload = {
-    period: "monthly",
-    year,
-    month,
-    start: startStr,
-    end: endStr,
-    total,
-    series,
-    byCategory: byCat.map((r) => ({ category: r.category, total: r.total })),
-  };
+  const payload = await buildMonthlyExpensePayload(req.userId, year, month);
   await cacheSet(cacheKey, payload, 120);
   res.json(payload);
 });

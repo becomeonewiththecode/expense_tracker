@@ -130,11 +130,11 @@ export default function NotificationBell() {
         )}
         <div className="px-3 pt-2 border-t border-th-border">
           <Link
-            to="/reports"
+            to="/budget"
             className="text-xs text-emerald-400 hover:text-emerald-300"
             onClick={() => setOpen(false)}
           >
-            Open Reports (budgets)
+            Open monthly budget
           </Link>
         </div>
       </div>

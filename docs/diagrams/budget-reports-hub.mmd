@@ -1,0 +1,16 @@
+%% Budget & reports navigation (Mermaid source — see docs/BUDGETING.md and ARCHITECTURE_DIAGRAM.md)
+%% View: https://mermaid.live or VS Code Mermaid extension
+
+flowchart TB
+  Menu[Header nav: Budget] --> HubPage["/budget — BudgetHubPage"]
+
+  subgraph budgetHub [Budget hub]
+    TabB["Tab: Budget — default when opening /budget"]
+    TabR[Tab: Reports]
+    TabB --> EmbB["ReportsPage embedded — monthly budget + cash flow + chart"]
+    TabR --> EmbR["ReportsPage embedded — Daily … Custom + ?tab="]
+  end
+
+  HubPage --> budgetHub
+
+  Direct["Bookmark /reports"] --> Solo["ReportsPage — full page title + period tabs"]

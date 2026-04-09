@@ -1,8 +1,6 @@
 import { useRef, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
-import { useTheme } from "../ThemeContext.jsx";
-import { THEME_OPTIONS } from "../themePreferences.js";
 import RenewalReminders from "./RenewalReminders.jsx";
 import PrescriptionReminders from "./PrescriptionReminders.jsx";
 import NotificationBell from "./NotificationBell.jsx";
@@ -41,8 +39,9 @@ function ListsNavDropdown() {
     pathname === "/renewals" ||
     pathname === "/prescriptions" ||
     pathname === "/payment-plans" ||
+    pathname === "/budget" ||
     pathname === "/reports" ||
-    pathname === "/income";
+    pathname === "/savings";
 
   function closeListsMenu() {
     listsMenuRef.current?.removeAttribute("open");
@@ -70,12 +69,12 @@ function ListsNavDropdown() {
         role="menu"
       >
         <NavLink
-          to="/income"
+          to="/savings"
           role="menuitem"
           className={listsDropdownItemClass}
           onClick={closeListsMenu}
         >
-          Income
+          Savings goals
         </NavLink>
         <NavLink
           to="/expenses/list"
@@ -110,12 +109,12 @@ function ListsNavDropdown() {
           Payment Plan
         </NavLink>
         <NavLink
-          to="/reports"
+          to="/budget"
           role="menuitem"
           className={listsDropdownItemClass}
           onClick={closeListsMenu}
         >
-          Reports
+          Budget
         </NavLink>
       </div>
     </details>
@@ -124,7 +123,6 @@ function ListsNavDropdown() {
 
 export default function Layout() {
   const { user, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
   const avatarFallbackLabel = avatarLabelFromEmail(user?.email);
   const [renewalChip, setRenewalChip] = useState(null);
   /** When false, RenewalReminders hides institution tables + total (header + help may remain). */
@@ -161,8 +159,8 @@ export default function Layout() {
               <ListsNavDropdown />
             </div>
             <div className="hidden lg:flex items-center gap-1 sm:gap-2">
-              <NavLink to="/income" className={linkClass}>
-                Income
+              <NavLink to="/savings" className={linkClass}>
+                Savings
               </NavLink>
               <NavLink to="/expenses/list" className={linkClass}>
                 Expenses
@@ -176,8 +174,8 @@ export default function Layout() {
               <NavLink to="/payment-plans" className={linkClass}>
                 Payment Plan
               </NavLink>
-              <NavLink to="/reports" className={linkClass}>
-                Reports
+              <NavLink to="/budget" className={linkClass}>
+                Budget
               </NavLink>
             </div>
           </nav>
@@ -252,26 +250,6 @@ export default function Layout() {
                 >
                   Profile
                 </NavLink>
-                <div className="px-3 py-2 border-t border-th-border-bright">
-                  <span className="text-[10px] text-th-muted uppercase tracking-wide">Theme</span>
-                  <div className="flex gap-1 mt-1">
-                    {THEME_OPTIONS.map((o) => (
-                      <button
-                        key={o.value}
-                        type="button"
-                        onClick={() => setTheme(o.value)}
-                        className={[
-                          "px-2 py-1 text-xs rounded-md transition-colors",
-                          theme === o.value
-                            ? "bg-emerald-500/20 text-emerald-300 font-medium"
-                            : "text-th-subtle hover:bg-th-surface-alt",
-                        ].join(" ")}
-                      >
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 {renewalChip ? (
                   <button
                     type="button"
