@@ -18,11 +18,12 @@ Phases for evolving the expense tracker toward a full “budget product.”
 - **Budget alert thresholds:** `total_alert_threshold_percent` on `budget_periods`, `alert_threshold_percent` on `budget_lines`. Saved via budget `PUT`; [`syncBudgetThresholdNotifications`](server/src/routes/budgets.js) upserts rows in `user_notifications` when actual spending crosses thresholds.
 - **In-app notifications:** [`user_notifications`](server/src/db.js) table; [`GET/PATCH/POST /api/notifications`](server/src/routes/notifications.js); bell menu [`NotificationBell.jsx`](client/src/components/NotificationBell.jsx) in the header (syncs current month when opened).
 - **PDF export:** `GET /api/reports/export/monthly.pdf` using [pdfkit](server/package.json) — [`server/src/routes/reports.js`](server/src/routes/reports.js); **Download PDF** on Reports (monthly).
-- **Income:** `income_entries` table; CRUD [`/api/income`](server/src/routes/income.js); [`IncomePage`](client/src/pages/IncomePage.jsx) embedded in [`BudgetHubPage`](client/src/pages/BudgetHubPage.jsx) (**Income** tab; `/income` → `/budget?view=income`). Header nav **Income** → `/budget`.
+- **Income:** `income_entries` table; CRUD [`/api/income`](server/src/routes/income.js); [`IncomePage`](client/src/pages/IncomePage.jsx) at `/income`. Header nav includes a direct **Income** route.
 - **Cash flow (actuals):** `GET /api/reports/cashflow/monthly` — spending vs logged income and net; card on monthly Reports.
 - **Projection net:** [`computeIncomeProjection`](client/src/projection.js) + [`ProjectionModal`](client/src/components/ProjectionModal.jsx) shows income run rate and **net monthly (income − expense run rate)** when opening projection from Reports with income rows loaded.
+- **Budget hub/navigation refresh:** [`BudgetHubPage`](client/src/pages/BudgetHubPage.jsx) at `/budget` with real **Budget | Reports** tabs; embedded [`ReportsPage`](client/src/pages/ReportsPage.jsx) variants (`monthly_budget` and `full`), defaulting `/budget` to **Budget**. Header nav now uses **Budget** (not Reports).
 
-**Not implemented (optional later):** email/push for budget alerts; income in JSON backup/restore.
+**Not implemented (optional later):** email/push for budget alerts.
 
 ---
 
