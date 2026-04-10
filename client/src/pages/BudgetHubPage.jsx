@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import ReportsPage from "./ReportsPage.jsx";
 import IncomePage from "./IncomePage.jsx";
+import ExpensesPage from "./ExpensesPage.jsx";
 
 function tabClass(active) {
   return [
@@ -17,6 +18,7 @@ function parseBudgetHubView(searchParams) {
   const v = searchParams.get("view");
   if (v === "reports") return "reports";
   if (v === "income") return "income";
+  if (v === "import") return "import";
   return "budget";
 }
 
@@ -44,26 +46,16 @@ export default function BudgetHubPage() {
       <div>
         <h1 className="text-xl font-semibold text-white">Budget &amp; reports</h1>
         <p className="text-sm text-th-subtle mt-1">
-          Monthly budget, logged income, and spending reports. Use <strong className="text-th-tertiary font-medium">Budget</strong>{" "}
-          for caps and variance; <strong className="text-th-tertiary font-medium">Income</strong> for paychecks and
-          other inflows; <strong className="text-th-tertiary font-medium">Reports</strong> for daily, weekly, and other
-          periods.
+          Log inflows, import statements, set budget caps, then dig into reports. Use{" "}
+          <strong className="text-th-tertiary font-medium">Income</strong> for paychecks and other inflows;{" "}
+          <strong className="text-th-tertiary font-medium">Import</strong> for uploads and manual adds;{" "}
+          <strong className="text-th-tertiary font-medium">Budget</strong> for caps and variance;{" "}
+          <strong className="text-th-tertiary font-medium">Reports</strong> for daily, weekly, and other periods.
         </p>
       </div>
 
       <div className="border-b border-th-border">
-        <nav className="flex flex-wrap gap-8" role="tablist" aria-label="Budget, income, and reports">
-          <button
-            type="button"
-            role="tab"
-            id="budget-hub-tab-budget"
-            aria-selected={view === "budget"}
-            aria-controls="budget-hub-panel"
-            className={tabClass(view === "budget")}
-            onClick={() => setView("budget")}
-          >
-            Budget
-          </button>
+        <nav className="flex flex-wrap gap-8" role="tablist" aria-label="Income, import, budget, and reports">
           <button
             type="button"
             role="tab"
@@ -74,6 +66,28 @@ export default function BudgetHubPage() {
             onClick={() => setView("income")}
           >
             Income
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="budget-hub-tab-import"
+            aria-selected={view === "import"}
+            aria-controls="budget-hub-panel"
+            className={tabClass(view === "import")}
+            onClick={() => setView("import")}
+          >
+            Import
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="budget-hub-tab-budget"
+            aria-selected={view === "budget"}
+            aria-controls="budget-hub-panel"
+            className={tabClass(view === "budget")}
+            onClick={() => setView("budget")}
+          >
+            Budget
           </button>
           <button
             type="button"
@@ -93,14 +107,18 @@ export default function BudgetHubPage() {
         id="budget-hub-panel"
         role="tabpanel"
         aria-labelledby={
-          view === "budget"
-            ? "budget-hub-tab-budget"
-            : view === "income"
-              ? "budget-hub-tab-income"
-              : "budget-hub-tab-reports"
+          view === "import"
+            ? "budget-hub-tab-import"
+            : view === "budget"
+              ? "budget-hub-tab-budget"
+              : view === "income"
+                ? "budget-hub-tab-income"
+                : "budget-hub-tab-reports"
         }
       >
-        {view === "income" ? (
+        {view === "import" ? (
+          <ExpensesPage key="import" embedded />
+        ) : view === "income" ? (
           <IncomePage key="income" embedded />
         ) : (
           <ReportsPage

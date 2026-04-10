@@ -15,14 +15,14 @@ You can:
 - Open **Lists** → **Prescriptions** to track medical, dental, vision, supplements, and equipment on **irregular renewal cycles** (**1–11 months** in monthly steps, or **1–5 years**), with **next renewal date** reminders in the app  
 - Open **Lists** → **Payment Plan** to track planned payments with category, schedule, priority, account, method, institution, tag, frequency, optional **# of payments** (remaining before paid off), amount, and notes; when **# of payments** hits **0**, the plan becomes **Cancelled (paid in full)** and is **hidden** from the table until you enable **Show cancelled (paid in full)**  
 - **Delete** expenses from the list  
-- Open **Budget** (**`/budget`**) for **monthly budgets**, cash-flow context, category lines, variance, threshold alerts, and CSV/PDF exports on the default **Budget** tab; switch to the **Reports** tab for the same period tabs as standalone **`/reports`** (Daily … Custom). Bookmarks to **`/reports`** still open the full **Reports** page with its own title; see [Budgeting](./BUDGETING.md)  
-- Open **Income** (first list link on wide layouts) to add, edit, and delete income entries, see **monthly cash flow** on the **Budget** hub, and the **recurring run-rate check** that compares income to combined obligations (expenses—including renewals—prescriptions, payment plans); details and diagrams in [Income versus spend](./INCOME_VS_SPEND.md)  
+- Open **Income** in the header (**`/budget`**) for the **Budget & reports** hub: tabs **Income** (paychecks and inflows), **Import** (statements and manual adds), **Budget** (monthly caps, cash flow, variance, alerts, CSV/PDF), and **Reports** (Daily … Custom, same as standalone **`/reports`**). Bookmarks **`/expenses`** and **`/income`** redirect to **`/budget?view=import`** and **`/budget?view=income`**. Standalone **`/reports`** keeps its own page title; see [Budgeting](./BUDGETING.md)  
+- Use the **Income** tab (first hub tab) to add, edit, and delete income entries and to see the **recurring run-rate check** vs obligations; **monthly cash flow** appears on the **Budget** or **Reports** → **Monthly** views; details in [Income versus spend](./INCOME_VS_SPEND.md)  
 - Open **Lists** → **Savings goals** (**`/savings`**) to track named goals with target amount, current balance, and optional target date  
 - See **stored monthly summaries** (totals computed by a background job on a schedule)
 
 The interface is **responsive**: it works on phones, tablets, and desktops.
 
-**Signed-in header navigation:** After **Import**, **Income**, **Savings**, **Expenses**, **Renewals**, **Prescriptions**, **Payment Plan**, and **Budget** use the same routes everywhere. On **narrow** viewports (below the Tailwind **`lg`** breakpoint, 1024px) those seven destinations (**Income** through **Budget**) are grouped under a **Lists** ▾ menu; on **wide** viewports (**`lg`** and up—typical laptops and desktops) they appear as **separate links** in the bar so you do not need the dropdown. There is no top-level **Reports** link: open **`/reports`** directly or use **Budget** → **Reports** tab.
+**Signed-in header navigation:** **Income** (label for the hub at **`/budget`**) is always visible next to the app title. **Savings**, **Expenses**, **Renewals**, **Prescriptions**, and **Payment Plan** use the same routes everywhere. On **narrow** viewports (below Tailwind **`lg`**, 1024px) those five are under **Lists** ▾; on **wide** screens they appear as **separate links**. **Import** is not a top-level link—it is the **Import** tab inside the hub. There is no top-level **Reports** link: open **`/reports`** directly or use the hub **Reports** tab.
 
 ---
 
@@ -70,7 +70,7 @@ Verify with **`curl -sS http://localhost:8080/health`** (adjust the port if you 
 1. Open the application URL in your browser.  
 2. If you are signed out, the `/` route shows a public landing page with **Get started** and **Log in** actions. Choose **Create account** (or open the `/register` route directly).  
 3. Enter **email** and **password** (minimum length is enforced on the form).  
-4. After success you are signed in and taken to **Expenses** if you already have saved expenses, otherwise to **Import** (add or import).  
+4. After success you are signed in and taken to **Expenses** if you already have saved expenses, otherwise to the hub **Import** tab (**`/budget?view=import`**).  
 
 To sign in later, use **Sign in** from the landing page or open `/login` directly with the same email and password.
 
@@ -97,16 +97,16 @@ For example, with `CLIENT_ORIGIN=http://localhost:5173` and Google, the redirect
 
 If you already registered with **email and password**, signing in with single sign-on using the **same email** links to the same account when the provider returns that email address.
 
-**Sign out** clears your session in the browser (you will need to sign in again to use **Import** and the list screens).
+**Sign out** clears your session in the browser (you will need to sign in again to use the hub, **Import**, and the list screens).
 
 ---
 
-## Import screen
+## Import (hub tab)
 
-The **Import** page at `/expenses` is where you add and review individual transactions.
+Open **Income** in the header, then the **Import** tab (**`/budget?view=import`**). The same screen as before (**`ExpensesPage`**) handles adds and statement import. Typing **`/expenses`** redirects here.
 
-- **First-time users with no saved expenses:** you see the **manual add** form and **Import from statement** so you can enter data or upload a file. After you save at least one expense, the layout changes.  
-- **When you already have expenses:** the **Import** page shows **Import from statement** and optional **Add expense manually** (expand the section). Open **Expenses** from the header (**Lists** ▾ → **Expenses** on narrow screens, or the **Expenses** link when the bar shows the full list), or use the button on **Import** to view, edit, and delete saved rows on a separate page. After your **first** saved expense (from the onboarding form) or after you **commit** an import that adds rows, you are taken to **Expenses** automatically.
+- **First-time users with no saved expenses:** you see the **manual add** form and **Import from statement** (expand **Show** if sections are collapsed). After you save at least one expense, the layout changes.  
+- **When you already have expenses:** **Import from statement** and **Add expense manually** use **Show** / **Hide**; with a staged batch loaded, those sections stay available for review. Long import help text is behind a circular **i** control. Open **Expenses** from **Lists** ▾ or the bar link, or use the **Expenses** button on this tab. After your **first** saved expense or after you **commit** an import that adds rows, you are taken to **Expenses** automatically.
 
 ### Add an expense
 
@@ -157,7 +157,7 @@ For recurring expenses (Weekly, Monthly, Bi-monthly, Yearly), the app estimates 
 
 #### When reminders appear
 
-The **Upcoming expenses** panel shows at the top of: Import, all Lists destinations (Income, Savings goals, Expenses, Renewals, Prescriptions, Payment Plan, Budget), standalone **`/reports`**, and Profile.
+The **Upcoming expenses** panel shows at the top of: the hub (**`/budget`** and all **`?view=`** tabs), all **Lists** destinations (Savings goals, Expenses, Renewals, Prescriptions, Payment Plan), standalone **`/reports`**, and Profile.
 
 By default, the panel shows items due within **7 days**. You can change this with **Showing renewals within** in the panel header (next to **Show/Hide**) or in **Profile** → **Appearance** → **Upcoming renewals window (days)**. Choose **1**, **3**, **5**, **7**, **10**, **14**, **21**, **30**, or **40** days.
 
@@ -229,7 +229,7 @@ Click **Projection** in the table header to see a combined report:
 
 - **Edit** opens the full-field edit dialog (see [Editing a row](#editing-a-row)).
 - **Delete** asks for confirmation.
-- If you have no expenses yet, the page shows the manual form and a link to Import.
+- If you have no expenses yet, the page shows the manual form and a link to the hub **Import** tab (**`/budget?view=import`**).
 
 ### Import from a statement (comma-separated values or PDF)
 
@@ -249,7 +249,7 @@ Parsing uses **date, amount, and description** from the file; **comma-separated 
 **Lists** → **Renewals** (**`/renewals`**) lists only expenses whose **category** is **Renewal**—use it for items that renew on unusual schedules (often **Yearly** or longer horizons in practice). Each row has the same core fields as on **Expenses**, plus **Renewal type** and optional **Website**. **Edit** opens the same **dialog** as on **Expenses** (full manual-expense field set, pre-filled). **Projection** in the table header opens a **combined** report for **Active** renewal items only—rows with **State** **Cancelled** or **Paused** are listed in the table but **not** included in the combined projection totals (same idea as **Upcoming expenses** subtotals). The row **Actions** menu also includes **Projection** for that row (and **Edit** / **Delete**). The **Actions** column stays visible when you scroll horizontally (sticky on the right), like the other list tables. Successful saves/adds briefly flash an update icon in the renewal table header.
 
 - **Add renewal manually** (or the form when the list is empty) defaults to category **Renewal** and frequency **Yearly**; you must pick a **renewal type**.  
-- **Import:** On **Import**, set a row’s category to **Renewal**, choose the **renewal type**, optionally add a **website**, then commit—those lines appear here; they do **not** appear in the main **Expenses** table (only on **Renewals**).  
+- **Import:** On the hub **Import** tab, set a row’s category to **Renewal**, choose the **renewal type**, optionally add a **website**, then commit—those lines appear here; they do **not** appear in the main **Expenses** table (only on **Renewals**).  
 - **Upcoming expenses** (amber badge and panel) is a **separate** feature: it highlights **recurring** expenses by date bands and is **not** limited to category **Renewal**. See the **Renewal reminders** paragraph under [Add an expense](#add-an-expense).
 
 ---
@@ -262,7 +262,7 @@ Parsing uses **date, amount, and description** from the file; **comma-separated 
 
 - **Edit** — **Actions** → **Edit** opens a full-screen-style dialog with the **same fields as Add payment plan** (name, amount, category, schedule, priority, status including **Cancelled (paid in full)** when applicable, account, method, institution, tag, frequency, **# of payments**, notes). **Save changes** sends a **PATCH**; **Close**, **Cancel**, **Escape**, or clicking the dimmed backdrop discards edits.
 
-- **Add payment plan** — The header card has **Show** / **Hide** for the inline add form (always available). With **no** plans yet, the form starts **open**; the **first** time you have at least one plan (after load or after saving), the add section **collapses** automatically—you can tap **Show** anytime to open it again.
+- **Add payment plan** — The header card has **Show** / **Hide** for the inline add form. The form starts **closed**; open **Show** to add a plan. After the **first** time the list becomes non-empty (load or save), the section **collapses** again if it was open—you can **Show** anytime to add another.
 - **Edit** / **Delete** — Open the row **Actions** menu.
 - **Credit card account type** — Choosing **Credit Card** switches institution selection to a credit-card subtype list (**VISA**, **American Express**, **Mastercard**).
 - **Note search** — Use **Search notes** in the table header to filter rows by the **Notes** field.
@@ -277,12 +277,12 @@ Technical detail: [PAYMENT_PLANS.md](./PAYMENT_PLANS.md).
 
 **Lists** → **Prescriptions** (**`/prescriptions`**) is for items that **do not** follow the same model as bank-card **expenses**: you set a **renewal period** (**1–11 months** in monthly steps, then **1–5 years**), a **next renewal date**, and optional **vendor** and **notes**. **Categories** are **Medical**, **Dental**, **Vision**, **Supplements**, and **Equipment**. **State** works like expenses (**Active** / **Paused** / **Cancelled**); non-**active** lines stay in the list but **do not** appear in the reminder banner.
 
-- **Add prescription** — Fill **name**, **amount**, **category**, **renewal period**, **next renewal date**, **vendor**, **notes**, and **state**, then save.  
+- **Add prescription** — The form is behind **Show** / **Hide** (starts **collapsed**). Fill **name**, **amount**, **category**, **renewal period**, **next renewal date**, **vendor**, **notes**, and **state**, then save.  
 - **Edit** — **Actions** → **Edit** opens a **dialog** with the **same fields as Add prescription**, pre-filled; **Save changes**, **Close** / **Cancel** / **Escape** / backdrop work like other list edit dialogs.  
 - **Delete** — Open the row **Actions** menu.  
 - **Renewed** — After a refill or visit, click **Renewed** to move **next renewal date** forward by one **renewal period** (you can still edit the date manually).  
 - **Update indicator** — Successful add/edit/renew updates flash a brief icon in the table header so you can confirm the Prescriptions table changed.
-- **Reminders** — When an **active** item is due within about **30 days**, or is **1–14 days overdue**, a **cyan** **Prescription renewals** panel appears **above the page** (on **Import**, **Lists** destinations, **Profile**). It is **in-app only** (not email). Use **Dismiss for this visit** to hide it until you reload or change prescriptions. Saving on this page updates the banner for the same session.
+- **Reminders** — When an **active** item is due within about **30 days**, or is **1–14 days overdue**, a **cyan** **Prescription renewals** panel appears **above the page** (on **`/budget`** and all hub tabs, **Lists** destinations, **`/reports`**, **Profile**). It is **in-app only** (not email). Use **Dismiss for this visit** to hide it until you reload or change prescriptions. Saving on this page updates the banner for the same session.
 
 Technical detail: [PRESCRIPTIONS.md](./PRESCRIPTIONS.md).
 
@@ -296,12 +296,14 @@ Technical detail: [PRESCRIPTIONS.md](./PRESCRIPTIONS.md).
 
 ## Budget and reports
 
-**Primary path:** Open **Budget** in the header (**`/budget`**). The page title is **Budget & reports**. Use the **Budget** | **Reports** tabs at the top:
+**Primary path:** Open **Income** in the header (**`/budget`** — the nav label is **Income**, the page title remains **Budget & reports**). Tabs (left to right):
 
-- **Budget** (default when you open **`/budget`**) — monthly picker, **cash flow** card, **budget** editor, variance, chart, and CSV/PDF actions (see [Budgeting](./BUDGETING.md)). This view is the former **Reports → Monthly** experience, without the Daily … Custom period tabs.  
-- **Reports** — the same **Daily**, **Weekly**, **Monthly**, **Yearly**, and **Custom range** tabs as below; the URL can include **`?view=reports`** when that tab is selected.
+- **Income** — logged paychecks and inflows; recurring run-rate banner; **Add entry** starts **collapsed** (**Show** / **Hide**). URL: **`?view=income`**.  
+- **Import** — statement upload, category rules, staging (same as former **`/expenses`**). URL: **`?view=import`**.  
+- **Budget** (default when there is no **`?view=`**) — monthly picker, **cash flow** card, **budget** editor (**Show** / **Hide** for the **Monthly budget** block), variance, chart, CSV/PDF (see [Budgeting](./BUDGETING.md)).  
+- **Reports** — **Daily** … **Custom** like standalone **`/reports`**; URL: **`?view=reports`**.
 
-**Standalone Reports:** Open **`/reports`** (bookmark or typed URL). You get the full **Reports** page with its own heading and **← Budget & reports home** link. Period tabs and the **`?tab=`** query behave the same as on the **Budget** hub **Reports** tab.
+**Standalone Reports:** Open **`/reports`**. You get the full **Reports** page with its own heading and **← Budget & reports home** link. Period tabs and **`?tab=`** match the hub **Reports** tab.
 
 On all of these routes, the same **Upcoming expenses** and **Prescription renewals** panels (when applicable) appear above the content as on other main screens.
 
@@ -323,11 +325,11 @@ The application can show **precomputed monthly totals** from the `monthly_summar
 
 ## Profile
 
-The header shows **Import** and the list destinations (**Income**, **Savings**, **Expenses**, **Renewals**, **Prescriptions**, **Payment Plan**, **Budget**): on **phones and tablets**, **Income** through **Budget** are grouped under a **Lists** menu; on **wide screens** (from about laptop size up) they appear as separate links in the bar. There is no separate **Profile** tab. Signed-in users open **Profile** from the **account menu** (click the avatar in the header) to update **email**, **password**, and **profile picture**. The account menu also lists **Upcoming expenses** (when applicable) and **Sign out** — it does **not** include theme switching. **Theme** (**Midnight**, **Ember**, **Daylight**) is under **Profile** → **Appearance**.
+The header shows **Income** (**`/budget`**) and, via **Lists** ▾ on small screens or inline on **`lg`+**, **Savings**, **Expenses**, **Renewals**, **Prescriptions**, and **Payment Plan**. **Import** and paycheck **Income** are **tabs** inside **`/budget`**, not separate header links. There is no separate **Profile** tab. Open **Profile** from the **account menu** (avatar): **email**, **password**, **profile picture**; **Upcoming expenses** when applicable; **Sign out**. **Theme** is **Profile** → **Appearance**.
 
 **Recovery code** (under **Password recovery**): generate a code once, store it safely offline, and use it on **`/recover`** if you forget your password. The **full code is shown only at the moment you create or replace it**; afterward, Profile shows a **masked placeholder** so you can see that a code is on file without seeing the secret. Replacing or removing the code invalidates the previous one.
 
-**Table display:** Expenses (`/expenses/list`), Renewals (`/renewals`), and Prescriptions (`/prescriptions`) tables paginate client-side. Default is **10 rows per page** with pagination controls at the bottom, plus a **Rows** selector in the table footer. Supported limits are **5**, **10**, **25**, **50**, and **100**. You can change the value in this section or directly from the table footer selector.
+**Table display:** Expenses (`/expenses/list`), Renewals (`/renewals`), Prescriptions (`/prescriptions`), and Payment Plan (`/payment-plans`) paginate client-side. Default is **5 rows per page** for new sessions (a saved **localStorage** value can override). Options **5**, **10**, **25**, **50**, **100** — set in **Profile** or the table footer **Rows** selector.
 
 **Upcoming renewals window:** The **Upcoming expenses** panel uses a saved day window (default **7** days). You can change it in **Profile** → **Appearance** or directly in the panel header via **Showing renewals within**. Supported values are **1**, **3**, **5**, **7**, **10**, **14**, **21**, **30**, and **40** days.
 

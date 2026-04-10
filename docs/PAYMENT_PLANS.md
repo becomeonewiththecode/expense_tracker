@@ -13,7 +13,7 @@ This document describes the **Payment Plan** area: planned payments stored in **
 | **Hidden finished plans (UI)** | On **`PaymentPlansPage`**, rows with **`status === paid_in_full`** are **hidden** by default so the table shows active work. A **Show cancelled (paid in full)** checkbox reveals them for view, edit, delete, and row-level **Projection**. **Combined Projection** and the **Projection** button use only **visible** rows (respects the checkbox). The add form does not offer **`paid_in_full`** as a manual status; it is set by the server when **`# of payments`** reaches zero. |
 | **Expense category `payment_plan`** | An **`expenses`** row with **`category = payment_plan`** is kept in sync with **`payment_plans`** via **`paymentPlanSync.js`** (linked by **`source_expense_id`**). That row does **not** appear on **`/expenses/list`**; it is represented on **Payment Plan** alongside standalone **`payment_plans`** rows. |
 | **Payment Plan page** | Client route **`/payment-plans`** (`PaymentPlansPage.jsx`). Full CRUD via **`GET`/`POST`/`PATCH`/`DELETE /api/payment-plans`**. Table header: **Search notes**, **Show cancelled (paid in full)**, **Projection** (row or all; **all** disabled when no visible rows), **update flash** after successful saves. **RowActionsMenu** for **Edit** (opens a **modal** with the same full field grid as **Add payment plan**, pre-filled) / **Delete** / **Projection**. The data table stays read-only. |
-| **Add payment plan card** | Collapsible inline form under **Add payment plan**. **Show** / **Hide** always toggles visibility of the form. Default **`addOpen`** is **true** when the list is empty. A **`useEffect`** on **`items.length`** uses **`hadItemsRef`**: on the **first** transition to **`items.length > 0`** (initial load with data or first successful add), **`addOpen`** is set to **`false`** so the add block collapses. **Deleting all** plans resets the ref so the next “first non-empty” transition collapses again. |
+| **Add payment plan card** | Collapsible inline form under **Add payment plan**. **Show** / **Hide** toggles visibility. Default **`addOpen`** is **false** (`PaymentPlansPage.jsx`). A **`useEffect`** on **`items.length`** uses **`hadItemsRef`**: on the **first** transition to **`items.length > 0`** (initial load with data or first successful add), **`addOpen`** is set to **`false`** (keeps the section closed after first populated load). **Deleting all** plans resets the ref. |
 | **Backup JSON** | **`GET /api/backup/export`** includes **`paymentPlans`** and **`paymentPlanCount`** when **`version`** ≥ **`3`** (current export **`version`** **`4`**). **`POST /restore`** with **`mode`** **`replace`** and **`version`** ≥ **`3`** replaces **`payment_plans`** from the file when present; **`version`** **`4`** also replaces **`income_entries`**. See [USER_GUIDE.md](./USER_GUIDE.md) **Backup and restore**. |
 
 ---
@@ -24,12 +24,12 @@ This document describes the **Payment Plan** area: planned payments stored in **
 
 ```mermaid
 flowchart TD
-  E[Empty list: add form open by default]
-  E --> SH[User can Show/Hide anytime]
-  N[First time items.length > 0]
+  E[Default: add form closed]
+  E --> SH[User taps Show to add]
+  N[First time items.length > 0 after load or save]
   N --> C[setAddOpen false]
   C --> SH
-  SH --> M[User may Show to add another plan]
+  SH --> M[Show again to add another plan]
 ```
 
 ### Expense category Payment Plan → table sync

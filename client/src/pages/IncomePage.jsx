@@ -142,6 +142,7 @@ export default function IncomePage({ embedded = false }) {
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [addEntryOpen, setAddEntryOpen] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -343,20 +344,34 @@ export default function IncomePage({ embedded = false }) {
         </div>
       )}
 
-      <form
-        onSubmit={(e) => void handleAdd(e)}
-        className="rounded-xl border border-th-border bg-th-surface/30 p-4 space-y-3 max-w-xl"
-      >
-        <p className="text-sm font-medium text-white">Add entry</p>
-        <IncomeFormFields draft={draft} setDraft={setDraft} />
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
-        >
-          {saving ? "Saving…" : "Add income"}
-        </button>
-      </form>
+      <div className="rounded-xl border border-th-border bg-th-surface/30 p-4 space-y-3 max-w-xl">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium text-white">Add entry</p>
+          <button
+            type="button"
+            onClick={() => setAddEntryOpen((v) => !v)}
+            className="text-th-muted text-xs hover:text-th-tertiary px-1 py-0.5 rounded shrink-0"
+            aria-expanded={addEntryOpen}
+          >
+            {addEntryOpen ? "Hide" : "Show"}
+          </button>
+        </div>
+        {!addEntryOpen && (
+          <p className="text-xs text-th-muted">Log a paycheck or other inflow — press Show to open the form.</p>
+        )}
+        {addEntryOpen && (
+          <form className="space-y-3" onSubmit={(e) => void handleAdd(e)}>
+            <IncomeFormFields draft={draft} setDraft={setDraft} />
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Add income"}
+            </button>
+          </form>
+        )}
+      </div>
 
       {error && (
         <p className="text-sm text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-lg px-3 py-2">

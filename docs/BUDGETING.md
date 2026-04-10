@@ -9,7 +9,7 @@ Standalone guide to **monthly budgets**, **category lines**, **variance**, **thr
 - You set a **monthly total** and optional **per-category caps** for a calendar month.
 - The app compares those targets to **actual spending** (expenses with `spent_at` in that month, grouped by category).
 - Optional **alert percentages** create **in-app notifications** when total or a line crosses a threshold.
-- **Budget** (nav) → **Budget** tab on **`/budget`** shows budget fields, a **composed chart** (budget vs actual), variance, and links to **CSV** and **PDF** exports. The same monthly UI is available under **Budget** → **Reports** tab → **Monthly** period tab, or from the standalone **`/reports`** route.
+- **Income** (header nav label) opens **`/budget`** (**`BudgetHubPage`**). On the **Budget** tab (default when there is no **`?view=`**), you see budget fields, a **composed chart** (budget vs actual), variance, and **CSV** / **PDF** exports. The **Monthly budget** block can be collapsed with **Show** / **Hide**. The same monthly UI is available under **Reports** tab → **Monthly** period tab, or from the standalone **`/reports`** route.
 
 Related but different: **Income vs spend** (cash-flow actuals, recurring run rate, projection) is documented in [INCOME_VS_SPEND.md](./INCOME_VS_SPEND.md).
 
@@ -20,7 +20,7 @@ Related but different: **Income vs spend** (cash-flow actuals, recurring run rat
 ```mermaid
 flowchart TB
   subgraph user [User actions]
-    U1[Budget hub Budget tab or Reports Monthly]
+    U1[Hub Budget tab or Reports Monthly]
     U2[Set budget total and optional category lines]
     U3[Set alert percentages optional]
     U4[Download CSV or PDF]
@@ -65,9 +65,13 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-  Menu[Header: Budget] --> Hub["/budget — BudgetHubPage"]
+  Menu["Header: Income → /budget"] --> Hub["BudgetHubPage"]
+  Hub --> TabI["Tab: Income"]
+  Hub --> TabM["Tab: Import"]
   Hub --> TabB["Tab: Budget — default"]
-  Hub --> TabR[Tab: Reports]
+  Hub --> TabR["Tab: Reports"]
+  TabI --> EmbI["IncomePage embedded"]
+  TabM --> EmbM["ExpensesPage embedded"]
   TabB --> EmbB["ReportsPage monthly_budget embedded"]
   TabR --> EmbR["ReportsPage full embedded"]
 ```
@@ -131,10 +135,10 @@ Implementation: [`server/src/routes/budgets.js`](../server/src/routes/budgets.js
 
 ## UI
 
-- **Budget** (main nav) → **`/budget`**: top **tabs** — **Budget** (default) and **Reports**. The **Budget** tab shows the monthly picker, cash flow card, budget editor, chart, variance, and export buttons via [`BudgetHubPage.jsx`](../client/src/pages/BudgetHubPage.jsx) embedding **`ReportsPage`** with **`variant="monthly_budget"`**. The **Reports** tab embeds **`ReportsPage`** with **`variant="full"`** (Daily … Custom period tabs; URL query **`?tab=`**). Standalone **`/reports`** keeps the full **Reports** page title and the link **← Budget & reports home**.
-- **Notification bell** (header): unread budget-threshold notifications (`budget_total_threshold` / `budget_category_threshold`); mark one read or **Mark all read**. Footer link **Open monthly budget** goes to **`/budget`**.
-- **Theme** (Midnight / Ember / Daylight) is configured under **Profile** → **Appearance**, not in the avatar menu.
-- Client: [`client/src/pages/BudgetHubPage.jsx`](../client/src/pages/BudgetHubPage.jsx), [`client/src/pages/ReportsPage.jsx`](../client/src/pages/ReportsPage.jsx), [`client/src/components/NotificationBell.jsx`](../client/src/components/NotificationBell.jsx).
+- **Income** (header nav label) → **`/budget`** ([`BudgetHubPage.jsx`](../client/src/pages/BudgetHubPage.jsx)): tabs **Income** | **Import** | **Budget** | **Reports** (`?view=income` / `import` / default / `reports`). **Budget** tab embeds **`ReportsPage`** **`variant="monthly_budget"`** (monthly picker, cash flow, **Monthly budget** block with **Show**/**Hide**, chart, variance, exports). **Reports** tab embeds **`variant="full"`** (Daily … Custom; **`?tab=`**). **Income** / **Import** embed **`IncomePage`** / **`ExpensesPage`** with **`embedded`**. Standalone **`/reports`** keeps the full **Reports** title and **← Budget & reports home**.
+- **Notification bell** (header): budget-threshold notifications; **Open monthly budget** → **`/budget`**.
+- **Theme:** **Profile** → **Appearance**.
+- Client: [`BudgetHubPage.jsx`](../client/src/pages/BudgetHubPage.jsx), [`ReportsPage.jsx`](../client/src/pages/ReportsPage.jsx), [`NotificationBell.jsx`](../client/src/components/NotificationBell.jsx).
 
 ---
 

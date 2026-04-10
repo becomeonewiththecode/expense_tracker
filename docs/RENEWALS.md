@@ -1,6 +1,6 @@
 # Renewals feature
 
-This document describes the **Renewals** product area: long-horizon or irregular renewals (annual fees, multi-year contracts, domain names, **online education** memberships or tuition cycles, and similar) modeled as **expenses** with a dedicated **category** and **renewal type**. For how the app is built, see [ARCHITECTURE.md](./ARCHITECTURE.md) and [ARCHITECTURE_DIAGRAM.md](./ARCHITECTURE_DIAGRAM.md). For day-to-day use, see [USER_GUIDE.md](./USER_GUIDE.md) (Import and Renewals sections).
+This document describes the **Renewals** product area: long-horizon or irregular renewals (annual fees, multi-year contracts, domain names, **online education** memberships or tuition cycles, and similar) modeled as **expenses** with a dedicated **category** and **renewal type**. For how the app is built, see [ARCHITECTURE.md](./ARCHITECTURE.md) and [ARCHITECTURE_DIAGRAM.md](./ARCHITECTURE_DIAGRAM.md). For day-to-day use, see [USER_GUIDE.md](./USER_GUIDE.md) (Import hub tab and Renewals sections).
 
 ---
 
@@ -76,7 +76,7 @@ Allow-lists live in **`server/src/expenseEnums.js`** (`CATEGORIES`, **`RENEWAL_K
 
 ### Renewal type catalog
 
-The **authoritative** list of valid **`renewal_kind`** strings is **`RENEWAL_KINDS`** in **`server/src/expenseEnums.js`**, with human-readable labels in **`RENEWAL_KIND_OPTIONS`** in **`client/src/expenseOptions.js`**. New product types (for example **Online education**, API value **`online_education`**) are added there so the API, import, backup restore, and UI stay aligned. The dropdowns on **Import**, **Expenses**, and **Renewals** always reflect that list.
+The **authoritative** list of valid **`renewal_kind`** strings is **`RENEWAL_KINDS`** in **`server/src/expenseEnums.js`**, with human-readable labels in **`RENEWAL_KIND_OPTIONS`** in **`client/src/expenseOptions.js`**. New product types (for example **Online education**, API value **`online_education`**) are added there so the API, import, backup restore, and UI stay aligned. The dropdowns on **Import** (hub tab), **Expenses**, and **Renewals** always reflect that list.
 
 ---
 
@@ -103,7 +103,7 @@ Logical relationship: renewal rows are still **`expenses`**; there is no separat
 | Backup export/restore fields | `server/src/routes/backup.js` |
 | Renewals page | `client/src/pages/RenewalsPage.jsx` — filters to **`active`** only before combined Projection |
 | Expenses list (non-renewal UI filter) | `client/src/pages/YourExpensesPage.jsx` |
-| Import UI (renewal columns) | `client/src/pages/ExpensesPage.jsx` |
+| Import UI (renewal columns; hub **Import** tab) | `client/src/pages/ExpensesPage.jsx` (embedded in `BudgetHubPage.jsx`) |
 | Read-only table + renewal columns + row actions | `client/src/components/ExpenseTable.jsx` — **`onRowProjection`** on both **`YourExpensesPage`** and **`RenewalsPage`** |
 | Manual add + shared edit fields + expense edit modal | `client/src/components/ManualExpenseForm.jsx` (**`ManualExpenseFormFields`**), `client/src/components/ExpenseEditModal.jsx` |
 | Nav link | `client/src/components/Layout.jsx` |

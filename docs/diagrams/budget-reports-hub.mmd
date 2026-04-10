@@ -1,16 +1,21 @@
-%% Budget & reports navigation (Mermaid source — see docs/BUDGETING.md and ARCHITECTURE_DIAGRAM.md)
-%% View: https://mermaid.live or VS Code Mermaid extension
+%% Budget hub navigation (Mermaid source — see docs/BUDGETING.md and ARCHITECTURE_DIAGRAM.md)
+%% Header label is "Income"; route remains /budget. View: mermaid.live or VS Code Mermaid extension
 
 flowchart TB
-  Menu[Header nav: Budget] --> HubPage["/budget — BudgetHubPage"]
+  Menu["Header nav: Income → /budget"] --> HubPage["/budget — BudgetHubPage"]
 
-  subgraph budgetHub [Budget hub]
-    TabB["Tab: Budget — default when opening /budget"]
-    TabR[Tab: Reports]
-    TabB --> EmbB["ReportsPage embedded — monthly budget + cash flow + chart"]
-    TabR --> EmbR["ReportsPage embedded — Daily … Custom + ?tab="]
+  subgraph budgetHub [Hub tabs — ?view=…]
+    TabI["Tab: Income — ?view=income"]
+    TabM["Tab: Import — ?view=import"]
+    TabB["Tab: Budget — default — no view param"]
+    TabR["Tab: Reports — ?view=reports"]
+    TabI --> EmbI["IncomePage embedded"]
+    TabM --> EmbM["ExpensesPage embedded — Import / statement"]
+    TabB --> EmbB["ReportsPage embedded — monthly_budget"]
+    TabR --> EmbR["ReportsPage embedded — full + ?tab="]
   end
 
   HubPage --> budgetHub
 
+  Legacy["/income or /expenses"] --> R301["Navigate replace → /budget?view=income or ?view=import"]
   Direct["Bookmark /reports"] --> Solo["ReportsPage — full page title + period tabs"]

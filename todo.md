@@ -18,7 +18,7 @@ Phases for evolving the expense tracker toward a full “budget product.”
 - **Budget alert thresholds:** `total_alert_threshold_percent` on `budget_periods`, `alert_threshold_percent` on `budget_lines`. Saved via budget `PUT`; [`syncBudgetThresholdNotifications`](server/src/routes/budgets.js) upserts rows in `user_notifications` when actual spending crosses thresholds.
 - **In-app notifications:** [`user_notifications`](server/src/db.js) table; [`GET/PATCH/POST /api/notifications`](server/src/routes/notifications.js); bell menu [`NotificationBell.jsx`](client/src/components/NotificationBell.jsx) in the header (syncs current month when opened).
 - **PDF export:** `GET /api/reports/export/monthly.pdf` using [pdfkit](server/package.json) — [`server/src/routes/reports.js`](server/src/routes/reports.js); **Download PDF** on Reports (monthly).
-- **Income:** `income_entries` table; CRUD [`/api/income`](server/src/routes/income.js); [`IncomePage`](client/src/pages/IncomePage.jsx) at `/income` (nav + Lists menu).
+- **Income:** `income_entries` table; CRUD [`/api/income`](server/src/routes/income.js); [`IncomePage`](client/src/pages/IncomePage.jsx) embedded in [`BudgetHubPage`](client/src/pages/BudgetHubPage.jsx) (**Income** tab; `/income` → `/budget?view=income`). Header nav **Income** → `/budget`.
 - **Cash flow (actuals):** `GET /api/reports/cashflow/monthly` — spending vs logged income and net; card on monthly Reports.
 - **Projection net:** [`computeIncomeProjection`](client/src/projection.js) + [`ProjectionModal`](client/src/components/ProjectionModal.jsx) shows income run rate and **net monthly (income − expense run rate)** when opening projection from Reports with income rows loaded.
 
@@ -41,7 +41,7 @@ Phases for evolving the expense tracker toward a full “budget product.”
 
 ## Phase 3 — Automation — done
 
-- **Import rules:** [`import_category_rules`](server/src/db.js); CRUD [`/api/import-rules`](server/src/routes/importRules.js); engine [`importRulesEngine.js`](server/src/importRulesEngine.js). Rules apply in sort order to rows with no category on **commit** and via **Run rules** / [`POST /api/imports/batches/:id/apply-rules`](server/src/routes/imports.js). UI: [`ImportRulesPanel`](client/src/components/ImportRulesPanel.jsx) on Import.
+- **Import rules:** [`import_category_rules`](server/src/db.js); CRUD [`/api/import-rules`](server/src/routes/importRules.js); engine [`importRulesEngine.js`](server/src/importRulesEngine.js). Rules apply in sort order to rows with no category on **commit** and via **Run rules** / [`POST /api/imports/batches/:id/apply-rules`](server/src/routes/imports.js). UI: [`ImportRulesPanel`](client/src/components/ImportRulesPanel.jsx) on hub **Import** tab ([`ExpensesPage`](client/src/pages/ExpensesPage.jsx); `/expenses` → `/budget?view=import`).
 - **AI suggest:** [`POST /api/imports/batches/:id/suggest-categories`](server/src/routes/imports.js) + [`aiImportSuggestions.js`](server/src/aiImportSuggestions.js) (OpenAI JSON). [`ImportAiSuggestModal`](client/src/components/ImportAiSuggestModal.jsx) — user reviews/edits and applies via existing row PATCH. Env: `OPENAI_API_KEY`, optional `OPENAI_MODEL` ([`server/.env.example`](server/.env.example)).
 - **Savings goals:** [`savings_goals`](server/src/db.js); [`/api/savings-goals`](server/src/routes/savingsGoals.js); [`SavingsGoalsPage`](client/src/pages/SavingsGoalsPage.jsx) at `/savings` (Lists + desktop nav).
 

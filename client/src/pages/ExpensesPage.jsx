@@ -23,7 +23,8 @@ import {
   TABLE_TH,
 } from "../tableStyles.js";
 
-export default function ExpensesPage() {
+/** @param {{ embedded?: boolean }} props When true, hide the page title (used under Budget hub). */
+export default function ExpensesPage({ embedded = false }) {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +40,7 @@ export default function ExpensesPage() {
   const [staging, setStaging] = useState(null);
   const [committing, setCommitting] = useState(false);
   const [addFormOpen, setAddFormOpen] = useState(false);
-  const [importFormOpen, setImportFormOpen] = useState(true);
+  const [importFormOpen, setImportFormOpen] = useState(false);
   const [aiSuggestOpen, setAiSuggestOpen] = useState(false);
   const [applyingRules, setApplyingRules] = useState(false);
 
@@ -254,34 +255,40 @@ export default function ExpensesPage() {
   const hasLoadedImportRows = !loading && Boolean(staging?.rows?.length);
   const hideShowControlsVisible = !hasLoadedImportRows;
 
-  useEffect(() => {
-    if (!hasLoadedImportRows) return;
-    setAddFormOpen(true);
-    setImportFormOpen(true);
-  }, [hasLoadedImportRows]);
-
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Import</h1>
-          <p className="text-sm text-th-subtle mt-1">
-            {loading
-              ? "Loading…"
-              : showOnboarding
-                ? "Add an expense manually, or import a statement to get started."
-                : "Import from a statement, or open Expenses to review saved transactions."}
-          </p>
+      {!embedded && (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-white">Import</h1>
+            <p className="text-sm text-th-subtle mt-1">
+              {loading
+                ? "Loading…"
+                : showOnboarding
+                  ? "Add an expense manually, or import a statement to get started."
+                  : "Import from a statement, or open Expenses to review saved transactions."}
+            </p>
+          </div>
+          {!loading && hasSavedExpenses && (
+            <NavLink
+              to="/expenses/list"
+              className="shrink-0 rounded-lg border border-th-border-bright bg-th-surface-alt hover:bg-th-border-bright text-th-secondary text-sm font-medium px-3 py-2"
+            >
+              Expenses
+            </NavLink>
+          )}
         </div>
-        {!loading && hasSavedExpenses && (
+      )}
+      {embedded && !loading && hasSavedExpenses && (
+        <div className="flex justify-end">
           <NavLink
             to="/expenses/list"
             className="shrink-0 rounded-lg border border-th-border-bright bg-th-surface-alt hover:bg-th-border-bright text-th-secondary text-sm font-medium px-3 py-2"
           >
             Expenses
           </NavLink>
-        )}
-      </div>
+        </div>
+      )}
 
       {showOnboarding && (
         <ManualExpenseForm form={form} setForm={setForm} onSubmit={addExpense} />
@@ -302,7 +309,7 @@ export default function ExpensesPage() {
               </button>
             ) : null}
           </div>
-          {addFormOpen ? (
+          {addFormOpen || !hideShowControlsVisible ? (
             <div className="mt-4 pt-4 border-t border-th-border">
               <ManualExpenseForm form={form} setForm={setForm} onSubmit={addExpense} />
             </div>
@@ -325,14 +332,37 @@ export default function ExpensesPage() {
             </button>
           ) : null}
         </div>
-        {importFormOpen ? (
+        {importFormOpen || !hideShowControlsVisible ? (
         <>
         <ImportRulesPanel />
-        <p className="text-xs text-th-muted mt-1 max-w-2xl">
-          Upload a <strong className="text-th-subtle">CSV</strong> or <strong className="text-th-subtle">PDF</strong>. Parsed rows appear in the <strong className="text-th-subtle">review table</strong> below.
-          Set defaults for <strong className="text-th-subtle">institution</strong> and <strong className="text-th-subtle">frequency</strong> before upload. Each row’s <strong className="text-th-subtle">posted date</strong> comes from the statement. In <strong className="text-th-subtle">Review import</strong>, set <strong className="text-th-subtle">category</strong> (required). For <strong className="text-th-subtle">Renewal</strong>, also choose a <strong className="text-th-subtle">renewal type</strong> and optionally a <strong className="text-th-subtle">website</strong>; those rows appear under <strong className="text-th-subtle">Renewals</strong>. Adjust per-row <strong className="text-th-subtle">frequency</strong> if needed. Saved expenses derive recurring metadata from each line’s posted date. Only rows with a category (and a renewal type when category is Renewal) are saved when you commit. Credits / payments are skipped during parsing.
-          Your <strong className="text-th-subtle">category rules</strong> run automatically on commit (and you can run them early with <strong className="text-th-subtle">Run rules</strong>). Optional <strong className="text-th-subtle">AI suggest</strong> fills uncategorized rows for you to confirm before applying.
-        </p>
+        <details className="mt-2">
+          <summary
+            className="list-none cursor-pointer inline-flex items-center justify-center rounded-full border border-th-border-bright bg-th-surface-alt/40 text-th-muted hover:text-th-tertiary hover:border-th-muted w-7 h-7 text-xs font-semibold leading-none select-none transition-colors outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 [&::-webkit-details-marker]:hidden"
+            aria-label="How statement import works"
+          >
+            <span aria-hidden className="font-sans translate-y-px">
+              i
+            </span>
+          </summary>
+          <div className="mt-2 max-w-2xl rounded-lg border border-th-border bg-th-surface/40 px-3 py-2.5 text-xs text-th-muted leading-relaxed">
+            Upload a <strong className="text-th-subtle">CSV</strong> or <strong className="text-th-subtle">PDF</strong>. Parsed
+            rows appear in the <strong className="text-th-subtle">review table</strong> below. Set defaults for{" "}
+            <strong className="text-th-subtle">institution</strong> and <strong className="text-th-subtle">frequency</strong>{" "}
+            before upload. Each row’s <strong className="text-th-subtle">posted date</strong> comes from the statement. In{" "}
+            <strong className="text-th-subtle">Review import</strong>, set <strong className="text-th-subtle">category</strong>{" "}
+            (required). For <strong className="text-th-subtle">Renewal</strong>, also choose a{" "}
+            <strong className="text-th-subtle">renewal type</strong> and optionally a{" "}
+            <strong className="text-th-subtle">website</strong>; those rows appear under{" "}
+            <strong className="text-th-subtle">Renewals</strong>. Adjust per-row{" "}
+            <strong className="text-th-subtle">frequency</strong> if needed. Saved expenses derive recurring metadata from
+            each line’s posted date. Only rows with a category (and a renewal type when category is Renewal) are saved when
+            you commit. Credits / payments are skipped during parsing. Your{" "}
+            <strong className="text-th-subtle">category rules</strong> run automatically on commit (and you can run them
+            early with <strong className="text-th-subtle">Run rules</strong>). Optional{" "}
+            <strong className="text-th-subtle">AI suggest</strong> fills uncategorized rows for you to confirm before
+            applying.
+          </div>
+        </details>
         <form onSubmit={runImportUpload} className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
           <div className="w-full sm:w-auto">
             <label htmlFor="statement-file-input" className="text-xs text-th-muted block mb-1">

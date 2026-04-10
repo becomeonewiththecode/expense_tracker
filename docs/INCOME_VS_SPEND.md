@@ -11,7 +11,7 @@ Standalone guide to **how income is recorded** and **three different ways** the 
 | Mode | Question it answers | Primary API / UI |
 |------|---------------------|------------------|
 | **Cash flow (actuals)** | In this calendar month, how much came in vs went out? | `GET /api/reports/cashflow/monthly` — **Budget** hub **Budget** tab (or **Reports** tab → **Monthly**, or **`/reports`**) |
-| **Recurring run rate** | If recurring income and obligations stayed steady, would I be under or over per month? | `GET /api/reports/run-rate-vs-income` — **Income** page banner |
+| **Recurring run rate** | If recurring income and obligations stayed steady, would I be under or over per month? | `GET /api/reports/run-rate-vs-income` — **Income** tab on **`/budget`** (**`IncomePage`** embedded); bookmark **`/income`** redirects to **`/budget?view=income`** |
 | **Projection (modal)** | Quick net run rate in the chart tool | Client [`projection.js`](../client/src/projection.js) from **Budget** / **Reports** chart views |
 
 ```mermaid
@@ -52,7 +52,7 @@ flowchart TB
 
 ## Income entries
 
-- **Route:** `/income` — list, add, edit, delete income rows.
+- **Routes:** Primary UI is the **Income** tab on **`/budget`** (`?view=income`). **`/income`** redirects to **`/budget?view=income`**. **`IncomePage`** is embedded in **`BudgetHubPage`**; list, add, edit, and delete behave the same as before. The **Add entry** form starts **collapsed** (**Show** / **Hide**).
 - **Bi-monthly:** two pay days (1–30) are required when frequency is bi-monthly; validated on the server.
 - **API:** `GET/POST/PATCH/DELETE /api/income` — [`server/src/routes/income.js`](../server/src/routes/income.js).
 - **Table:** `income_entries` — [`server/src/db.js`](../server/src/db.js).
@@ -73,9 +73,9 @@ flowchart TB
 - **Purpose:** Compare **annualized recurring income** (from `income_entries` with recurring frequencies) to **annualized recurring obligations**: recurring expenses (including renewals), prescriptions, and **payment plans** from `payment_plans` (not double-counting separate `payment_plan` expense rows tied to those plans).
 - **Logic:** [`server/src/runRateSummary.js`](../server/src/runRateSummary.js).
 - **Endpoint:** `GET /api/reports/run-rate-vs-income` in [`server/src/routes/reports.js`](../server/src/routes/reports.js).
-- **UI:** **Income** page loads the summary and shows a banner (no income / no recurring / overspending / OK).
+- **UI:** **Income** tab (**`IncomePage`**) loads the summary and shows a banner (no income / no recurring / overspending / OK).
 
-### Sequence: open Income page
+### Sequence: open Income tab (hub)
 
 ```mermaid
 sequenceDiagram
@@ -84,7 +84,7 @@ sequenceDiagram
   participant API as Express API
   participant DB as PostgreSQL
 
-  User->>IncomePage: Open /income
+  User->>IncomePage: Open /budget?view=income (or /income redirect)
   IncomePage->>API: GET /api/income
   API->>DB: SELECT income_entries
   DB-->>API: rows

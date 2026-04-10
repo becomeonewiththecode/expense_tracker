@@ -39,7 +39,6 @@ function ListsNavDropdown() {
     pathname === "/renewals" ||
     pathname === "/prescriptions" ||
     pathname === "/payment-plans" ||
-    pathname === "/budget" ||
     pathname === "/reports" ||
     pathname === "/savings";
 
@@ -108,14 +107,6 @@ function ListsNavDropdown() {
         >
           Payment Plan
         </NavLink>
-        <NavLink
-          to="/budget"
-          role="menuitem"
-          className={listsDropdownItemClass}
-          onClick={closeListsMenu}
-        >
-          Budget
-        </NavLink>
       </div>
     </details>
   );
@@ -152,8 +143,8 @@ export default function Layout() {
             Expense Tracker
           </span>
           <nav className="flex flex-wrap items-center gap-1 sm:gap-2">
-            <NavLink to="/expenses" end className={linkClass}>
-              Import
+            <NavLink to="/budget" className={linkClass}>
+              Income
             </NavLink>
             <div className="lg:hidden">
               <ListsNavDropdown />
@@ -173,9 +164,6 @@ export default function Layout() {
               </NavLink>
               <NavLink to="/payment-plans" className={linkClass}>
                 Payment Plan
-              </NavLink>
-              <NavLink to="/budget" className={linkClass}>
-                Budget
               </NavLink>
             </div>
           </nav>

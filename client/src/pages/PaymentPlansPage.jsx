@@ -218,7 +218,7 @@ export default function PaymentPlansPage() {
 
   const [addForm, setAddForm] = useState(() => createEmptyForm());
   const [addSaving, setAddSaving] = useState(false);
-  const [addOpen, setAddOpen] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
   const [noteSearch, setNoteSearch] = useState("");
   /** When false, rows with status paid_in_full are hidden from the table and combined projection. */
   const [showPaidInFull, setShowPaidInFull] = useState(false);

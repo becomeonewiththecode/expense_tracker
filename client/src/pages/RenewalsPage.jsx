@@ -241,7 +241,7 @@ export default function RenewalsPage() {
               <strong className="text-th-tertiary">Renewal</strong> plus a renewal type for each row.
             </p>
             <Link
-              to="/expenses"
+              to="/budget?view=import"
               className="inline-block rounded-lg border border-th-border-bright bg-th-surface-alt hover:bg-th-border-bright text-th-secondary text-sm font-medium py-2 px-4"
             >
               Go to Import

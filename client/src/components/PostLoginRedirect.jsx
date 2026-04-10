@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { getPostLoginPath } from "../postLoginLanding.js";
 
 /**
- * Resolves /expenses vs /expenses/list after auth (any saved expense → list).
+ * Resolves Income hub (Import tab) vs /expenses/list after auth (any saved expense → list).
  */
 export default function PostLoginRedirect() {
   const [path, setPath] = useState(null);

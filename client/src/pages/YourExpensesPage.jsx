@@ -219,7 +219,7 @@ export default function YourExpensesPage() {
         <p className="text-sm text-th-subtle mt-1">
           {loading
             ? "Loading…"
-            : "Add expenses here or on Import; review, edit, or delete. Items with category Renewal appear under Renewals, and Payment Plan items appear under Payment Plan. Default order is newest first—click a column heading to sort."}
+            : "Add expenses here or under Income → Import; review, edit, or delete. Items with category Renewal appear under Renewals, and Payment Plan items appear under Payment Plan. Default order is newest first—click a column heading to sort."}
         </p>
       </div>
 
@@ -243,7 +243,7 @@ export default function YourExpensesPage() {
               No saved expenses yet. Use the form above or import a statement.
             </p>
             <Link
-              to="/expenses"
+              to="/budget?view=import"
               className="inline-block rounded-lg border border-th-border-bright bg-th-surface-alt hover:bg-th-border-bright text-th-secondary text-sm font-medium py-2 px-4"
             >
               Go to Import

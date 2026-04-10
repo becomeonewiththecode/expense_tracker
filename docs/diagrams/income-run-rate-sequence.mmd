@@ -6,7 +6,7 @@ sequenceDiagram
   participant API as Express API
   participant DB as PostgreSQL
 
-  User->>IncomePage: Open /income
+  User->>IncomePage: Open Budget hub Income tab (/budget?view=income; /income redirects)
   IncomePage->>API: GET /api/income
   API->>DB: SELECT income_entries
   DB-->>API: rows

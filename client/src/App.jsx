@@ -4,7 +4,6 @@ import Layout from "./components/Layout.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
-import ExpensesPage from "./pages/ExpensesPage.jsx";
 import YourExpensesPage from "./pages/YourExpensesPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import BudgetHubPage from "./pages/BudgetHubPage.jsx";
@@ -52,7 +51,7 @@ export default function App() {
       <Route path="/" element={<AppShell />}>
         <Route index element={<PostLoginRedirect />} />
         <Route path="expenses/list" element={<YourExpensesPage />} />
-        <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="expenses" element={<Navigate to="/budget?view=import" replace />} />
         <Route path="renewals" element={<RenewalsPage />} />
         <Route path="prescriptions" element={<PrescriptionsPage />} />
         <Route path="payment-plans" element={<PaymentPlansPage />} />

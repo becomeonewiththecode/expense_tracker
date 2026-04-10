@@ -202,12 +202,6 @@ export default function PrescriptionsPage() {
   }, [load]);
 
   useEffect(() => {
-    if (!loading && items.length === 0) {
-      setAddFormOpen(true);
-    }
-  }, [loading, items.length]);
-
-  useEffect(() => {
     if (items.length === 0) setProjectionTarget(null);
   }, [items.length]);
 
