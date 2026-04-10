@@ -154,4 +154,4 @@ Implementation: [`server/src/routes/budgets.js`](../server/src/routes/budgets.js
 - [USER_GUIDE.md](./USER_GUIDE.md) — how to use the app end to end.
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — modules and API index.
 - [INCOME_VS_SPEND.md](./INCOME_VS_SPEND.md) — income, cash flow, and recurring run rate vs obligations.
-- Interactive API: **`/api/docs`** (Swagger UI) and **`/api/openapi.json`** — **`/budgets/{year}/{month}`** and **`/notifications`** are described there with other routes.
+- Interactive API: **`/api/docs`** (Swagger UI) and **`/api/openapi.json`** — **`/budgets/{year}/{month}`** and **`/notifications`** are described there with other routes. Use [API_AUTHORIZATION.md](./API_AUTHORIZATION.md) for **bearerAuth** in Swagger.

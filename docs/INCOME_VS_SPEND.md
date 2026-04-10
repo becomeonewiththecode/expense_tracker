@@ -132,4 +132,4 @@ The older filename [INCOME_AND_MINIMUM_CHECK.md](./INCOME_AND_MINIMUM_CHECK.md) 
 
 - [USER_GUIDE.md](./USER_GUIDE.md)
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
-- **`/api/docs`** (Swagger UI) and **`/api/openapi.json`** — **`/income`**, **`/reports/cashflow/monthly`**, **`/reports/run-rate-vs-income`**, and related schemas.
+- **`/api/docs`** (Swagger UI) and **`/api/openapi.json`** — **`/income`**, **`/reports/cashflow/monthly`**, **`/reports/run-rate-vs-income`**, and related schemas. Authenticated **Try it out** calls need a user JWT; see [API_AUTHORIZATION.md](./API_AUTHORIZATION.md).

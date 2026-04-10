@@ -360,7 +360,7 @@ The application includes an **admin site** at **`/admin`** for operators. It is 
 - **System health:** Runs automatically and shows API health, **web UI reachability**, database connectivity, basic database sanity, and application resources.
 - **Backup & restore:** Per-user and whole-database backups (JSON downloads), restore preview and restore apply.
 - **User accounts:** View users, reset passwords, modify roles/permissions (requires re-authentication).
-- **Swagger:** Embedded API documentation for all endpoints (backed by `/api/docs` and `/api/openapi.json`).
+- **Swagger:** Embedded API documentation for all endpoints (backed by `/api/docs` and `/api/openapi.json`). To call protected routes from Swagger, use **Authorize** with the tokens described in [**API_AUTHORIZATION.md**](./API_AUTHORIZATION.md) (**user** vs **admin** JWT and optional **`x-admin-reauth`**).
 
 ---
 
@@ -379,6 +379,7 @@ The application includes an **admin site** at **`/admin`** for operators. It is 
 
 ## Where to go next
 
+- **Swagger / OpenAPI tokens and re-authentication:** [API_AUTHORIZATION.md](./API_AUTHORIZATION.md)
 - **Installation, ports, OAuth, and production Compose:** root `README.md` and [deployment/docker-compose/README.md](../deployment/docker-compose/README.md)  
 - **Renewals feature (API, import, data model):** [RENEWALS.md](./RENEWALS.md)  
 - **Payment plans feature (API, expense sync, add-section behavior):** [PAYMENT_PLANS.md](./PAYMENT_PLANS.md)  

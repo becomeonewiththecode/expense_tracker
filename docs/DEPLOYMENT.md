@@ -82,7 +82,9 @@ The API serves interactive docs via Swagger UI:
 - **Swagger UI:** `/api/docs`
 - **OpenAPI JSON:** `/api/openapi.json`
 
-The spec’s **`info.description`** documents **`GET /health`** (served at the **site root**, not under **`/api`**). **`components.schemas`** include **`UserBackupExport`**, **`BackupRestoreRequest`**, and **`HealthResponse`**. The **backup** tag summarizes profile export **version** **4** (**`incomeEntries`**). Admin backup endpoints note **version** **2** for full-database and per-user snapshots.
+The spec’s **`info.description`** documents **`GET /health`** (served at the **site root**, not under **`/api`**). **`components.securitySchemes`** define **`bearerAuth`** (user JWT), **`adminBearerAuth`** (admin JWT), and **`adminReauth`** (header **`x-admin-reauth`**). Step-by-step token acquisition and which admin routes require re-auth are documented in **[API_AUTHORIZATION.md](./API_AUTHORIZATION.md)**.
+
+**`components.schemas`** include **`UserBackupExport`**, **`BackupRestoreRequest`**, and **`HealthResponse`**. The **backup** tag summarizes profile export **version** **4** (**`incomeEntries`**). Admin backup endpoints note **version** **2** for full-database and per-user snapshots.
 
 ### OAuth (optional)
 

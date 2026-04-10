@@ -9,6 +9,16 @@ The browser talks to the API through the Vite proxy: requests to `/api` are forw
 
 If only the client is running (`npm run dev` inside `client/`), sign-up and sign-in will fail until the API process is started.
 
+## Swagger / OpenAPI “Authorize” fails or returns 401
+
+Swagger UI does not invent tokens; you must obtain them from the auth endpoints, then paste them into **Authorize**.
+
+- **User routes** (padlock + **`bearerAuth`**): complete `POST /api/auth/login` then `POST /api/auth/verify-2fa` or `POST /api/auth/setup-2fa/verify`, and use the returned **`token`** in **`bearerAuth`**.
+- **Admin routes** (**`adminBearerAuth`**): complete `POST /api/admin/auth/login` then admin verify or setup-2FA verify; use the returned **`token`** in **`adminBearerAuth`**.
+- **Sensitive admin routes** (also **`adminReauth`** / **`x-admin-reauth`**): with **`adminBearerAuth`** set, call `POST /api/admin/auth/reauth` with admin password and TOTP; paste **`reauthToken`** into **`adminReauth`**. It expires in about **two minutes**—request a new one if needed.
+
+Full step-by-step flow: **[API_AUTHORIZATION.md](./API_AUTHORIZATION.md)**.
+
 ## Single sign-on buttons do nothing or return an error
 
 - An HTTP **503** response from `GET /api/auth/oauth/...` means that provider is **not configured**. Set `OAUTH_<PROVIDER>_CLIENT_ID` and `OAUTH_<PROVIDER>_CLIENT_SECRET` in `server/.env` for that provider, then restart the API.

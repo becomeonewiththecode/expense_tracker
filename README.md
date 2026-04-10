@@ -31,6 +31,7 @@ The **client** is built with React, Tailwind CSS, Recharts, React Router, and Ax
 
 ### Reference
 
+- [API authorization (Swagger)](./docs/API_AUTHORIZATION.md) — How to obtain **`bearerAuth`**, **`adminBearerAuth`**, and **`adminReauth`** for **`/api/docs`**
 - [Troubleshooting](./docs/TROUBLESHOOTING.md) — Common issues with login, OAuth, ports, and PM2
 
 ## Quick start
@@ -84,7 +85,7 @@ All paths are under the `/api` prefix. During development, the Vite proxy forwar
 - **Notifications** — `GET /api/notifications`, mark read for budget alerts
 - **Savings goals** — CRUD at `/api/savings-goals`
 - **Backup** — `GET /api/backup/export` and `POST /api/backup/restore` (JSON format, versions 1–4; v4 adds income entries)
-- **API docs** — When signed in (or from **Admin → Swagger**), open **`/api/docs`** for Swagger UI or **`/api/openapi.json`** for the OpenAPI 3 spec (includes backup schemas and **`info`** notes for **`GET /health`** at the site root).
+- **API docs** — When signed in (or from **Admin → Swagger**), open **`/api/docs`** for Swagger UI or **`/api/openapi.json`** for the OpenAPI 3 spec (includes backup schemas and **`info`** notes for **`GET /health`** at the site root). For **Authorize** fields and token flows, see [**API_AUTHORIZATION.md**](./docs/API_AUTHORIZATION.md).
 
 Report responses may be cached in Redis for approximately two minutes when `REDIS_URL` is set.
 
