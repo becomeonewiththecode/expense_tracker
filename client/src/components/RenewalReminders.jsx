@@ -260,7 +260,7 @@ export default function RenewalReminders({
       hidden.push({
         expenseId: Number(row.id),
         title,
-        institution: formatFinancialInstitution(row.financial_institution),
+        institution: formatFinancialInstitution(row.financial_institution, row.bank_name),
         amount: Number.isFinite(amountNum) ? amountNum : 0,
         state: "cancelled",
         hiddenAt: today.toISOString(),
@@ -313,7 +313,7 @@ export default function RenewalReminders({
         next,
         title,
         amountNum: amountSafe,
-        institution: formatFinancialInstitution(row.financial_institution),
+        institution: formatFinancialInstitution(row.financial_institution, row.bank_name),
         spentAt: row.spent_at,
         category: row.category,
         frequency: row.frequency,

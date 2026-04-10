@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
+import { corsOriginCallback } from "./corsConfig.js";
 import { ensureJwtSecret } from "./ensureJwtSecret.js";
 import { initDb, pool } from "./db.js";
 import { authRouter } from "./routes/auth.js";
@@ -32,7 +33,7 @@ const uploadsRoot = path.join(__dirname, "..", "uploads");
 const app = express();
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || true,
+    origin: corsOriginCallback,
     credentials: true,
   })
 );

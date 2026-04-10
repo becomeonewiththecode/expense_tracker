@@ -23,7 +23,8 @@ Full step-by-step flow: **[API_AUTHORIZATION.md](./API_AUTHORIZATION.md)**.
 
 - An HTTP **503** response from `GET /api/auth/oauth/...` means that provider is **not configured**. Set `OAUTH_<PROVIDER>_CLIENT_ID` and `OAUTH_<PROVIDER>_CLIENT_SECRET` in `server/.env` for that provider, then restart the API.
 - **Redirect URI mismatch** in the provider's console: the authorized redirect URL must be exactly `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback` as described in `server/.env.example`. Align `CLIENT_ORIGIN` and the provider application settings.
-- After OAuth completes, you should land on **`/oauth/callback`**. If you always see "Missing token", check the API logs for callback errors and confirm the browser's origin matches `CLIENT_ORIGIN`.
+- After OAuth completes, you should land on **`/oauth/callback`** with a **`login_code`** in the query string. If you see **"Missing login code"** or **"Invalid or expired login code"**, the redirect may have been truncated, the code already used, or the API restarted (codes are in-memory). Check API logs for callback errors, try signing in again, and confirm the browser origin is listed in **`CLIENT_ORIGIN`** (required in production for CORS).
+- **HTTP 429** on **`/auth/login`**, **`/auth/register`**, **`/auth/oauth/login-code`**, or **`/api/admin/auth/login`**: too many attempts from your IP; wait for the window to reset.
 
 ## Port 4000 already in use ("Empty reply from server")
 

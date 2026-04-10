@@ -6,7 +6,7 @@ export const openApiSpec = {
     description:
       "REST API for Expense Tracker. Most endpoints require a user JWT (**Authorization: Bearer**). Admin endpoints under **/api/admin** use a separate admin session token.\n\n" +
       "**Liveness:** **GET /health** is served at the **application root** (not under **/api**)—for example proxied by nginx beside **/api**. Response: **`{ ok: true, version: string }`** where **`version`** comes from **`APP_VERSION`** or **`server/package.json`**.\n\n" +
-      "**User backup:** **GET /backup/export** (under this spec’s **/api** base) returns **`format: expense-tracker-backup`**, **`version: 4`** (current), including **`incomeEntries`** and **`incomeEntryCount`**. **POST /backup/restore** accepts file **`version`** **1**–**4**; **`replace`** clears **`income_entries`** only when the file is **version 4** or higher.\n\n" +
+      "**User backup:** **GET /backup/export** (under this spec’s **/api** base) returns **`format: expense-tracker-backup`**, **`version: 4`** (current), including **`incomeEntries`** and **`incomeEntryCount`**. Each **`expenses[]`** item may include **`bank_name`** when **`financial_institution`** is **`bank`**. **POST /backup/restore** accepts file **`version`** **1**–**4**; **`replace`** clears **`income_entries`** only when the file is **version 4** or higher.\n\n" +
       "**Admin database backup** responses use **`format: expense-tracker-admin-db-backup`**, **`version: 2`** (includes **`incomeEntries`**). Per-user admin backup uses **`expense-tracker-admin-user-backup`**, **`version: 2`**.",
   },
   servers: [{ url: "/api" }],
@@ -28,7 +28,7 @@ export const openApiSpec = {
       UserBackupExport: {
         type: "object",
         description:
-          "Profile backup JSON. Current export **version** is **4**. Older files may omit **incomeEntries** (treat as absent for v1–v3).",
+          "Profile backup JSON. Current export **version** is **4**. Older files may omit **incomeEntries** (treat as absent for v1–v3). **expenses[]** rows may include **bank_name** (allow-listed slug) when **financial_institution** is **bank**.",
         required: ["format", "version", "exportedAt", "expenses"],
         properties: {
           format: { type: "string", enum: ["expense-tracker-backup"] },
@@ -47,7 +47,11 @@ export const openApiSpec = {
           },
           expenseCount: { type: "integer" },
           renewalCount: { type: "integer" },
-          expenses: { type: "array", items: { type: "object" } },
+          expenses: {
+            type: "array",
+            description: "Expense rows; **bank_name** optional on restore when institution is **bank**",
+            items: { type: "object" },
+          },
           prescriptionCount: { type: "integer", description: "v2+" },
           prescriptions: { type: "array", items: { type: "object" }, description: "v2+" },
           paymentPlanCount: { type: "integer", description: "v3+" },
@@ -90,7 +94,7 @@ export const openApiSpec = {
     {
       name: "backup",
       description:
-        "User JSON backup (Profile). Export **version 4** includes **expenses**, **prescriptions**, **paymentPlans**, **incomeEntries**, and **account**. Restore accepts **version** **1**–**4**; **replace** clears tables according to file version (income only for v4+).",
+        "User JSON backup (Profile). Export **version 4** includes **expenses** (with optional **bank_name** when institution is **bank**), **prescriptions**, **paymentPlans**, **incomeEntries**, and **account**. Restore accepts **version** **1**–**4**; **replace** clears tables according to file version (income only for v4+).",
     },
     { name: "prescriptions" },
     { name: "payment-plans" },
@@ -109,6 +113,9 @@ export const openApiSpec = {
       delete: { tags: ["auth"], summary: "Remove recovery code", security: [{ bearerAuth: [] }] },
     },
     "/auth/recover-password": { post: { tags: ["auth"], summary: "Reset password using recovery code" } },
+    "/auth/oauth/login-code": {
+      post: { tags: ["auth"], summary: "Exchange OAuth browser login_code for session JWT and user (no Bearer required)" },
+    },
     "/auth/avatar": {
       post: { tags: ["auth"], summary: "Upload avatar", security: [{ bearerAuth: [] }] },
       delete: { tags: ["auth"], summary: "Remove avatar", security: [{ bearerAuth: [] }] },
@@ -116,11 +123,23 @@ export const openApiSpec = {
 
     "/expenses": {
       get: { tags: ["expenses"], summary: "List expenses", security: [{ bearerAuth: [] }] },
-      post: { tags: ["expenses"], summary: "Create expense", security: [{ bearerAuth: [] }] },
+      post: {
+        tags: ["expenses"],
+        summary: "Create expense",
+        description:
+          "When **financial_institution** is **bank**, **bank_name** is required (allow-listed slug, e.g. **cibc**, **not_listed**).",
+        security: [{ bearerAuth: [] }],
+      },
     },
     "/expenses/{id}": {
       get: { tags: ["expenses"], summary: "Get expense", security: [{ bearerAuth: [] }] },
-      patch: { tags: ["expenses"], summary: "Update expense", security: [{ bearerAuth: [] }] },
+      patch: {
+        tags: ["expenses"],
+        summary: "Update expense",
+        description:
+          "May set **bank_name** when institution is **bank**; switching away from **bank** clears **bank_name**.",
+        security: [{ bearerAuth: [] }],
+      },
       delete: { tags: ["expenses"], summary: "Delete expense", security: [{ bearerAuth: [] }] },
     },
 
@@ -179,7 +198,7 @@ export const openApiSpec = {
         tags: ["backup"],
         summary: "Export user backup JSON",
         description:
-          "Downloads **`expense-tracker-backup`** JSON, **`version: 4`**, with **expenseCount**, **renewalCount**, **prescriptions**, **paymentPlans**, **incomeEntryCount** / **incomeEntries**, optional **account.recoveryCode**, and legacy top-level **email**.",
+          "Downloads **`expense-tracker-backup`** JSON, **`version: 4`**, with **expenseCount**, **renewalCount**, **prescriptions**, **paymentPlans**, **incomeEntryCount** / **incomeEntries**, optional **account.recoveryCode**, and legacy top-level **email**. Each expense may include **bank_name** when **financial_institution** is **bank**.",
         security: [{ bearerAuth: [] }],
         responses: {
           "200": {

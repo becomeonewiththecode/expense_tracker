@@ -95,4 +95,4 @@ The `node-cron` library schedules a job at **03:00 UTC on the first day** of eac
 
 ## OAuth setup
 
-OAuth redirect URLs use **`CLIENT_ORIGIN` from `server/.env`**. It must be the exact origin users use (scheme, host, and port, with no path), for example `http://localhost:5173`. Register the callback URL `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback` in each provider's developer console. See `server/.env.example` for the full list of `OAUTH_*` variables.
+OAuth redirect URLs use **`CLIENT_ORIGIN` from `server/.env`**. It must be the exact origin users use (scheme, host, and port, with no path), for example `http://localhost:5173`. You can list **several** origins separated by commas for CORS. Register the callback URL `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback` in each provider's developer console. After the IdP returns to the API, the browser is redirected to **`/oauth/callback?login_code=…`** (not a JWT in the URL); the SPA calls **`POST /api/auth/oauth/login-code`** to obtain the session token. See `server/.env.example` for the full list of `OAUTH_*` variables.

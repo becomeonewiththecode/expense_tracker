@@ -101,6 +101,7 @@ export default function ExpensesPage({ embedded = false }) {
         renewal_kind: form.category === "renewal" ? form.renewal_kind : undefined,
         website: form.website || undefined,
         financial_institution: form.financial_institution,
+        bank_name: form.financial_institution === "bank" ? form.bank_name : undefined,
         frequency: form.frequency,
         payment_day: form.frequency === "bimonthly" ? Number(form.payment_day) : undefined,
         payment_day_2: form.frequency === "bimonthly" ? Number(form.payment_day_2) : undefined,

@@ -49,6 +49,17 @@ Paste **`token`** into **`bearerAuth`** (Swagger adds the `Bearer ` prefix).
 
 **Also issued without the login challenge:** `POST /api/auth/register` returns **`token`** immediately (new accounts without 2FA yet follow the same enrollment flow on first password login).
 
+### OAuth (Google, GitHub, GitLab, Microsoft)
+
+The browser does **not** receive the JWT in the redirect query string.
+
+1. User opens **`GET /api/auth/oauth/{provider}`** (from **SsoButtons**); the API redirects to the identity provider.
+2. After consent, the IdP redirects to **`GET /api/auth/oauth/{provider}/callback`** with **`code`** and **`state`**.
+3. The API exchanges the code, creates or links the user, issues a session JWT, and responds with **`302`** to **`{CLIENT_ORIGIN}/oauth/callback?login_code=…`**.
+4. **`OAuthCallbackPage`** calls **`POST /api/auth/oauth/login-code`** with JSON **`{ "code": "<login_code from query>" }`** (no **`Authorization`** header required). Response **`200`** body includes **`token`** and **`user`** — use the same **`bearerAuth`** value in Swagger as for password login.
+
+**Rate limits:** Repeated failed **`POST /api/auth/login`** or **`POST /api/auth/register`** attempts from one IP may return **HTTP 429**. The login-code exchange endpoint is also rate-limited.
+
 ---
 
 ## 2. Admin token (`adminBearerAuth`)
@@ -57,7 +68,7 @@ Admin auth is separate from user JWTs. Implementation: **`server/src/routes/admi
 
 ### Step A — Admin login
 
-`POST /api/admin/auth/login`
+`POST /api/admin/auth/login` — **rate-limited** by IP (**HTTP 429** when exceeded).
 
 ```json
 {

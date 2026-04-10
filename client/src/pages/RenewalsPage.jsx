@@ -94,6 +94,8 @@ export default function RenewalsPage() {
       payment_day: row.payment_day != null ? String(row.payment_day) : "",
       payment_day_2: row.payment_day_2 != null ? String(row.payment_day_2) : "",
       financial_institution: row.financial_institution,
+      bank_name:
+        row.financial_institution === "bank" ? row.bank_name || "cibc" : "",
       state: row.state || "active",
       description: row.description ?? "",
     });
@@ -137,6 +139,10 @@ export default function RenewalsPage() {
         payment_day: expenseEditDraft.frequency === "bimonthly" ? Number(expenseEditDraft.payment_day) : undefined,
         payment_day_2: expenseEditDraft.frequency === "bimonthly" ? Number(expenseEditDraft.payment_day_2) : undefined,
         financial_institution: expenseEditDraft.financial_institution,
+        bank_name:
+          expenseEditDraft.financial_institution === "bank"
+            ? expenseEditDraft.bank_name
+            : undefined,
         state: expenseEditDraft.state,
         description: expenseEditDraft.description,
       });
@@ -190,6 +196,7 @@ export default function RenewalsPage() {
         renewal_kind: addForm.renewal_kind,
         website: addForm.website || undefined,
         financial_institution: addForm.financial_institution,
+        bank_name: addForm.financial_institution === "bank" ? addForm.bank_name : undefined,
         frequency: addForm.frequency,
         payment_day: addForm.frequency === "bimonthly" ? Number(addForm.payment_day) : undefined,
         payment_day_2: addForm.frequency === "bimonthly" ? Number(addForm.payment_day_2) : undefined,

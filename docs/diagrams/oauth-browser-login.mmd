@@ -1,0 +1,26 @@
+%% Expense tracker: OAuth browser return path (login_code exchange).
+%% Paste into https://mermaid.live or use a Mermaid preview in the editor.
+%% Full narrative: ../ARCHITECTURE_DIAGRAM.md section 7.
+
+sequenceDiagram
+  participant Browser
+  participant Edge as Vite or nginx
+  participant API as Express API
+  participant IdP as Identity provider
+  participant PG as PostgreSQL
+
+  Browser->>Edge: GET /api/auth/oauth/google
+  Edge->>API: forward /api
+  API-->>Browser: 302 to IdP authorize
+  Browser->>IdP: user consents
+  IdP-->>Browser: 302 to /api/auth/oauth/google/callback?code&state
+  Browser->>Edge: GET callback
+  Edge->>API: forward
+  API->>IdP: exchange code for tokens + load profile
+  API->>PG: find or create user + oauth_identities
+  API->>API: issue JWT, store one-time login_code
+  API-->>Browser: 302 to /oauth/callback?login_code=...
+  Browser->>Edge: POST /api/auth/oauth/login-code
+  Edge->>API: forward
+  API-->>Browser: 200 JSON token and user
+  Note over Browser: SPA stores session; subsequent calls use Authorization Bearer

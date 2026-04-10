@@ -38,7 +38,7 @@ Copy `server/.env.example` to `server/.env` and edit values as needed. The defau
 
 ### CLIENT_ORIGIN
 
-Must match the URL users type in the browser to open the single-page application, for example `http://localhost:5173`. This value is required for OAuth redirect URLs after single sign-on and for Cross-Origin Resource Sharing in setups that behave like production.
+Must match the URL users type in the browser to open the single-page application, for example `http://localhost:5173`. Use a **comma-separated list** if more than one origin must call the API (for example separate dev hosts). In **production**, set this explicitly: the API CORS allowlist is derived from it, and an empty or wrong value blocks the SPA from calling **`/api/*`** from the real UI host. This value is also required for OAuth redirect URLs after single sign-on.
 
 ### Admin site (`/admin`)
 

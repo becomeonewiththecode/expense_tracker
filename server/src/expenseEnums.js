@@ -66,6 +66,57 @@ export const FINANCIAL_INSTITUTIONS = new Set([
   "american_express",
 ]);
 
+/** When `financial_institution` is `bank`, optional detail (Canadian retail banks). */
+export const BANK_NAMES = new Set([
+  "cibc",
+  "rbc",
+  "scotiabank",
+  "td",
+  "bmo",
+  "simplii_financial",
+  "eq_bank",
+  "tangerine",
+  "not_listed",
+]);
+
+export const BANK_NAME_ERROR =
+  "Invalid bank (use cibc, rbc, scotiabank, td, bmo, simplii_financial, eq_bank, tangerine, not_listed)";
+
+export const BANK_NAME_REQUIRED_WHEN_BANK = "Choose a bank when financial institution is Bank";
+
+/** @param {unknown} value */
+export function parseBankName(value) {
+  if (value === undefined || value === null) return null;
+  const s = String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_");
+  if (s === "simplii") return "simplii_financial";
+  return BANK_NAMES.has(s) ? s : null;
+}
+
+/**
+ * @param {string} financialInstitution
+ * @param {unknown} bankNameRaw
+ * @param {boolean} requiredWhenBank — false for restore of legacy rows without bank_name
+ */
+export function resolveBankNameForInstitution(financialInstitution, bankNameRaw, requiredWhenBank) {
+  if (financialInstitution !== "bank") {
+    return { bank_name: null, error: null };
+  }
+  if (bankNameRaw === undefined || bankNameRaw === null || String(bankNameRaw).trim() === "") {
+    if (requiredWhenBank) {
+      return { bank_name: null, error: BANK_NAME_REQUIRED_WHEN_BANK };
+    }
+    return { bank_name: null, error: null };
+  }
+  const bn = parseBankName(bankNameRaw);
+  if (bn) {
+    return { bank_name: bn, error: null };
+  }
+  return { bank_name: null, error: BANK_NAME_ERROR };
+}
+
 export const FREQUENCIES = new Set(["once", "weekly", "monthly", "bimonthly", "yearly"]);
 
 export const EXPENSE_STATES = new Set(["active", "paused", "cancelled"]);

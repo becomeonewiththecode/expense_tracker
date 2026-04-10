@@ -10,6 +10,7 @@ import {
   parseFrequency,
   parseRenewalKind,
   parseWebsite,
+  resolveBankNameForInstitution,
   CATEGORY_ERROR,
   STATE_ERROR,
   paymentMetaFromSpentAt,
@@ -129,6 +130,7 @@ function normalizeExpenseRow(row) {
     amount: row.amount != null ? Number(row.amount) : row.amount,
     category: row.category,
     financial_institution: row.financial_institution,
+    bank_name: row.bank_name ?? null,
     frequency: row.frequency,
     state: normalizedState,
     payment_day: row.payment_day != null ? Number(row.payment_day) : null,
@@ -330,6 +332,14 @@ function validateExpenseForRestore(raw, index) {
       error: `${label}: invalid financial institution`,
     };
   }
+  const { bank_name: bank_name_restored, error: bankRestoreErr } = resolveBankNameForInstitution(
+    financial_institution,
+    raw.bank_name,
+    false
+  );
+  if (bankRestoreErr) {
+    return { ok: false, error: `${label}: ${bankRestoreErr}` };
+  }
   const frequency = parseFrequency(raw.frequency);
   if (!frequency) {
     return { ok: false, error: `${label}: invalid frequency` };
@@ -372,6 +382,7 @@ function validateExpenseForRestore(raw, index) {
       amount,
       category,
       financial_institution,
+      bank_name: bank_name_restored,
       frequency,
       state,
       payment_day,
@@ -466,7 +477,7 @@ backupRouter.get("/export", authRequired, async (req, res) => {
         ? decryptRecoveryStored(userRow.recovery_code_ciphertext, userId)
         : null;
     const { rows } = await pool.query(
-      `SELECT amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at
+      `SELECT amount, category, financial_institution, bank_name, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at
        FROM expenses WHERE user_id = $1
        ORDER BY spent_at ASC, id ASC`,
       [req.userId]
@@ -689,14 +700,15 @@ backupRouter.post(
       }
       for (const v of validated) {
         const { rows: insertedRows } = await client.query(
-          `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-           RETURNING id, amount, category, financial_institution, frequency, state, description`,
+          `INSERT INTO expenses (user_id, amount, category, financial_institution, bank_name, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+           RETURNING id, amount, category, financial_institution, bank_name, frequency, state, description`,
           [
             req.userId,
             v.amount,
             v.category,
             v.financial_institution,
+            v.bank_name,
             v.frequency,
             v.state,
             v.payment_day,

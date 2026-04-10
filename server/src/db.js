@@ -239,6 +239,7 @@ export async function initDb() {
     ALTER TABLE income_entries ADD CONSTRAINT income_entries_payment_day_2_range
       CHECK (payment_day_2 IS NULL OR (payment_day_2 >= 1 AND payment_day_2 <= 30));
 
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS bank_name TEXT NULL;
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS bank_import_ref TEXT NULL;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_user_bank_import_ref
       ON expenses(user_id, bank_import_ref);

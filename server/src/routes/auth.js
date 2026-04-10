@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
+import { ipRateLimit } from "../rateLimit.js";
 import { registerOAuthRoutes } from "../oauth/oauthRoutes.js";
 import {
   consumeUserChallenge,
@@ -51,6 +52,9 @@ const uploadAvatar = multer({
 });
 
 export const authRouter = Router();
+
+const registerLimiter = ipRateLimit({ windowMs: 60 * 60 * 1000, max: 10, name: "register" });
+const loginLimiter = ipRateLimit({ windowMs: 15 * 60 * 1000, max: 30, name: "login" });
 
 const RECOVER_WINDOW_MS = 15 * 60 * 1000;
 const RECOVER_MAX_PER_WINDOW = 10;
@@ -322,7 +326,7 @@ function dbConnectivityMessage(e) {
   return null;
 }
 
-authRouter.post("/register", async (req, res) => {
+authRouter.post("/register", registerLimiter, async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const password = String(req.body?.password || "");
   if (!email || !password) {
@@ -360,7 +364,7 @@ authRouter.post("/register", async (req, res) => {
   }
 });
 
-authRouter.post("/login", async (req, res) => {
+authRouter.post("/login", loginLimiter, async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const password = String(req.body?.password || "");
   if (!email || !password) {

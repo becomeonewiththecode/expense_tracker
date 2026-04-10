@@ -104,7 +104,7 @@ Current profile exports are **version 4** and also include **`incomeEntries`** (
 | Expense ↔ plan sync | `server/src/paymentPlanSync.js` |
 | Client page | `client/src/pages/PaymentPlansPage.jsx` |
 | Options / formatters (**`PAYMENT_PLAN_STATUS_OPTIONS_FOR_ADD`**, **Cancelled (paid in full)** label) | `client/src/paymentPlanOptions.js` |
-| Same UX pattern elsewhere | **Expenses** / **Renewals**: read-only **`ExpenseTable`** + **`ExpenseEditModal`** + **`ManualExpenseFormFields`** (`ManualExpenseForm.jsx`). **Prescriptions**: **`PrescriptionFormFields`** modal on **`PrescriptionsPage.jsx`**. |
+| Same UX pattern elsewhere | **Expenses** / **Renewals**: read-only **`ExpenseTable`** + **`ExpenseEditModal`** + **`ManualExpenseFormFields`** (`ManualExpenseForm.jsx`; **Bank** submenu when institution is **Bank**). **Prescriptions**: **`PrescriptionFormFields`** modal on **`PrescriptionsPage.jsx`**. |
 
 ---
 

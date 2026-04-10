@@ -1,4 +1,5 @@
 import {
+  BANK_NAME_OPTIONS,
   CATEGORY_OPTIONS,
   EXPENSE_STATE_OPTIONS,
   FREQUENCY_OPTIONS,
@@ -15,6 +16,7 @@ export function createEmptyManualExpenseForm() {
     amount: "",
     category: "personal",
     financial_institution: "bank",
+    bank_name: BANK_NAME_OPTIONS[0].value,
     frequency: "monthly",
     payment_day: "",
     payment_day_2: "",
@@ -154,7 +156,17 @@ export function ManualExpenseFormFields({ form, setForm, autoFocusAmount = false
         <label className="text-xs text-th-muted block mb-1">Financial institution</label>
         <select
           value={form.financial_institution}
-          onChange={(e) => setForm((f) => ({ ...f, financial_institution: e.target.value }))}
+          onChange={(e) => {
+            const financial_institution = e.target.value;
+            setForm((f) => ({
+              ...f,
+              financial_institution,
+              bank_name:
+                financial_institution === "bank"
+                  ? f.bank_name || BANK_NAME_OPTIONS[0].value
+                  : "",
+            }));
+          }}
           className={inputClass}
         >
           {FINANCIAL_INSTITUTION_OPTIONS.map((o) => (
@@ -164,6 +176,23 @@ export function ManualExpenseFormFields({ form, setForm, autoFocusAmount = false
           ))}
         </select>
       </div>
+      {form.financial_institution === "bank" && (
+        <div className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
+          <label className="text-xs text-th-muted block mb-1">Bank</label>
+          <select
+            value={form.bank_name || BANK_NAME_OPTIONS[0].value}
+            onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))}
+            className={inputClass}
+            required
+          >
+            {BANK_NAME_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div>
         <label className="text-xs text-th-muted block mb-1">State</label>
         <select

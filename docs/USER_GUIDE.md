@@ -85,7 +85,7 @@ To sign in later, use **Sign in** from the landing page or open `/login` directl
 
 ### Sign in with Google, GitHub, GitLab, or Microsoft
 
-If your deployment has **OAuth** configured on the API, the **Sign in** and **Create account** screens show buttons for those providers. Choosing one sends you to that company’s site to approve access; you are then redirected back to the application at the `/oauth/callback` route and signed in with a normal session.
+If your deployment has **OAuth** configured on the API, the **Sign in** and **Create account** screens show buttons for those providers. Choosing one sends you to that company’s site to approve access; you are then redirected back to the application at the **`/oauth/callback`** route, which completes sign-in using a short-lived **login code** (the session token is not carried in the URL). You end up signed in with the same kind of session as email-and-password users.
 
 **Self-hosted setup:** In each provider’s developer console, register an OAuth application whose **redirect URI** is exactly this pattern, with no extra path segments:
 
@@ -119,7 +119,8 @@ Fill in the form and click **Add expense**:
 | **Renewal type** | Shown when **Category** is **Renewal** — required; pick the kind of renewal (for example domain names, car insurance, online education, HOA fees). The full list is in the app’s dropdowns and grows over time—see [RENEWALS.md](./RENEWALS.md). |
 | **Website** | Shown when **Category** is **Renewal** — optional note, URL, or portal name. |
 | **Frequency** | How often this cost applies: **Once**, **Weekly**, **Monthly**, **Bi-monthly**, or **Yearly**. For **Yearly**, enter the **annual** amount; for other recurring options, the amount is per week, per month, or per bi-monthly period as labeled. *(This field drives **Projection** run rates and labels; **Budget** / **Reports** bar charts still use each line’s transaction **date**.)* |
-| **Financial institution** | Bank, VISA, Mastercard, or American Express. |
+| **Financial institution** | **Bank**, **VISA**, **Mastercard**, or **American Express**. |
+| **Bank** | Shown only when **Financial institution** is **Bank**. Choose your institution: **CIBC**, **RBC**, **Scotiabank**, **TD**, **BMO**, **Simplii Financial**, **EQ Bank**, **Tangerine**, or **Not listed** (stored as a slug such as **`cibc`** or **`not_listed`**; required on **create** when institution is **Bank**). |
 | **State** | **Active** (default), **Paused**, or **Cancelled**. Use **Cancelled** when you do not expect another charge for that subscription or recurring line; it still appears in **Upcoming expenses** (with a **green** row) so you can see the next theoretical renewal date until you dismiss the reminder or change the expense. **Subtotals** and **Total (all institutions)** in that panel sum **Active** rows only—**Cancelled** and **Paused** amounts are not included. |
 | **Transaction date** | The **spent** date for this line item. The server stores **day-of-month** and **calendar-month** metadata derived from this date (for renewals, exports, and imports)—you do not enter them separately. |
 | **Note** | Optional free text. |
@@ -144,7 +145,7 @@ Fill in the form and click **Add expense**:
 #### Editing a row
 
 1. Open a row’s **Actions** menu and choose **Edit**.
-2. A **dialog** opens with the **same fields as Add expense manually** (transaction date, amount, category, frequency, bi-monthly payment days when applicable, institution, state, note—and when category is **Renewal**, **renewal type** and **website**).
+2. A **dialog** opens with the **same fields as Add expense manually** (transaction date, amount, category, frequency, bi-monthly payment days when applicable, institution, **Bank** when institution is **Bank**, state, note—and when category is **Renewal**, **renewal type** and **website**).
 3. **Save changes** sends a **PATCH**; **Close**, **Cancel**, **Escape**, or clicking the dimmed backdrop discards edits.
 4. The table stays read-only; pagination changes close an open edit dialog.
 5. After a successful save or add, the table header briefly flashes an update icon as confirmation.
@@ -174,7 +175,7 @@ The selected window acts as a cap on those tiers (for example, a 7-day window sh
 
 #### How reminders are organized
 
-- Reminders are **grouped by financial institution** (Bank, VISA, etc.).
+- Reminders are **grouped by financial institution** (for **Bank**, the label includes the chosen bank, e.g. **Bank — RBC** or **Bank — Not listed**; card types stay **VISA**, etc.).
 - Each group has a **sortable table** with columns: Expense, Transaction, Amount, State, Renews.
 - A **Subtotal** per institution sums **Active** rows only.
 - A **Total (all institutions)** line at the bottom also sums Active rows only (Cancelled and Paused amounts are excluded).

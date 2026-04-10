@@ -24,7 +24,7 @@ The **repository root** [`docker-compose.yml`](../../docker-compose.yml) only st
 
 2. Run **`node deployment/docker-compose/ensure-env.mjs`** (or use **`npm run compose:build`** / **`npm run compose:prod`**, which run it first). It creates **`.env`** when missing and **generates a random `JWT_SECRET`** when the line is empty or too short.
 
-3. Set **`CLIENT_ORIGIN`** to the URL users open (e.g. `http://localhost:8080` if `HTTP_PORT=8080`).
+3. Set **`CLIENT_ORIGIN`** to the URL users open (e.g. `http://localhost:8080` if `HTTP_PORT=8080`). Use a comma-separated list if several origins must call the API; CORS and OAuth redirects depend on this value.
 
 4. The **`api`** service loads this directory’s **`.env`** via **`env_file`**, so **`JWT_SECRET`**, **`CLIENT_ORIGIN`**, and optional **`OAUTH_*`** reach the container. Always pass **`--env-file deployment/docker-compose/.env`** on **`docker compose`** (or use the npm scripts below) so **`${HTTP_PORT}`**, **`IMAGE_TAG`**, **`DOCKERHUB_USERNAME`**, and Postgres-related variables interpolate on the **host**.
 

@@ -92,7 +92,7 @@ npx pm2 restart expense-api --update-env
 | **API crashes or many restarts** (restart counter rising) | Run `npx pm2 logs expense-api`. Verify PostgreSQL and Redis and `DATABASE_URL` and `REDIS_URL` in `server/.env`. |
 | **In-memory PM2 is out-of-date** | From the repository root: `npm install` then `npx pm2 update` so the command-line interface and daemon stay aligned. |
 | **Port already in use** | See [Port in use: PM2 or manual development](#port-in-use-pm2-or-manual-development) below. |
-| **Single sign-on redirect errors or “redirect_uri mismatch”** | **`CLIENT_ORIGIN`** in `server/.env` must equal the browser’s origin (no trailing slash). The registered redirect in Google, GitHub, GitLab, or Microsoft must be `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback`. Restart the API after environment changes. |
+| **Single sign-on redirect errors or “redirect_uri mismatch”** | **`CLIENT_ORIGIN`** in `server/.env` must include the browser’s origin (no trailing slash on each entry; comma-separate multiple origins). The registered redirect in Google, GitHub, GitLab, or Microsoft must be `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback`. Restart the API after environment changes. |
 
 ---
 

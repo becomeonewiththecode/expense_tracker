@@ -1,20 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../api.js";
+import { getApiErrorMessage } from "../apiError.js";
 import { useAuth } from "../auth.jsx";
 import { getPostLoginPath } from "../postLoginLanding.js";
-
-function parseJwtPayload(token) {
-  try {
-    const parts = token.split(".");
-    if (parts.length < 2) return null;
-    let b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const pad = b64.length % 4;
-    if (pad) b64 += "=".repeat(4 - pad);
-    return JSON.parse(atob(b64));
-  } catch {
-    return null;
-  }
-}
 
 export default function OAuthCallbackPage() {
   const { setSession } = useAuth();
@@ -23,30 +12,28 @@ export default function OAuthCallbackPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
+    const loginCode = params.get("login_code");
     const err = params.get("error");
     if (err) {
       setError(err);
       return;
     }
-    if (!token) {
-      setError("Missing token");
+    if (!loginCode) {
+      setError("Missing login code. Return to sign in and try again.");
       return;
     }
-    const payload = parseJwtPayload(token);
-    if (!payload?.sub) {
-      setError("Invalid token");
-      return;
-    }
-    const user = {
-      id: payload.sub,
-      email: payload.email || "",
-    };
-    setSession(token, user);
     let cancelled = false;
-    getPostLoginPath().then((path) => {
-      if (!cancelled) navigate(path, { replace: true });
-    });
+    (async () => {
+      try {
+        const { data } = await api.post("/auth/oauth/login-code", { code: loginCode });
+        if (cancelled) return;
+        setSession(data.token, data.user);
+        const path = await getPostLoginPath();
+        if (!cancelled) navigate(path, { replace: true });
+      } catch (e) {
+        if (!cancelled) setError(getApiErrorMessage(e, "Sign-in failed"));
+      }
+    })();
     return () => {
       cancelled = true;
     };

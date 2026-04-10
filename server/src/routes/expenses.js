@@ -9,6 +9,7 @@ import {
   parseRenewalKind,
   parseWebsite,
   resolveRenewalFieldsForCategory,
+  resolveBankNameForInstitution,
   CATEGORY_ERROR,
   RENEWAL_KIND_ERROR,
   RENEWAL_KIND_REQUIRED,
@@ -39,7 +40,7 @@ function parseDate(d) {
 expensesRouter.get("/", async (req, res) => {
   const { from, to, limit = "100", offset = "0", category: categoryQ } = req.query;
   const params = [req.userId];
-  let sql = `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at
+  let sql = `SELECT id, amount, category, financial_institution, bank_name, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at
     FROM expenses WHERE user_id = $1`;
   let i = 2;
   if (categoryQ != null && String(categoryQ).trim() !== "") {
@@ -68,7 +69,7 @@ expensesRouter.get("/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
   const { rows } = await pool.query(
-    `SELECT id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at FROM expenses
+    `SELECT id, amount, category, financial_institution, bank_name, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at FROM expenses
      WHERE id = $1 AND user_id = $2`,
     [id, req.userId]
   );
@@ -98,6 +99,14 @@ expensesRouter.post("/", async (req, res) => {
     return res.status(400).json({
       error: "Invalid frequency (use once, weekly, monthly, bimonthly, yearly)",
     });
+  }
+  const { bank_name, error: bankErr } = resolveBankNameForInstitution(
+    financial_institution,
+    req.body?.bank_name,
+    true
+  );
+  if (bankErr) {
+    return res.status(400).json({ error: bankErr });
   }
   let state = "active";
   if (req.body?.state !== undefined && req.body?.state !== null && String(req.body.state).trim() !== "") {
@@ -138,14 +147,15 @@ expensesRouter.post("/", async (req, res) => {
   try {
     await client.query("BEGIN");
     const { rows } = await client.query(
-      `INSERT INTO expenses (user_id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-       RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at`,
+      `INSERT INTO expenses (user_id, amount, category, financial_institution, bank_name, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       RETURNING id, amount, category, financial_institution, bank_name, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at`,
       [
         req.userId,
         amount,
         category,
         financial_institution,
+        bank_name,
         frequency,
         state,
         payment_day,
@@ -176,12 +186,13 @@ expensesRouter.patch("/:id", async (req, res) => {
   if (!Number.isFinite(id)) return res.status(400).json({ error: badId });
 
   const { rows: existingRows } = await pool.query(
-    `SELECT spent_at, category, renewal_kind, frequency FROM expenses WHERE id = $1 AND user_id = $2`,
+    `SELECT spent_at, category, renewal_kind, frequency, financial_institution, bank_name FROM expenses WHERE id = $1 AND user_id = $2`,
     [id, req.userId]
   );
   if (!existingRows[0]) return res.status(404).json({ error: "Not found" });
 
   let nextCategory = existingRows[0].category;
+  let nextFinancialInstitution = existingRows[0].financial_institution;
   const updates = [];
   const params = [];
   let i = 1;
@@ -210,8 +221,13 @@ expensesRouter.patch("/:id", async (req, res) => {
           "Invalid financial institution (use bank, visa, mastercard, american_express)",
       });
     }
+    nextFinancialInstitution = financial_institution;
     updates.push(`financial_institution = $${i++}`);
     params.push(financial_institution);
+    if (financial_institution !== "bank") {
+      updates.push(`bank_name = $${i++}`);
+      params.push(null);
+    }
   }
   if (req.body.frequency !== undefined) {
     const frequency = parseFrequency(req.body.frequency);
@@ -244,6 +260,39 @@ expensesRouter.patch("/:id", async (req, res) => {
   if (req.body.website !== undefined) {
     updates.push(`website = $${i++}`);
     params.push(parseWebsite(req.body.website));
+  }
+
+  const ex = existingRows[0];
+  const switchingToBank =
+    req.body.financial_institution !== undefined &&
+    nextFinancialInstitution === "bank" &&
+    ex.financial_institution !== "bank";
+  const bankNameTouched =
+    req.body.bank_name !== undefined ||
+    switchingToBank;
+
+  if (req.body.bank_name !== undefined && nextFinancialInstitution !== "bank") {
+    return res.status(400).json({ error: "bank_name is only used when financial institution is Bank" });
+  }
+
+  if (bankNameTouched && nextFinancialInstitution === "bank") {
+    const raw =
+      req.body.bank_name !== undefined
+        ? req.body.bank_name
+        : ex.financial_institution === "bank"
+          ? ex.bank_name
+          : undefined;
+    const requireBank = switchingToBank || req.body.bank_name !== undefined;
+    const { bank_name: nextBankName, error: bankNameErr } = resolveBankNameForInstitution(
+      "bank",
+      raw,
+      requireBank
+    );
+    if (bankNameErr) {
+      return res.status(400).json({ error: bankNameErr });
+    }
+    updates.push(`bank_name = $${i++}`);
+    params.push(nextBankName);
   }
 
   if (nextCategory === "renewal") {
@@ -320,7 +369,7 @@ expensesRouter.patch("/:id", async (req, res) => {
     const { rows } = await client.query(
       `UPDATE expenses SET ${updates.join(", ")}
        WHERE id = $${i++} AND user_id = $${i++}
-       RETURNING id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at`,
+       RETURNING id, amount, category, financial_institution, bank_name, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at`,
       params
     );
     if (!rows[0]) {

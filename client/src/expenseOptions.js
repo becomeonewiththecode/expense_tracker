@@ -74,6 +74,19 @@ export const FINANCIAL_INSTITUTION_OPTIONS = [
   { value: "american_express", label: "American Express" },
 ];
 
+/** Shown when financial institution is Bank (stored as API slug on `bank_name`). */
+export const BANK_NAME_OPTIONS = [
+  { value: "cibc", label: "CIBC" },
+  { value: "rbc", label: "RBC" },
+  { value: "scotiabank", label: "Scotiabank" },
+  { value: "td", label: "TD" },
+  { value: "bmo", label: "BMO" },
+  { value: "simplii_financial", label: "Simplii Financial" },
+  { value: "eq_bank", label: "EQ Bank" },
+  { value: "tangerine", label: "Tangerine" },
+  { value: "not_listed", label: "Not listed" },
+];
+
 export const EXPENSE_STATE_OPTIONS = [
   { value: "active", label: "Active" },
   { value: "paused", label: "Paused" },
@@ -83,6 +96,7 @@ export const EXPENSE_STATE_OPTIONS = [
 const catLabels = Object.fromEntries(CATEGORY_OPTIONS.map((o) => [o.value, o.label]));
 const renewalKindLabels = Object.fromEntries(RENEWAL_KIND_OPTIONS.map((o) => [o.value, o.label]));
 const finLabels = Object.fromEntries(FINANCIAL_INSTITUTION_OPTIONS.map((o) => [o.value, o.label]));
+const bankNameLabels = Object.fromEntries(BANK_NAME_OPTIONS.map((o) => [o.value, o.label]));
 const freqLabels = Object.fromEntries(FREQUENCY_OPTIONS.map((o) => [o.value, o.label]));
 const stateLabels = Object.fromEntries(EXPENSE_STATE_OPTIONS.map((o) => [o.value, o.label]));
 
@@ -96,9 +110,14 @@ export function formatRenewalKind(value) {
   return renewalKindLabels[value] || value;
 }
 
-export function formatFinancialInstitution(value) {
+export function formatFinancialInstitution(value, bankName) {
   if (value == null) return "—";
-  return finLabels[value] || value;
+  const base = finLabels[value] || value;
+  if (value === "bank" && bankName) {
+    const bankLabel = bankNameLabels[bankName] || bankName;
+    return `${base} — ${bankLabel}`;
+  }
+  return base;
 }
 
 export function formatFrequency(value) {

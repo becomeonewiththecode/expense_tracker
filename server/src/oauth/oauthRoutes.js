@@ -1,5 +1,8 @@
+import { pool } from "../db.js";
+import { ipRateLimit } from "../rateLimit.js";
 import { createOAuthState, consumeOAuthState } from "./oauthState.js";
-import { issueUserSession } from "../userSecurity.js";
+import { issueUserSession, verifyUserSessionToken } from "../userSecurity.js";
+import { consumeOAuthLoginCode, createOAuthLoginCode } from "./oauthLoginCode.js";
 import {
   exchangeGithubCode,
   exchangeGitlabCode,
@@ -61,9 +64,10 @@ function authorizeUrl(provider, { clientId, redirectUri, state }) {
   }
 }
 
-function redirectWithToken(res, token) {
+function redirectWithLoginCode(res, token) {
   const origin = clientOrigin();
-  const url = `${origin}/oauth/callback?token=${encodeURIComponent(token)}`;
+  const code = createOAuthLoginCode(token);
+  const url = `${origin}/oauth/callback?login_code=${encodeURIComponent(code)}`;
   return res.redirect(302, url);
 }
 
@@ -76,7 +80,50 @@ function redirectWithError(res, message) {
 /**
  * @param {import('express').Router} authRouter
  */
+const oauthExchangeLimiter = ipRateLimit({ windowMs: 60_000, max: 40, name: "oauth-exchange" });
+
 export function registerOAuthRoutes(authRouter) {
+  authRouter.post("/oauth/login-code", oauthExchangeLimiter, async (req, res) => {
+    const code = String(req.body?.code || "").trim();
+    if (!code) {
+      return res.status(400).json({ error: "code is required" });
+    }
+    const token = consumeOAuthLoginCode(code);
+    if (!token) {
+      return res.status(401).json({ error: "Invalid or expired login code" });
+    }
+    const verified = verifyUserSessionToken(token);
+    if (!verified.ok) {
+      return res.status(401).json({ error: verified.error });
+    }
+    try {
+      const { rows } = await pool.query(
+        `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
+          (recovery_lookup IS NOT NULL) AS has_recovery_code, (totp_secret IS NOT NULL) AS has_2fa
+        FROM users WHERE id = $1`,
+        [verified.userId]
+      );
+      if (!rows[0]) {
+        return res.status(401).json({ error: "User not found" });
+      }
+      const u = rows[0];
+      res.json({
+        token,
+        user: {
+          id: u.id,
+          email: u.email,
+          avatar_url: u.avatar_url,
+          has_password: u.has_password,
+          has_recovery_code: u.has_recovery_code,
+          has_2fa: u.has_2fa,
+        },
+      });
+    } catch (e) {
+      console.error("oauth/login-code:", e);
+      res.status(500).json({ error: "Exchange failed" });
+    }
+  });
+
   authRouter.get("/oauth/:provider", (req, res) => {
     const provider = String(req.params.provider || "").toLowerCase();
     if (!["google", "github", "gitlab", "microsoft"].includes(provider)) {
@@ -150,7 +197,7 @@ export function registerOAuthRoutes(authRouter) {
 
       const user = await findOrCreateUserFromOAuth(provider, profile.providerUserId, profile.email);
       const token = issueUserSession(user);
-      return redirectWithToken(res, token);
+      return redirectWithLoginCode(res, token);
     } catch (e) {
       console.error("OAuth callback error:", e);
       const msg = e?.message || "OAuth failed";

@@ -15,15 +15,18 @@ import {
   setChallengeSetupSecret,
   verifyTotpCode,
 } from "../adminSecurity.js";
+import { ipRateLimit } from "../rateLimit.js";
 
 export const adminRouter = Router();
+
+const adminLoginLimiter = ipRateLimit({ windowMs: 15 * 60 * 1000, max: 20, name: "admin-login" });
 
 function safeInt(v) {
   const n = Number(v);
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-adminRouter.post("/auth/login", async (req, res) => {
+adminRouter.post("/auth/login", adminLoginLimiter, async (req, res) => {
   const username = String(req.body?.username || "").trim();
   const password = String(req.body?.password || "");
   if (!username || !password) return res.status(400).json({ error: "Username and password are required" });
@@ -423,9 +426,9 @@ adminRouter.post("/restore/database", adminRequired, requireReauth, async (req, 
     await client.query(`SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE((SELECT MAX(id) FROM users), 1), TRUE)`);
     for (const e of expenses) {
       await client.query(
-        `INSERT INTO expenses (id, user_id, amount, category, financial_institution, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,COALESCE($15::timestamptz,NOW()))`,
-        [e.id, e.user_id, e.amount, e.category, e.financial_institution, e.frequency, e.state, e.payment_day, e.payment_day_2, e.payment_month, e.description ?? "", e.website ?? null, e.renewal_kind ?? null, e.spent_at, e.created_at ?? null]
+        `INSERT INTO expenses (id, user_id, amount, category, financial_institution, bank_name, frequency, state, payment_day, payment_day_2, payment_month, description, website, renewal_kind, spent_at, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,COALESCE($16::timestamptz,NOW()))`,
+        [e.id, e.user_id, e.amount, e.category, e.financial_institution, e.bank_name ?? null, e.frequency, e.state, e.payment_day, e.payment_day_2, e.payment_month, e.description ?? "", e.website ?? null, e.renewal_kind ?? null, e.spent_at, e.created_at ?? null]
       );
     }
     for (const p of prescriptions) {

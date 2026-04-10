@@ -93,8 +93,8 @@ function compareExpenseRows(a, b, key, dir) {
       });
       break;
     case "financial_institution":
-      cmp = formatFinancialInstitution(a.financial_institution).localeCompare(
-        formatFinancialInstitution(b.financial_institution),
+      cmp = formatFinancialInstitution(a.financial_institution, a.bank_name).localeCompare(
+        formatFinancialInstitution(b.financial_institution, b.bank_name),
         undefined,
         { sensitivity: "base" }
       );
@@ -337,7 +337,7 @@ export default function ExpenseTable({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-th-tertiary align-middle hidden md:table-cell">
-                  {formatFinancialInstitution(row.financial_institution)}
+                  {formatFinancialInstitution(row.financial_institution, row.bank_name)}
                 </td>
                 <td className="px-4 py-3 text-th-tertiary align-middle hidden md:table-cell">
                   {formatExpenseState(row.state)}
