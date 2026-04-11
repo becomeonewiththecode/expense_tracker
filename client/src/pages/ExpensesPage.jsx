@@ -469,7 +469,7 @@ export default function ExpensesPage({ embedded = false }) {
             </div>
           </div>
           <div className={`${TABLE_SCROLL} ${TABLE_CARD}`}>
-            <table className={`${TABLE} min-w-[64rem]`}>
+            <table className={`${TABLE} min-w-[64rem] text-th-primary`}>
               <thead className={TABLE_HEAD}>
                 <tr>
                   <th className={`${TABLE_TH} whitespace-nowrap w-[9.5rem]`}>Posted</th>
@@ -484,8 +484,8 @@ export default function ExpensesPage({ embedded = false }) {
               <tbody className={TABLE_BODY}>
                 {staging.rows.map((row) => (
                   <tr key={row.id} className={TABLE_ROW}>
-                    <td className={`${TABLE_TD} text-th-tertiary whitespace-nowrap`}>{row.spent_at}</td>
-                    <td className={`${TABLE_TD} font-medium text-white tabular-nums`}>
+                    <td className={`${TABLE_TD} text-th-primary whitespace-nowrap`}>{row.spent_at}</td>
+                    <td className={`${TABLE_TD} font-semibold text-th-primary tabular-nums`}>
                       ${Number(row.amount).toFixed(2)}
                     </td>
                     <td className={TABLE_TD}>
@@ -536,7 +536,7 @@ export default function ExpensesPage({ embedded = false }) {
                               patchImportStagingRow(row.id, { website: v || null });
                             }
                           }}
-                          className={`w-full max-w-[14rem] ${TABLE_FIELD_INPUT} text-th-tertiary`}
+                          className={`w-full max-w-[14rem] ${TABLE_FIELD_INPUT} text-th-primary placeholder:text-th-muted`}
                           placeholder="Optional"
                         />
                       ) : (
@@ -562,7 +562,7 @@ export default function ExpensesPage({ embedded = false }) {
                         ))}
                       </select>
                     </td>
-                    <td className={`${TABLE_TD} text-th-subtle max-w-md truncate`}>{row.description}</td>
+                    <td className={`${TABLE_TD} text-th-secondary max-w-md truncate`}>{row.description}</td>
                   </tr>
                 ))}
               </tbody>

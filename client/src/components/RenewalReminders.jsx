@@ -525,7 +525,7 @@ export default function RenewalReminders({
                 {institution}
               </h3>
               <div className={`${TABLE_SCROLL} ${TABLE_CARD}`}>
-                <table className={`${TABLE} min-w-[56rem]`}>
+                <table className={`${TABLE} min-w-[56rem] text-th-primary`}>
                   <thead className={TABLE_HEAD}>
                     <tr>
                       <RenewalSortableTh
@@ -580,19 +580,19 @@ export default function RenewalReminders({
                           }
                         >
                           <td
-                            className={`${TABLE_TD} max-w-[14rem] ${cancelled ? "text-emerald-50" : "text-th-secondary"}`}
+                            className={`${TABLE_TD} max-w-[14rem] ${cancelled ? "text-emerald-50" : "text-th-primary"}`}
                           >
                             <span className="font-medium line-clamp-2" title={r.title}>
                               {r.title}
                             </span>
                           </td>
                           <td
-                            className={`${TABLE_TD} whitespace-nowrap text-xs ${cancelled ? "text-emerald-200/90" : "text-th-subtle"}`}
+                            className={`${TABLE_TD} whitespace-nowrap text-xs ${cancelled ? "text-emerald-200/90" : "text-th-secondary"}`}
                           >
                             {formatTransactionAnchor(r.spentAt)}
                           </td>
                           <td
-                            className={`${TABLE_TD} text-right tabular-nums font-medium whitespace-nowrap ${cancelled ? "text-emerald-50" : "text-white"}`}
+                            className={`${TABLE_TD} text-right tabular-nums font-medium whitespace-nowrap ${cancelled ? "text-emerald-50" : "text-th-primary"}`}
                           >
                             <span className="inline-flex items-center justify-end gap-1.5">
                               <span>{formatProjectionCurrency(r.amountNum)}</span>
@@ -612,14 +612,14 @@ export default function RenewalReminders({
                             </span>
                           </td>
                           <td
-                            className={`${TABLE_TD} whitespace-nowrap text-xs font-medium ${cancelled ? "text-emerald-200" : "text-th-tertiary"}`}
+                            className={`${TABLE_TD} whitespace-nowrap text-xs font-medium ${cancelled ? "text-emerald-200" : "text-th-primary"}`}
                           >
                             {formatExpenseState(r.state)}
                           </td>
                           <td
-                            className={`${TABLE_TD} text-xs ${cancelled ? "text-emerald-200/85" : "text-th-subtle"}`}
+                            className={`${TABLE_TD} text-xs ${cancelled ? "text-emerald-200/85" : "text-th-secondary"}`}
                           >
-                            <span className={cancelled ? "text-emerald-100" : "text-th-secondary"}>
+                            <span className={cancelled ? "text-emerald-100" : "text-th-primary"}>
                               {formatRenewalDate(r.next)}
                             </span>
                             <span className={cancelled ? "text-emerald-300/80" : "text-th-muted"}>
@@ -653,7 +653,7 @@ export default function RenewalReminders({
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-th-border bg-th-surface/50">
-                      <th scope="row" className={`${TABLE_TD} text-left font-semibold text-th-secondary`}>
+                      <th scope="row" className={`${TABLE_TD} text-left font-semibold text-th-primary`}>
                         Subtotal
                       </th>
                       <td className={`${TABLE_TD} text-th-muted text-xs`}>—</td>

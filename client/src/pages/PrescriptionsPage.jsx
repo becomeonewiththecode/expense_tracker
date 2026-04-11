@@ -163,7 +163,8 @@ function PrescriptionFormFields({ form, setForm, autoFocusName = false }) {
   );
 }
 
-export default function PrescriptionsPage() {
+/** @param {{ embedded?: boolean }} props When true, hide the page title (used under Expenses hub). */
+export default function PrescriptionsPage({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -374,14 +375,18 @@ export default function PrescriptionsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Prescriptions</h1>
-        <p className="text-sm text-th-subtle mt-1">
-          {loading
-            ? "Loading…"
-            : "Track medical, dental, vision, supplements, and equipment on irregular renewal cycles (1–11 months in monthly steps, or 1–5 years). Reminders appear here and at the top of the app when the next renewal is within 30 days or up to 14 days overdue."}
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl font-semibold text-white">Prescriptions</h1>
+          <p className="text-sm text-th-subtle mt-1">
+            {loading
+              ? "Loading…"
+              : "Track medical, dental, vision, supplements, and equipment on irregular renewal cycles (1–11 months in monthly steps, or 1–5 years). Reminders appear here and at the top of the app when the next renewal is within 30 days or up to 14 days overdue."}
+          </p>
+        </div>
+      )}
+
+      {embedded && loading ? <p className="text-sm text-th-muted">Loading…</p> : null}
 
       {!loading && error && (
         <p className="text-sm text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-lg px-3 py-2">{error}</p>
@@ -431,7 +436,7 @@ export default function PrescriptionsPage() {
         <div className={TABLE_CARD}>
           <div className={TABLE_HEADER_BAR}>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-medium text-th-secondary">Your items</h2>
+              <h2 className="text-sm font-medium text-th-primary">Your items</h2>
               <TableUpdateFlash token={tableUpdateFlashToken} />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -440,7 +445,7 @@ export default function PrescriptionsPage() {
                 value={noteSearch}
                 onChange={(e) => setNoteSearch(e.target.value)}
                 placeholder="Search notes"
-                className="w-48 rounded-lg bg-th-input border border-th-border-bright px-3 py-1.5 text-th-secondary text-xs"
+                className="w-48 rounded-lg bg-th-input border border-th-border-bright px-3 py-1.5 text-th-primary text-xs placeholder:text-th-muted"
               />
               <button
                 type="button"
@@ -452,7 +457,7 @@ export default function PrescriptionsPage() {
             </div>
           </div>
           <div className={TABLE_SCROLL}>
-            <table className={`${TABLE} min-w-[56rem]`}>
+            <table className={`${TABLE} min-w-[56rem] text-th-primary`}>
               <thead className={TABLE_HEAD}>
                 <tr>
                   <th className={`${TABLE_TH} min-w-[8rem]`}>Name</th>
@@ -471,33 +476,33 @@ export default function PrescriptionsPage() {
                   const days = daysUntilPrescriptionRenewal(row.next_renewal_date);
                   return (
                     <tr key={row.id} className={TABLE_ROW}>
-                      <td className={`${TABLE_TD} text-th-secondary`}>{row.name}</td>
-                      <td className={`${TABLE_TD} text-th-tertiary`}>
-                        <span className="font-medium text-white tabular-nums">${Number(row.amount).toFixed(2)}</span>
+                      <td className={`${TABLE_TD} text-th-primary`}>{row.name}</td>
+                      <td className={`${TABLE_TD} text-th-primary`}>
+                        <span className="font-semibold text-th-primary tabular-nums">${Number(row.amount).toFixed(2)}</span>
                       </td>
                       <td className={TABLE_TD}>
-                        <span className="text-th-tertiary">{formatPrescriptionCategory(row.category)}</span>
+                        <span className="text-th-primary">{formatPrescriptionCategory(row.category)}</span>
                       </td>
                       <td className={TABLE_TD}>
-                        <span className="text-th-tertiary">{formatRenewalPeriod(row.renewal_period)}</span>
+                        <span className="text-th-primary">{formatRenewalPeriod(row.renewal_period)}</span>
                       </td>
                       <td className={TABLE_TD}>
-                        <span className="text-th-tertiary">
+                        <span className="text-th-primary">
                           {String(row.next_renewal_date).slice(0, 10)}
                           {days != null && row.state === "active" ? (
-                            <span className="text-th-muted text-xs ml-1">
+                            <span className="text-th-subtle text-xs ml-1">
                               (
                               {days < 0 ? `${-days}d overdue` : days === 0 ? "today" : `${days}d`})
                             </span>
                           ) : null}
                         </span>
                       </td>
-                      <td className={`${TABLE_TD} text-th-subtle hidden md:table-cell`}>{row.vendor || "—"}</td>
-                      <td className={`${TABLE_TD} text-th-muted hidden lg:table-cell max-w-[12rem] truncate`}>
+                      <td className={`${TABLE_TD} text-th-secondary hidden md:table-cell`}>{row.vendor || "—"}</td>
+                      <td className={`${TABLE_TD} text-th-secondary hidden lg:table-cell max-w-[12rem] truncate`}>
                         {row.notes || "—"}
                       </td>
                       <td className={TABLE_TD}>
-                        <span className={row.state === "active" ? "text-th-tertiary" : "text-emerald-400/90"}>
+                        <span className={row.state === "active" ? "text-th-primary" : "text-emerald-400/90"}>
                           {formatExpenseState(row.state)}
                         </span>
                       </td>

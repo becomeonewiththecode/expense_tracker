@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import ReportsPage from "./ReportsPage.jsx";
 import IncomePage from "./IncomePage.jsx";
 import ExpensesPage from "./ExpensesPage.jsx";
+import SavingsGoalsPage from "./SavingsGoalsPage.jsx";
 
 function tabClass(active) {
   return [
@@ -10,7 +11,7 @@ function tabClass(active) {
     "outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-th-base rounded-t",
     active
       ? "border-emerald-500 text-emerald-300"
-      : "border-transparent text-th-muted hover:text-th-secondary hover:border-th-border",
+      : "border-transparent text-th-secondary hover:text-th-primary hover:border-th-border",
   ].join(" ");
 }
 
@@ -18,8 +19,10 @@ function parseBudgetHubView(searchParams) {
   const v = searchParams.get("view");
   if (v === "reports") return "reports";
   if (v === "income") return "income";
+  if (v === "savings") return "savings";
   if (v === "import") return "import";
-  return "budget";
+  if (v === "budget") return "budget";
+  return "income";
 }
 
 export default function BudgetHubPage() {
@@ -31,7 +34,7 @@ export default function BudgetHubPage() {
       setSearchParams(
         (prev) => {
           const p = new URLSearchParams(prev);
-          if (next === "budget") p.delete("view");
+          if (next === "income") p.delete("view");
           else p.set("view", next);
           return p;
         },
@@ -48,6 +51,7 @@ export default function BudgetHubPage() {
         <p className="text-sm text-th-subtle mt-1">
           Log inflows, import statements, set budget caps, then dig into reports. Use{" "}
           <strong className="text-th-tertiary font-medium">Income</strong> for paychecks and other inflows;{" "}
+          <strong className="text-th-tertiary font-medium">Savings</strong> for named goals and balances;{" "}
           <strong className="text-th-tertiary font-medium">Import</strong> for uploads and manual adds;{" "}
           <strong className="text-th-tertiary font-medium">Budget</strong> for caps and variance;{" "}
           <strong className="text-th-tertiary font-medium">Reports</strong> for daily, weekly, and other periods.
@@ -55,7 +59,22 @@ export default function BudgetHubPage() {
       </div>
 
       <div className="border-b border-th-border">
-        <nav className="flex flex-wrap gap-8" role="tablist" aria-label="Income, import, budget, and reports">
+        <nav
+          className="flex flex-wrap gap-8"
+          role="tablist"
+          aria-label="Import, income, savings, budget, and reports"
+        >
+          <button
+            type="button"
+            role="tab"
+            id="budget-hub-tab-import"
+            aria-selected={view === "import"}
+            aria-controls="budget-hub-panel"
+            className={tabClass(view === "import")}
+            onClick={() => setView("import")}
+          >
+            Import
+          </button>
           <button
             type="button"
             role="tab"
@@ -70,13 +89,13 @@ export default function BudgetHubPage() {
           <button
             type="button"
             role="tab"
-            id="budget-hub-tab-import"
-            aria-selected={view === "import"}
+            id="budget-hub-tab-savings"
+            aria-selected={view === "savings"}
             aria-controls="budget-hub-panel"
-            className={tabClass(view === "import")}
-            onClick={() => setView("import")}
+            className={tabClass(view === "savings")}
+            onClick={() => setView("savings")}
           >
-            Import
+            Savings
           </button>
           <button
             type="button"
@@ -113,13 +132,17 @@ export default function BudgetHubPage() {
               ? "budget-hub-tab-budget"
               : view === "income"
                 ? "budget-hub-tab-income"
-                : "budget-hub-tab-reports"
+                : view === "savings"
+                  ? "budget-hub-tab-savings"
+                  : "budget-hub-tab-reports"
         }
       >
         {view === "import" ? (
           <ExpensesPage key="import" embedded />
         ) : view === "income" ? (
           <IncomePage key="income" embedded />
+        ) : view === "savings" ? (
+          <SavingsGoalsPage key="savings" embedded />
         ) : (
           <ReportsPage
             key={view}

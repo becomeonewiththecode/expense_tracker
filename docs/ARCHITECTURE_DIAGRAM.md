@@ -284,20 +284,16 @@ These diagrams show how **React** pages map to backend routes. The HTTP client u
 
 **Route gate at `/`:** `AppShell` checks authentication state. Signed-out users who open `/` see `LandingPage`; signed-in users on `/` continue into **`Layout`** (index redirect sends them to **`/budget?view=import`** or **`/expenses/list`** per `getPostLoginPath`). Signed-out requests to authenticated routes redirect to `/login`.
 
-**Shell navigation (signed-in `Layout.jsx` header):** **Income** (**NavLink** text) points to **`/budget`** (**`BudgetHubPage`**). **Savings**, **Expenses** (`/expenses/list`), **Renewals**, **Prescriptions**, and **Payment Plan** appear under **Lists** ▾ below **`lg`** (1024px) and as **NavLinks** from **`lg`** up. **Import** (statement UI) and paycheck **Income** are **hub tabs**, not header links. **`/expenses`** and **`/income`** are client **`Navigate`** routes to **`/budget?view=import`** and **`/budget?view=income`**. No **Reports** item in the bar; use **`/reports`** or hub **Reports** tab. **Profile**, **Upcoming expenses**, **Sign out** in the avatar menu; **theme** in **Profile** → **Appearance**.
+**Shell navigation (signed-in `Layout.jsx` header):** Row 1 shows **Expense Tracker**, **`NotificationBell`**, and the avatar **account** menu. Row 2 has **`NavLink`** **Income** → **`/budget`** (**`BudgetHubPage`**) and **Expenses** → **`/expenses/list`** (**`ExpensesHubPage`**). Below Tailwind **`md`** (768px), row 2 is hidden until the **hamburger** toggles **`#layout-primary-nav`**. Inside **`/budget`**, hub tabs are **Import** (first), **Income**, **Savings**, **Budget**, and **Reports** (`?view=`). Inside **`/expenses/list`**, hub tabs are **Expenses**, **Renewals**, **Prescriptions**, and **Payment Plan**. Client **`Navigate`** aliases include **`/expenses`** → **`/budget?view=import`**, **`/income`** → **`/budget?view=income`**, **`/savings`** → **`/budget?view=savings`**, and **`/renewals`** / **`/prescriptions`** / **`/payment-plans`** → **`/expenses/list`** with the matching **`?view=`**. No **Reports** item in the header; use **`/reports`** or the hub **Reports** tab. **Profile**, **Upcoming expenses**, **Sign out** in the avatar menu; **theme** in **Profile** → **Appearance**.
 
 ```mermaid
 flowchart TB
   subgraph hdr ["Layout header (responsive)"]
-    HUB["Income nav → /budget — BudgetHubPage"]
-    NAV["Lists ▾ or Savings / Expenses / Renewals / Prescriptions / Payment Plan"]
+    HUB["Income → /budget — BudgetHubPage"]
+    EXP["Expenses → /expenses/list — ExpensesHubPage"]
   end
-  HUB --> L5["/budget + ?view=income|import|reports"]
-  NAV --> Ls["/savings — SavingsGoalsPage"]
-  NAV --> L1["/expenses/list — YourExpensesPage"]
-  NAV --> L2["/renewals — RenewalsPage"]
-  NAV --> L3["/prescriptions — PrescriptionsPage"]
-  NAV --> L4["/payment-plans — PaymentPlansPage"]
+  HUB --> L5["/budget + ?view=import|income|savings|budget|reports"]
+  EXP --> L1["/expenses/list + ?view=list|renewals|prescriptions|payment-plans"]
 ```
 
 **Pages and primary API mounts:**
@@ -312,14 +308,15 @@ flowchart TB
     OCB["OAuthCallbackPage — /oauth/callback"]
     ADM["AdminPage — /admin"]
     EP["ExpensesPage — Import UI; embedded in BudgetHub ?view=import; /expenses redirects"]
-    YEP["YourExpensesPage — /expenses/list (read-only table; omit renewal and payment_plan; ExpenseEditModal)"]
-    NRP[RenewalsPage — /renewals]
-    PSP["PrescriptionsPage — /prescriptions (read-only table; edit modal)"]
-    PPP["PaymentPlansPage — /payment-plans (hide paid_in_full by default)"]
-    BHP["BudgetHubPage — /budget; tabs Income Import Budget Reports"]
+    EHX["ExpensesHubPage — /expenses/list; tabs Expenses Renewals Prescriptions Payment Plan"]
+    YEP["YourExpensesPage — embedded default tab in ExpensesHub"]
+    NRP["RenewalsPage — embedded ?view=renewals; /renewals redirects"]
+    PSP["PrescriptionsPage — embedded ?view=prescriptions; /prescriptions redirects"]
+    PPP["PaymentPlansPage — embedded ?view=payment-plans; /payment-plans redirects"]
+    BHP["BudgetHubPage — /budget; tabs Import Income Savings Budget Reports"]
     RPg["ReportsPage — /reports or embedded monthly_budget / full"]
     IPg["IncomePage — embedded ?view=income; /income redirects"]
-    SGP["SavingsGoalsPage — /savings"]
+    SGP["SavingsGoalsPage — embedded ?view=savings; /savings redirects"]
     PP[ProfilePage]
   end
 
@@ -477,14 +474,14 @@ flowchart TD
 | Errors | `apiError.js` — network and proxy error messages |
 | Labels versus server enums | `expenseOptions.js` — categories (including **Streaming service**, **Renewal**, **Payment Plan**), **`RENEWAL_KIND_OPTIONS`** / **`formatRenewalKind`**, frequencies, **`FINANCIAL_INSTITUTION_OPTIONS`**, **`BANK_NAME_OPTIONS`** (when institution is **Bank**), **`formatFinancialInstitution(institution, bankName)`**, **expense state** (**Active** / **Paused** / **Cancelled**; API `active` / `paused` / `cancelled`). **`paymentPlanOptions.js`** — payment plan **status** includes **Cancelled (paid in full)** (**`paid_in_full`**); add form uses **`PAYMENT_PLAN_STATUS_OPTIONS_FOR_ADD`** (omits **`paid_in_full`**). **`payment_day`** / **`payment_month`** on expenses are **not** client dropdowns; the API derives them from **`spent_at`**. |
 | List edit modals (expenses / renewals) | **`ManualExpenseForm.jsx`** exports **`ManualExpenseFormFields`**; **`ExpenseEditModal.jsx`** wraps them for **`YourExpensesPage`** and **`RenewalsPage`** (**Escape**, backdrop, scroll lock). |
-| Main navigation (authenticated shell) | **`Layout.jsx`** — **Income** (**`/budget`**); **Lists** dropdown below **`lg`** or inline **Savings** / **Expenses** / **Renewals** / **Prescriptions** / **Payment Plan** at **`lg`+**; **`NotificationBell`**; avatar **account menu** (**Profile**, **Upcoming expenses**, **Sign out**; **theme** on **Profile** → **Appearance**) |
+| Main navigation (authenticated shell) | **`Layout.jsx`** — row 1: title + **`NotificationBell`** + avatar **account menu**; row 2: **Income** (**`/budget`**) + **Expenses** (**`/expenses/list`**, hamburger below **`md`**). **Profile**, **Upcoming expenses**, **Sign out**, and **theme** (**Profile** → **Appearance**) live in the avatar menu. |
 | Upcoming expenses | **`Layout.jsx`** (avatar menu, **badge** toggles tables, **`renewalTablesExpanded`**) + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** + **`renewalPreferences.js`** (window **1**/**3**/**5**/**7**/**10**/**14**/**21**/**30**/**40** days, default **7**, in-panel and Profile) + **`renewalHiddenPreferences.js`** (auto-hidden cancelled list for Profile) — all main shell routes; see [Renewal reminders (client)](#renewal-reminders-client) |
 | Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads **`login_code`** (or **`error`**) from the query string, **`POST /auth/oauth/login-code`** with **`{ code }`**, then stores **`token`** and **`user`**; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (backup **`version`** **4** includes **`incomeEntries`** and expense **`bank_name`** when institution is **Bank**; client confirms when backup **`account.email`** differs from session); **Appearance** includes **Auto-hidden cancelled recurring items** (reads **`renewalHiddenPreferences.js`**); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
-| Renewals (odd-interval contracts) | `RenewalsPage` at **`/renewals`** — **`GET /expenses?category=renewal`** (list includes **Cancelled** / **Paused** rows); manual add defaults to category **Renewal**; read-only **`ExpenseTable`** with **`showRenewalColumns`** and **`onRowProjection`**; **Edit** uses **`ExpenseEditModal`** + **`ManualExpenseFormFields`**. Combined header **Projection** and per-row **Projection** use **`projection.js`**; combined totals use **Active** rows only—non-**active** **`state`** excluded client-side. Hub **Import** tab (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
-| Prescriptions (health / supplies) | `PrescriptionsPage` at **`/prescriptions`** — **`/api/prescriptions`** CRUD; read-only table; **Edit** opens a **modal** with shared **`PrescriptionFormFields`** (same as add). **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. Header flashes a short update icon on successful add/edit/renew saves. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
-| Expenses list (`/expenses/list`) | **`YourExpensesPage`** — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** and **`category !== payment_plan`** in the read-only table and in **combined Projection**; **Edit** opens **`ExpenseEditModal`** with **`ManualExpenseFormFields`** (same as add). Changing category to **Renewal** or **Payment Plan** on save moves the row to **`/renewals`** or **`/payment-plans`**. Header flashes a short update icon after successful save/add updates. |
-| Payment Plan (`/payment-plans`) | **`PaymentPlansPage`** — **`/api/payment-plans`** CRUD; note search; **Show cancelled (paid in full)**; combined **Projection** uses visible rows only. **Edit** opens a **modal** with **`PaymentPlanFormFields`**. **Add payment plan:** **Show** / **Hide**; default **closed**; first transition to a non-empty list forces collapse (**`hadItemsRef`**). Header **update flash** after saves. |
+| Renewals (odd-interval contracts) | **`RenewalsPage`** embedded in **`ExpensesHubPage`** (**`/expenses/list?view=renewals`**; **`/renewals`** redirects) — **`GET /expenses?category=renewal`** (list includes **Cancelled** / **Paused** rows); manual add defaults to category **Renewal**; read-only **`ExpenseTable`** with **`showRenewalColumns`** and **`onRowProjection`**; **Edit** uses **`ExpenseEditModal`** + **`ManualExpenseFormFields`**. Combined header **Projection** and per-row **Projection** use **`projection.js`**; combined totals use **Active** rows only—non-**active** **`state`** excluded client-side. Hub **Import** tab (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
+| Prescriptions (health / supplies) | **`PrescriptionsPage`** embedded in **`ExpensesHubPage`** (**`/expenses/list?view=prescriptions`**) — **`/api/prescriptions`** CRUD; read-only table; **Edit** opens a **modal** with shared **`PrescriptionFormFields`** (same as add). **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. Header flashes a short update icon on successful add/edit/renew saves. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
+| Expenses list (`/expenses/list`) | **`YourExpensesPage`** embedded on the default **Expenses** tab — **`GET /expenses`** for fresh data; **renders** only rows where **`category !== renewal`** and **`category !== payment_plan`** in the read-only table and in **combined Projection**; **Edit** opens **`ExpenseEditModal`** with **`ManualExpenseFormFields`** (same as add). Changing category to **Renewal** or **Payment Plan** on save moves the row to the corresponding **Expenses** hub tab. Header flashes a short update icon after successful save/add updates. |
+| Payment Plan (`/expenses/list?view=payment-plans`) | **`PaymentPlansPage`** embedded in **`ExpensesHubPage`** — **`/api/payment-plans`** CRUD; note search; **Show cancelled (paid in full)**; combined **Projection** uses visible rows only. **Edit** opens a **modal** with **`PaymentPlanFormFields`**. **Add payment plan:** **Show** / **Hide**; default **closed**; first transition to a non-empty list forces collapse (**`hadItemsRef`**). Header **update flash** after saves. **`/payment-plans`** redirects into this tab. |
 
 ### Payment Plan — add section (client)
 

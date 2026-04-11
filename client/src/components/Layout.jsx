@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 import RenewalReminders from "./RenewalReminders.jsx";
 import PrescriptionReminders from "./PrescriptionReminders.jsx";
@@ -14,12 +14,6 @@ const linkClass = ({ isActive }) =>
       : "text-th-subtle hover:bg-th-surface-alt hover:text-th-secondary",
   ].join(" ");
 
-const listsDropdownItemClass = ({ isActive }) =>
-  [
-    "block w-full text-left px-3 py-2 text-sm transition-colors",
-    isActive ? "text-emerald-300 bg-th-surface-alt/50" : "text-th-secondary hover:bg-th-surface-alt",
-  ].join(" ");
-
 /** Text before `@`; if that segment contains `.`, use only the part before the first `.`. */
 function avatarLabelFromEmail(email) {
   if (!email || typeof email !== "string") return "Me";
@@ -31,84 +25,27 @@ function avatarLabelFromEmail(email) {
   return base || "Me";
 }
 
-function ListsNavDropdown() {
-  const { pathname } = useLocation();
-  const listsMenuRef = useRef(null);
-  const listsSectionActive =
-    pathname === "/expenses/list" ||
-    pathname === "/renewals" ||
-    pathname === "/prescriptions" ||
-    pathname === "/payment-plans" ||
-    pathname === "/reports" ||
-    pathname === "/savings";
-
-  function closeListsMenu() {
-    listsMenuRef.current?.removeAttribute("open");
-  }
-
+function MenuIcon({ open }) {
   return (
-    <details ref={listsMenuRef} className="relative group">
-      <summary
-        className={[
-          "list-none cursor-pointer rounded-lg px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1",
-          listsSectionActive
-            ? "bg-emerald-500/20 text-emerald-300"
-            : "text-th-subtle hover:bg-th-surface-alt hover:text-th-secondary",
-          "[&::-webkit-details-marker]:hidden",
-        ].join(" ")}
-        aria-haspopup="menu"
-      >
-        Lists
-        <span className="text-[0.65rem] opacity-80" aria-hidden>
-          ▾
-        </span>
-      </summary>
-      <div
-        className="absolute left-0 top-full mt-1 py-1 min-w-[12rem] rounded-lg border border-th-border-bright bg-th-surface shadow-xl z-50"
-        role="menu"
-      >
-        <NavLink
-          to="/savings"
-          role="menuitem"
-          className={listsDropdownItemClass}
-          onClick={closeListsMenu}
-        >
-          Savings goals
-        </NavLink>
-        <NavLink
-          to="/expenses/list"
-          role="menuitem"
-          className={listsDropdownItemClass}
-          onClick={closeListsMenu}
-        >
-          Expenses
-        </NavLink>
-        <NavLink
-          to="/renewals"
-          role="menuitem"
-          className={listsDropdownItemClass}
-          onClick={closeListsMenu}
-        >
-          Renewals
-        </NavLink>
-        <NavLink
-          to="/prescriptions"
-          role="menuitem"
-          className={listsDropdownItemClass}
-          onClick={closeListsMenu}
-        >
-          Prescriptions
-        </NavLink>
-        <NavLink
-          to="/payment-plans"
-          role="menuitem"
-          className={listsDropdownItemClass}
-          onClick={closeListsMenu}
-        >
-          Payment Plan
-        </NavLink>
-      </div>
-    </details>
+    <svg
+      className="h-5 w-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      {open ? (
+        <>
+          <path d="M6 6l12 12M18 6L6 18" />
+        </>
+      ) : (
+        <>
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </>
+      )}
+    </svg>
   );
 }
 
@@ -118,7 +55,17 @@ export default function Layout() {
   const [renewalChip, setRenewalChip] = useState(null);
   /** When false, RenewalReminders hides institution tables + total (header + help may remain). */
   const [renewalTablesExpanded, setRenewalTablesExpanded] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const accountMenuRef = useRef(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => {
+      if (mq.matches) setMobileNavOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   function closeAccountMenu() {
     accountMenuRef.current?.removeAttribute("open");
@@ -138,50 +85,38 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-th-border bg-th-surface/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-          <span className="text-lg font-semibold tracking-tight text-white">
-            Expense Tracker
-          </span>
-          <nav className="flex flex-wrap items-center gap-1 sm:gap-2">
-            <NavLink to="/budget" className={linkClass}>
-              Income
-            </NavLink>
-            <div className="lg:hidden">
-              <ListsNavDropdown />
-            </div>
-            <div className="hidden lg:flex items-center gap-1 sm:gap-2">
-              <NavLink to="/savings" className={linkClass}>
-                Savings
-              </NavLink>
-              <NavLink to="/expenses/list" className={linkClass}>
-                Expenses
-              </NavLink>
-              <NavLink to="/renewals" className={linkClass}>
-                Renewals
-              </NavLink>
-              <NavLink to="/prescriptions" className={linkClass}>
-                Prescriptions
-              </NavLink>
-              <NavLink to="/payment-plans" className={linkClass}>
-                Payment Plan
-              </NavLink>
-            </div>
-          </nav>
-          <div className="flex items-center gap-2 text-sm text-th-subtle justify-end">
-            <NotificationBell />
-            <details
-              ref={accountMenuRef}
-              className="relative group"
-            >
-              <summary
-                className="list-none cursor-pointer flex items-center rounded-lg hover:bg-th-surface-alt/80 px-1 py-0.5 -mx-1 [&::-webkit-details-marker]:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
-                aria-label={
-                  renewalChip
-                    ? `Account menu, ${renewalChip.count} upcoming expenses`
-                    : "Account menu"
-                }
-                aria-haspopup="menu"
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                className="md:hidden inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-th-subtle hover:bg-th-surface-alt hover:text-th-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+                onClick={() => setMobileNavOpen((o) => !o)}
+                aria-expanded={mobileNavOpen}
+                aria-controls="layout-primary-nav"
+                aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
               >
+                <MenuIcon open={mobileNavOpen} />
+              </button>
+              <span className="text-lg font-semibold tracking-tight text-white truncate">
+                Expense Tracker
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-th-subtle justify-end shrink-0">
+              <NotificationBell />
+              <details
+                ref={accountMenuRef}
+                className="relative group"
+              >
+                <summary
+                  className="list-none cursor-pointer flex items-center rounded-lg hover:bg-th-surface-alt/80 px-1 py-0.5 -mx-1 [&::-webkit-details-marker]:hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+                  aria-label={
+                    renewalChip
+                      ? `Account menu, ${renewalChip.count} upcoming expenses`
+                      : "Account menu"
+                  }
+                  aria-haspopup="menu"
+                >
                 <span className="inline-flex items-center gap-1.5 flex-shrink-0">
                   {user?.avatar_url ? (
                     <span className="w-8 h-8 rounded-full bg-th-surface-alt border border-th-border-bright overflow-hidden flex-shrink-0 flex items-center justify-center">
@@ -220,12 +155,12 @@ export default function Layout() {
                     </button>
                   ) : null}
                 </span>
-              </summary>
-              <div
-                className="absolute right-0 top-full mt-1 py-1 min-w-[12rem] rounded-lg border border-th-border-bright bg-th-surface shadow-xl z-50"
-                role="menu"
-              >
-                <NavLink
+                </summary>
+                <div
+                  className="absolute right-0 top-full mt-1 py-1 min-w-[12rem] rounded-lg border border-th-border-bright bg-th-surface shadow-xl z-50"
+                  role="menu"
+                >
+                  <NavLink
                   to="/profile"
                   role="menuitem"
                   className={({ isActive }) =>
@@ -265,10 +200,35 @@ export default function Layout() {
                 </button>
               </div>
             </details>
+            </div>
           </div>
+
+          <nav
+            id="layout-primary-nav"
+            className={[
+              "flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 max-md:pl-11 md:pl-0",
+              mobileNavOpen ? "flex" : "max-md:hidden",
+            ].join(" ")}
+            aria-label="Primary"
+          >
+            <NavLink
+              to="/budget"
+              className={linkClass}
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Income
+            </NavLink>
+            <NavLink
+              to="/expenses/list"
+              className={linkClass}
+              onClick={() => setMobileNavOpen(false)}
+            >
+              Expenses
+            </NavLink>
+          </nav>
         </div>
       </header>
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+      <main className="flex-1 min-w-0 max-w-7xl w-full mx-auto px-4 py-6">
         <RenewalReminders
           tablesExpanded={renewalTablesExpanded}
           onTablesExpandedChange={setRenewalTablesExpanded}

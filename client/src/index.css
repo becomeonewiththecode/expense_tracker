@@ -71,3 +71,71 @@ body {
   color: rgb(var(--color-primary));
   @apply min-h-screen;
 }
+
+/*
+ * ExpenseTable (Expenses + Renewals): on some mobile WebKit/Chrome builds, `text-th-*`
+ * utilities resolve too dim inside `table` + `position: sticky` + translucent row BGs.
+ * Pin canonical RGB from the active theme (same numbers as --color-* above).
+ */
+[data-theme="midnight"] table[data-expense-table] tbody .text-th-primary {
+  color: rgb(241, 245, 249) !important;
+  -webkit-text-fill-color: rgb(241, 245, 249);
+}
+[data-theme="midnight"] table[data-expense-table] tbody .text-th-secondary {
+  color: rgb(226, 232, 240) !important;
+  -webkit-text-fill-color: rgb(226, 232, 240);
+}
+[data-theme="midnight"] table[data-expense-table] tbody .text-th-subtle {
+  color: rgb(148, 163, 184) !important;
+  -webkit-text-fill-color: rgb(148, 163, 184);
+}
+[data-theme="midnight"] table[data-expense-table] tbody a.text-sky-300 {
+  color: rgb(125, 211, 252) !important;
+  -webkit-text-fill-color: rgb(125, 211, 252);
+}
+[data-theme="midnight"] table[data-expense-table] tbody a.text-sky-200 {
+  color: rgb(186, 230, 253) !important;
+  -webkit-text-fill-color: rgb(186, 230, 253);
+}
+
+[data-theme="ember"] table[data-expense-table] tbody .text-th-primary {
+  color: rgb(245, 245, 244) !important;
+  -webkit-text-fill-color: rgb(245, 245, 244);
+}
+[data-theme="ember"] table[data-expense-table] tbody .text-th-secondary {
+  color: rgb(231, 229, 228) !important;
+  -webkit-text-fill-color: rgb(231, 229, 228);
+}
+[data-theme="ember"] table[data-expense-table] tbody .text-th-subtle {
+  color: rgb(168, 162, 158) !important;
+  -webkit-text-fill-color: rgb(168, 162, 158);
+}
+[data-theme="ember"] table[data-expense-table] tbody a.text-sky-300 {
+  color: rgb(125, 211, 252) !important;
+  -webkit-text-fill-color: rgb(125, 211, 252);
+}
+[data-theme="ember"] table[data-expense-table] tbody a.text-sky-200 {
+  color: rgb(186, 230, 253) !important;
+  -webkit-text-fill-color: rgb(186, 230, 253);
+}
+
+[data-theme="daylight"] table[data-expense-table] tbody .text-th-primary {
+  color: rgb(15, 23, 42) !important;
+  -webkit-text-fill-color: rgb(15, 23, 42);
+}
+[data-theme="daylight"] table[data-expense-table] tbody .text-th-secondary {
+  color: rgb(30, 41, 59) !important;
+  -webkit-text-fill-color: rgb(30, 41, 59);
+}
+[data-theme="daylight"] table[data-expense-table] tbody .text-th-subtle {
+  color: rgb(71, 85, 105) !important;
+  -webkit-text-fill-color: rgb(71, 85, 105);
+}
+[data-theme="daylight"] table[data-expense-table] tbody a.text-sky-300 {
+  color: rgb(2, 132, 199) !important;
+  -webkit-text-fill-color: rgb(2, 132, 199);
+}
+[data-theme="daylight"] table[data-expense-table] tbody a.text-sky-200 {
+  color: rgb(3, 105, 161) !important;
+  -webkit-text-fill-color: rgb(3, 105, 161);
+}

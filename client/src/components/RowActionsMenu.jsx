@@ -119,10 +119,10 @@ export default function RowActionsMenu({ align = "right", direction = "auto", la
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md border border-th-border-bright bg-th-surface/90 hover:bg-th-surface-alt text-th-secondary text-xs font-medium px-2.5 py-1"
+        className="rounded-md border border-th-border-bright bg-th-surface/90 hover:bg-th-surface-alt text-th-primary text-xs font-medium px-2.5 py-1"
       >
         {label}
-        <span className="ml-1 text-th-muted" aria-hidden>
+        <span className="ml-1 text-th-subtle" aria-hidden>
           ▾
         </span>
       </button>

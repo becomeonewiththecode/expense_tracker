@@ -24,7 +24,8 @@ function projectionContextLabel(row) {
   return short ? `${cat} · ${short}` : cat;
 }
 
-export default function YourExpensesPage() {
+/** @param {{ embedded?: boolean }} props When true, hide the page title (used under Expenses hub). */
+export default function YourExpensesPage({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -221,14 +222,18 @@ export default function YourExpensesPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Expenses</h1>
-        <p className="text-sm text-th-subtle mt-1">
-          {loading
-            ? "Loading…"
-            : "Add expenses here or under Income → Import; review, edit, or delete. Items with category Renewal appear under Renewals, and Payment Plan items appear under Payment Plan. Default order is newest first—click a column heading to sort."}
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl font-semibold text-white">Expenses</h1>
+          <p className="text-sm text-th-subtle mt-1">
+            {loading
+              ? "Loading…"
+              : "Add expenses here or under the Budget hub Import tab; review, edit, or delete. Items with category Renewal appear under Renewals, and Payment Plan items appear under Payment Plan. Default order is newest first—click a column heading to sort."}
+          </p>
+        </div>
+      )}
+
+      {embedded && loading ? <p className="text-sm text-th-muted">Loading…</p> : null}
 
       {!loading && error && (
         <p className="text-sm text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-lg px-3 py-2">
@@ -289,11 +294,11 @@ export default function YourExpensesPage() {
           {filteredExpenseListItems.length === 0 && (
             <p className="text-sm text-th-subtle rounded-lg border border-th-border bg-th-surface/40 px-3 py-2">
               You only have renewal or payment plan items right now—they are listed under{" "}
-              <Link to="/renewals" className="text-sky-400 hover:text-sky-300">
+              <Link to="/expenses/list?view=renewals" className="text-sky-400 hover:text-sky-300">
                 Renewals
               </Link>
               {" "}and{" "}
-              <Link to="/payment-plans" className="text-sky-400 hover:text-sky-300">
+              <Link to="/expenses/list?view=payment-plans" className="text-sky-400 hover:text-sky-300">
                 Payment Plan
               </Link>
               .

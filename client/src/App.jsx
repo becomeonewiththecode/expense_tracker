@@ -4,13 +4,9 @@ import Layout from "./components/Layout.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
-import YourExpensesPage from "./pages/YourExpensesPage.jsx";
+import ExpensesHubPage from "./pages/ExpensesHubPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import BudgetHubPage from "./pages/BudgetHubPage.jsx";
-import SavingsGoalsPage from "./pages/SavingsGoalsPage.jsx";
-import RenewalsPage from "./pages/RenewalsPage.jsx";
-import PrescriptionsPage from "./pages/PrescriptionsPage.jsx";
-import PaymentPlansPage from "./pages/PaymentPlansPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import PostLoginRedirect from "./components/PostLoginRedirect.jsx";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
@@ -50,15 +46,15 @@ export default function App() {
       <Route path="/share/:token" element={<AdvisorShareViewPage />} />
       <Route path="/" element={<AppShell />}>
         <Route index element={<PostLoginRedirect />} />
-        <Route path="expenses/list" element={<YourExpensesPage />} />
+        <Route path="expenses/list" element={<ExpensesHubPage />} />
         <Route path="expenses" element={<Navigate to="/budget?view=import" replace />} />
-        <Route path="renewals" element={<RenewalsPage />} />
-        <Route path="prescriptions" element={<PrescriptionsPage />} />
-        <Route path="payment-plans" element={<PaymentPlansPage />} />
+        <Route path="renewals" element={<Navigate to="/expenses/list?view=renewals" replace />} />
+        <Route path="prescriptions" element={<Navigate to="/expenses/list?view=prescriptions" replace />} />
+        <Route path="payment-plans" element={<Navigate to="/expenses/list?view=payment-plans" replace />} />
         <Route path="budget" element={<BudgetHubPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="income" element={<Navigate to="/budget?view=income" replace />} />
-        <Route path="savings" element={<SavingsGoalsPage />} />
+        <Route path="savings" element={<Navigate to="/budget?view=savings" replace />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

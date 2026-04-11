@@ -8,7 +8,8 @@ function money(n) {
   return `$${x.toFixed(2)}`;
 }
 
-export default function SavingsGoalsPage() {
+/** @param {{ embedded?: boolean }} props When true, hide the page title (used under Budget hub). */
+export default function SavingsGoalsPage({ embedded = false }) {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -90,12 +91,14 @@ export default function SavingsGoalsPage() {
 
   return (
     <div className="space-y-8 max-w-3xl">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Savings goals</h1>
-        <p className="text-sm text-th-subtle mt-1">
-          Track targets and how much you have set aside. Update &quot;current&quot; as you save—separate from payment plans and expense categories.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl font-semibold text-white">Savings goals</h1>
+          <p className="text-sm text-th-subtle mt-1">
+            Track targets and how much you have set aside. Update &quot;current&quot; as you save—separate from payment plans and expense categories.
+          </p>
+        </div>
+      )}
 
       {error && (
         <p className="text-sm text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-lg px-3 py-2">{error}</p>

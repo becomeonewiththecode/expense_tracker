@@ -35,7 +35,8 @@ function renewalRowsForProjection(rows) {
   return rows.filter((r) => r.state === "active");
 }
 
-export default function RenewalsPage() {
+/** @param {{ embedded?: boolean }} props When true, hide the page title (used under Expenses hub). */
+export default function RenewalsPage({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -218,14 +219,18 @@ export default function RenewalsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Renewals</h1>
-        <p className="text-sm text-th-subtle mt-1">
-          {loading
-            ? "Loading…"
-            : "Track renewals on unusual schedules (annual, multi-year, and other frequencies). Each row is an expense with category Renewal, a renewal type, and an optional website. On Import, choose category Renewal and pick a type for each line you want listed here."}
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl font-semibold text-white">Renewals</h1>
+          <p className="text-sm text-th-subtle mt-1">
+            {loading
+              ? "Loading…"
+              : "Track renewals on unusual schedules (annual, multi-year, and other frequencies). Each row is an expense with category Renewal, a renewal type, and an optional website. On Import, choose category Renewal and pick a type for each line you want listed here."}
+          </p>
+        </div>
+      )}
+
+      {embedded && loading ? <p className="text-sm text-th-muted">Loading…</p> : null}
 
       {!loading && error && (
         <p className="text-sm text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-lg px-3 py-2">

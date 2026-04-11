@@ -9,7 +9,7 @@ Standalone guide to **monthly budgets**, **category lines**, **variance**, **thr
 - You set a **monthly total** and optional **per-category caps** for a calendar month.
 - The app compares those targets to **actual spending** (expenses with `spent_at` in that month, grouped by category).
 - Optional **alert percentages** create **in-app notifications** when total or a line crosses a threshold.
-- **Income** (header nav label) opens **`/budget`** (**`BudgetHubPage`**). On the **Budget** tab (default when there is no **`?view=`**), you see budget fields, a **composed chart** (budget vs actual), variance, and **CSV** / **PDF** exports. The **Monthly budget** block can be collapsed with **Show** / **Hide**. The same monthly UI is available under **Reports** tab → **Monthly** period tab, or from the standalone **`/reports`** route.
+- **Income** (header nav label) opens **`/budget`** (**`BudgetHubPage`**). With no **`?view=`** query, the hub opens on the **Income** tab. On the **Budget** tab (**`?view=budget`**), you see budget fields, a **composed chart** (budget vs actual), variance, and **CSV** / **PDF** exports. The **Monthly budget** block can be collapsed with **Show** / **Hide**. The same monthly UI is available under **Reports** tab → **Monthly** period tab, or from the standalone **`/reports`** route.
 
 Related but different: **Income vs spend** (cash-flow actuals, recurring run rate, projection) is documented in [INCOME_VS_SPEND.md](./INCOME_VS_SPEND.md).
 
@@ -66,12 +66,14 @@ flowchart TB
 ```mermaid
 flowchart TB
   Menu["Header: Income → /budget"] --> Hub["BudgetHubPage"]
-  Hub --> TabI["Tab: Income"]
-  Hub --> TabM["Tab: Import"]
-  Hub --> TabB["Tab: Budget — default"]
+  Hub --> TabM["Tab: Import — first in bar"]
+  Hub --> TabI["Tab: Income — default when ?view omitted"]
+  Hub --> TabS["Tab: Savings"]
+  Hub --> TabB["Tab: Budget"]
   Hub --> TabR["Tab: Reports"]
   TabI --> EmbI["IncomePage embedded"]
   TabM --> EmbM["ExpensesPage embedded"]
+  TabS --> EmbS["SavingsGoalsPage embedded"]
   TabB --> EmbB["ReportsPage monthly_budget embedded"]
   TabR --> EmbR["ReportsPage full embedded"]
 ```
@@ -135,7 +137,7 @@ Implementation: [`server/src/routes/budgets.js`](../server/src/routes/budgets.js
 
 ## UI
 
-- **Income** (header nav label) → **`/budget`** ([`BudgetHubPage.jsx`](../client/src/pages/BudgetHubPage.jsx)): tabs **Income** | **Import** | **Budget** | **Reports** (`?view=income` / `import` / default / `reports`). **Budget** tab embeds **`ReportsPage`** **`variant="monthly_budget"`** (monthly picker, cash flow, **Monthly budget** block with **Show**/**Hide**, chart, variance, exports). **Reports** tab embeds **`variant="full"`** (Daily … Custom; **`?tab=`**). **Income** / **Import** embed **`IncomePage`** / **`ExpensesPage`** with **`embedded`**. Standalone **`/reports`** keeps the full **Reports** title and **← Budget & reports home**.
+- **Income** (header nav label) → **`/budget`** ([`BudgetHubPage.jsx`](../client/src/pages/BudgetHubPage.jsx)): tabs **Import** | **Income** | **Savings** | **Budget** | **Reports** (`?view=import` / `income` / `savings` / `budget` / `reports`; omitting **`?view`** defaults to **Income**). **Budget** tab embeds **`ReportsPage`** **`variant="monthly_budget"`**. **Reports** tab embeds **`variant="full"`** (Daily … Custom; **`?tab=`**). **Import** / **Income** / **Savings** embed **`ExpensesPage`** / **`IncomePage`** / **`SavingsGoalsPage`** with **`embedded`**. Standalone **`/reports`** keeps the full **Reports** title and **← Budget & reports home**.
 - **Notification bell** (header): budget-threshold notifications; **Open monthly budget** → **`/budget`**.
 - **Theme:** **Profile** → **Appearance**.
 - Client: [`BudgetHubPage.jsx`](../client/src/pages/BudgetHubPage.jsx), [`ReportsPage.jsx`](../client/src/pages/ReportsPage.jsx), [`NotificationBell.jsx`](../client/src/components/NotificationBell.jsx).

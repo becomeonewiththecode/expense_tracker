@@ -24,7 +24,9 @@ import {
   TABLE_HEADER_BAR,
   TABLE_ROW,
   TABLE_SCROLL,
+  TABLE_TD,
   TABLE_TD_STICKY_ACTIONS_DEFAULT,
+  TABLE_TH,
   TABLE_TH_STICKY_ACTIONS,
 } from "../tableStyles.js";
 import PaginationControls from "./PaginationControls.jsx";
@@ -124,13 +126,13 @@ function sortExpenseItems(items, key, dir) {
   return [...items].sort((a, b) => compareExpenseRows(a, b, key, dir));
 }
 
-function SortableTh({ colKey, label, sort, onSort, className }) {
+function SortableTh({ colKey, label, sort, onSort, className = "" }) {
   const active = sort.key === colKey;
   const dir = sort.dir;
   return (
     <th
       scope="col"
-      className={className}
+      className={[TABLE_TH, className].filter(Boolean).join(" ")}
       aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : undefined}
     >
       <button
@@ -217,10 +219,10 @@ export default function ExpenseTable({
   }
 
   return (
-    <div className={TABLE_CARD}>
+    <div className={`${TABLE_CARD} w-full min-w-0`}>
       <div className={TABLE_HEADER_BAR}>
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-medium text-th-secondary">{tableTitle}</h2>
+          <h2 className="text-sm font-medium text-th-primary">{tableTitle}</h2>
           <TableUpdateFlash token={updateFlashToken} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -229,7 +231,7 @@ export default function ExpenseTable({
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-48 rounded-lg bg-th-base border border-th-border-bright px-3 py-1.5 text-th-secondary text-xs"
+            className="w-48 rounded-lg bg-th-input border border-th-border-bright px-3 py-1.5 text-th-primary text-xs placeholder:text-th-muted"
           />
           <button
             type="button"
@@ -241,7 +243,10 @@ export default function ExpenseTable({
         </div>
       </div>
       <div className={TABLE_SCROLL}>
-        <table className={`${TABLE} min-w-[70rem]`}>
+        <table
+          data-expense-table
+          className={`${TABLE} min-w-[56rem] text-th-primary`}
+        >
           <thead className={TABLE_HEAD}>
             <tr>
               <SortableTh
@@ -319,54 +324,56 @@ export default function ExpenseTable({
           <tbody className={TABLE_BODY}>
             {pageItems.map((row) => (
               <tr key={row.id} className={TABLE_ROW}>
-                <td className="px-4 py-3 text-th-tertiary whitespace-nowrap align-middle">
+                <td className={`${TABLE_TD} text-th-primary whitespace-nowrap`}>
                   {toDateInputValue(row.spent_at) || "—"}
                 </td>
-                <td className="px-4 py-3 align-middle">
-                  <span className="font-medium text-white tabular-nums">${Number(row.amount).toFixed(2)}</span>
+                <td className={`${TABLE_TD} text-th-primary`}>
+                  <span className="font-semibold text-th-primary tabular-nums">${Number(row.amount).toFixed(2)}</span>
                 </td>
-                <td className="px-4 py-3 text-th-tertiary align-middle">{formatCategory(row.category)}</td>
-                <td className="px-4 py-3 text-th-tertiary align-middle hidden lg:table-cell">
-                  <span>
+                <td className={TABLE_TD}>
+                  <span className="text-th-primary">{formatCategory(row.category)}</span>
+                </td>
+                <td className={`${TABLE_TD} hidden lg:table-cell`}>
+                  <span className="text-th-primary">
                     {formatFrequency(row.frequency)}
                     {row.frequency === "bimonthly" && row.payment_day != null && row.payment_day_2 != null && (
-                      <span className="text-th-muted text-xs block">
+                      <span className="text-th-subtle text-xs block">
                         Days {row.payment_day} &amp; {row.payment_day_2}
                       </span>
                     )}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-th-tertiary align-middle hidden md:table-cell">
+                <td className={`${TABLE_TD} text-th-primary hidden md:table-cell`}>
                   {formatFinancialInstitution(row.financial_institution, row.bank_name)}
                 </td>
-                <td className="px-4 py-3 text-th-tertiary align-middle hidden md:table-cell">
-                  {formatExpenseState(row.state)}
+                <td className={`${TABLE_TD} hidden md:table-cell`}>
+                  <span className="text-th-primary">{formatExpenseState(row.state)}</span>
                 </td>
                 {showRenewalColumns && (
-                  <td className="px-4 py-3 text-th-tertiary align-middle hidden lg:table-cell">
+                  <td className={`${TABLE_TD} text-th-primary hidden lg:table-cell`}>
                     {row.category === "renewal" ? formatRenewalKind(row.renewal_kind) : "—"}
                   </td>
                 )}
                 {showRenewalColumns && (
-                  <td className="px-4 py-3 text-th-tertiary align-middle hidden xl:table-cell max-w-[12rem]">
+                  <td className={`${TABLE_TD} hidden xl:table-cell max-w-[12rem]`}>
                     {row.category === "renewal" && row.website ? (
                       <a
                         href={/^https?:\/\//i.test(row.website) ? row.website : `https://${row.website}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sky-400 hover:text-sky-300 truncate block max-w-[12rem]"
+                        className="text-sky-300 hover:text-sky-200 truncate block max-w-[12rem]"
                       >
                         {row.website}
                       </a>
                     ) : (
-                      "—"
+                      <span className="text-th-primary">—</span>
                     )}
                   </td>
                 )}
-                <td className="px-4 py-3 align-middle hidden sm:table-cell">
-                  <span className="text-th-muted max-w-xs truncate block">{row.description}</span>
+                <td className={`${TABLE_TD} text-th-secondary hidden sm:table-cell`}>
+                  <span className="block max-w-xs truncate">{row.description}</span>
                 </td>
-                <td className={TABLE_TD_STICKY_ACTIONS_DEFAULT}>
+                <td className={`${TABLE_TD_STICKY_ACTIONS_DEFAULT} whitespace-nowrap`}>
                   <div className="flex justify-end">
                     <RowActionsMenu
                       items={[
@@ -400,17 +407,17 @@ export default function ExpenseTable({
             ))}
           </tbody>
         </table>
-        {totalItems > 0 && (
-          <PaginationControls
-            currentPage={safePage}
-            totalItems={totalItems}
-            pageSize={rowsPerPage}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handleRowsPerPageChange}
-            pageSizeOptions={TABLE_ROWS_PER_PAGE_OPTIONS}
-          />
-        )}
       </div>
+      {totalItems > 0 ? (
+        <PaginationControls
+          currentPage={safePage}
+          totalItems={totalItems}
+          pageSize={rowsPerPage}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handleRowsPerPageChange}
+          pageSizeOptions={TABLE_ROWS_PER_PAGE_OPTIONS}
+        />
+      ) : null}
     </div>
   );
 }

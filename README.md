@@ -67,7 +67,7 @@ npm run dev
 
 Open **http://localhost:5173** in your browser. The Vite dev server proxies `/api` requests to the backend. Set `API_PROXY_TARGET` in `client/.env` if the API does not listen on port 4000.
 
-**Routes:** Visitors who are not signed in see a public **landing page** at `/` (register and sign-in links go to `/register` and `/login`). After authentication, `/` routes into the main app. Other app paths redirect to login when signed out. The hub is at **`/budget`** (header label **Income**): tabs **Income** | **Import** | **Budget** | **Reports**; **`/expenses`** and **`/income`** redirect into **`?view=import`** and **`?view=income`**. **`/reports`** remains a standalone reports page.
+**Routes:** Visitors who are not signed in see a public **landing page** at `/` (register and sign-in links go to `/register` and `/login`). After authentication, `/` routes into the main app. Other app paths redirect to login when signed out. The **Budget & reports** hub is at **`/budget`** (header **Income**): hub tabs **Import** | **Income** | **Savings** | **Budget** | **Reports** (bookmark **`/savings`** → **`?view=savings`**). The **Expenses** hub is at **`/expenses/list`**: tabs **Expenses** | **Renewals** | **Prescriptions** | **Payment Plan**. **`/expenses`**, **`/income`**, **`/renewals`**, **`/prescriptions`**, and **`/payment-plans`** are **`Navigate`** aliases into the matching hub and query. **`/reports`** is a standalone reports page.
 
 **Static landing previews:** Additional standalone HTML variants for design comparison are in [`client/public/landings/`](./client/public/landings/) and are served by Vite at paths such as `/landings/01-aurora-glass.html`.
 

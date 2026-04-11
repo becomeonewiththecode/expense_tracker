@@ -1,6 +1,6 @@
 # Payment plans feature
 
-This document describes the **Payment Plan** area: planned payments stored in **`payment_plans`**, the **`/payment-plans`** screen, and synchronization from **`expenses`** when **`category`** is **`payment_plan`**. For system design, see [ARCHITECTURE.md](./ARCHITECTURE.md) and [ARCHITECTURE_DIAGRAM.md](./ARCHITECTURE_DIAGRAM.md). For usage, see [USER_GUIDE.md](./USER_GUIDE.md) (Payment Plan screen).
+This document describes the **Payment Plan** area: planned payments stored in **`payment_plans`**, the **Payment Plan** tab on **`/expenses/list`** (**`/payment-plans`** redirects), and synchronization from **`expenses`** when **`category`** is **`payment_plan`**. For system design, see [ARCHITECTURE.md](./ARCHITECTURE.md) and [ARCHITECTURE_DIAGRAM.md](./ARCHITECTURE_DIAGRAM.md). For usage, see [USER_GUIDE.md](./USER_GUIDE.md) (Payment Plan tab).
 
 ---
 
@@ -12,7 +12,7 @@ This document describes the **Payment Plan** area: planned payments stored in **
 | **`paid_in_full` status** | When **`remaining_payments`** is **`0`**, the API sets **`status`** to **`paid_in_full`** (treated as finished). If **`remaining_payments`** is not **`0`** (including **`null`**) while **`status`** is **`paid_in_full`**, the API normalizes **`status`** to **`active`**. Restore (**`backup.js`**) applies the same rule when importing rows. |
 | **Hidden finished plans (UI)** | On **`PaymentPlansPage`**, rows with **`status === paid_in_full`** are **hidden** by default so the table shows active work. A **Show cancelled (paid in full)** checkbox reveals them for view, edit, delete, and row-level **Projection**. **Combined Projection** and the **Projection** button use only **visible** rows (respects the checkbox). The add form does not offer **`paid_in_full`** as a manual status; it is set by the server when **`# of payments`** reaches zero. |
 | **Expense category `payment_plan`** | An **`expenses`** row with **`category = payment_plan`** is kept in sync with **`payment_plans`** via **`paymentPlanSync.js`** (linked by **`source_expense_id`**). That row does **not** appear on **`/expenses/list`**; it is represented on **Payment Plan** alongside standalone **`payment_plans`** rows. |
-| **Payment Plan page** | Client route **`/payment-plans`** (`PaymentPlansPage.jsx`). Full CRUD via **`GET`/`POST`/`PATCH`/`DELETE /api/payment-plans`**. Table header: **Search notes**, **Show cancelled (paid in full)**, **Projection** (row or all; **all** disabled when no visible rows), **update flash** after successful saves. **RowActionsMenu** for **Edit** (opens a **modal** with the same full field grid as **Add payment plan**, pre-filled) / **Delete** / **Projection**. The data table stays read-only. |
+| **Payment Plan tab** | **`PaymentPlansPage.jsx`** embedded in **`ExpensesHubPage`** at **`/expenses/list?view=payment-plans`** (bookmark **`/payment-plans`** redirects). Full CRUD via **`GET`/`POST`/`PATCH`/`DELETE /api/payment-plans`**. Table header: **Search notes**, **Show cancelled (paid in full)**, **Projection** (row or all; **all** disabled when no visible rows), **update flash** after successful saves. **RowActionsMenu** for **Edit** (opens a **modal** with the same full field grid as **Add payment plan**, pre-filled) / **Delete** / **Projection**. The data table stays read-only. |
 | **Add payment plan card** | Collapsible inline form under **Add payment plan**. **Show** / **Hide** toggles visibility. Default **`addOpen`** is **false** (`PaymentPlansPage.jsx`). A **`useEffect`** on **`items.length`** uses **`hadItemsRef`**: on the **first** transition to **`items.length > 0`** (initial load with data or first successful add), **`addOpen`** is set to **`false`** (keeps the section closed after first populated load). **Deleting all** plans resets the ref. |
 | **Backup JSON** | **`GET /api/backup/export`** includes **`paymentPlans`** and **`paymentPlanCount`** when **`version`** ≥ **`3`** (current export **`version`** **`4`**). **`POST /restore`** with **`mode`** **`replace`** and **`version`** ≥ **`3`** replaces **`payment_plans`** from the file when present; **`version`** **`4`** also replaces **`income_entries`**. See [USER_GUIDE.md](./USER_GUIDE.md) **Backup and restore**. |
 
@@ -39,7 +39,7 @@ flowchart LR
   EX["POST/PATCH /api/expenses category=payment_plan"]
   EX --> SYNC["paymentPlanSync.js"]
   SYNC --> PP[(payment_plans)]
-  PP --> UI["/payment-plans list"]
+  PP --> UI["/expenses/list?view=payment-plans"]
 ```
 
 ### Paid in full (server) and hidden rows (client)

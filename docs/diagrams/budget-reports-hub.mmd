@@ -5,17 +5,19 @@ flowchart TB
   Menu["Header nav: Income → /budget"] --> HubPage["/budget — BudgetHubPage"]
 
   subgraph budgetHub [Hub tabs — ?view=…]
-    TabI["Tab: Income — ?view=income"]
-    TabM["Tab: Import — ?view=import"]
-    TabB["Tab: Budget — default — no view param"]
+    TabM["Tab: Import — ?view=import — first in bar"]
+    TabI["Tab: Income — hub default — no view param"]
+    TabS["Tab: Savings — ?view=savings"]
+    TabB["Tab: Budget — ?view=budget"]
     TabR["Tab: Reports — ?view=reports"]
     TabI --> EmbI["IncomePage embedded"]
     TabM --> EmbM["ExpensesPage embedded — Import / statement"]
+    TabS --> EmbS["SavingsGoalsPage embedded"]
     TabB --> EmbB["ReportsPage embedded — monthly_budget"]
     TabR --> EmbR["ReportsPage embedded — full + ?tab="]
   end
 
   HubPage --> budgetHub
 
-  Legacy["/income or /expenses"] --> R301["Navigate replace → /budget?view=income or ?view=import"]
+  Legacy["/income or /expenses or /savings"] --> R301["Navigate replace → /budget?view=income, import, or savings"]
   Direct["Bookmark /reports"] --> Solo["ReportsPage — full page title + period tabs"]

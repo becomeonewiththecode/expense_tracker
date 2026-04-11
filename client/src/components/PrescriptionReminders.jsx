@@ -70,7 +70,7 @@ export default function PrescriptionReminders() {
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
           <Link
-            to="/prescriptions"
+            to="/expenses/list?view=prescriptions"
             className="text-sm font-medium text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
           >
             Open Prescriptions

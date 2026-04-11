@@ -210,7 +210,8 @@ function PaymentPlanFormFields({ draft, onPatch, statusSelectOptions, autoFocusN
   );
 }
 
-export default function PaymentPlansPage() {
+/** @param {{ embedded?: boolean }} props When true, hide the page title (used under Expenses hub). */
+export default function PaymentPlansPage({ embedded = false }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -409,13 +410,17 @@ export default function PaymentPlansPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Payment Plan</h1>
-        <p className="text-sm text-th-subtle mt-1">
-          Track planned payments with schedule, priority, account, method, institution, tags, frequency, and optional
-          remaining payment count.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl font-semibold text-white">Payment Plan</h1>
+          <p className="text-sm text-th-subtle mt-1">
+            Track planned payments with schedule, priority, account, method, institution, tags, frequency, and optional
+            remaining payment count.
+          </p>
+        </div>
+      )}
+
+      {embedded && loading ? <p className="text-sm text-th-muted">Loading…</p> : null}
 
       {!loading && error ? (
         <p className="text-sm text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-lg px-3 py-2">{error}</p>
@@ -466,7 +471,7 @@ export default function PaymentPlansPage() {
         <div className={TABLE_CARD}>
           <div className={TABLE_HEADER_BAR}>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-medium text-th-secondary">Your payment plans</h2>
+              <h2 className="text-sm font-medium text-th-primary">Your payment plans</h2>
               <TableUpdateFlash token={tableUpdateFlashToken} />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -475,9 +480,9 @@ export default function PaymentPlansPage() {
                 value={noteSearch}
                 onChange={(e) => setNoteSearch(e.target.value)}
                 placeholder="Search notes"
-                className="w-48 rounded-lg bg-th-input border border-th-border-bright px-3 py-1.5 text-th-secondary text-xs"
+                className="w-48 rounded-lg bg-th-input border border-th-border-bright px-3 py-1.5 text-th-primary text-xs placeholder:text-th-muted"
               />
-              <label className="flex items-center gap-2 text-xs text-th-muted cursor-pointer select-none">
+              <label className="flex items-center gap-2 text-xs text-th-secondary cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={showPaidInFull}
@@ -497,7 +502,7 @@ export default function PaymentPlansPage() {
             </div>
           </div>
           <div className={TABLE_SCROLL}>
-            <table className={`${TABLE} min-w-[86rem]`}>
+            <table className={`${TABLE} min-w-[86rem] text-th-primary`}>
               <thead className={TABLE_HEAD}>
                 <tr>
                   <th className={`${TABLE_TH} min-w-[10rem]`}>Name</th>
@@ -521,14 +526,14 @@ export default function PaymentPlansPage() {
               <tbody className={TABLE_BODY}>
                 {pageItems.length === 0 ? (
                   <tr className={TABLE_ROW}>
-                    <td colSpan={14} className="px-4 py-6 text-center text-sm text-th-muted">
+                    <td colSpan={14} className="px-4 py-6 text-center text-sm text-th-secondary">
                       {searchedItems.length === 0 ? (
                         <>No plans match your notes search.</>
                       ) : hiddenPaidInFullCount > 0 ? (
                         <>
                           {hiddenPaidInFullCount === 1 ? "One" : hiddenPaidInFullCount}{" "}
                           {hiddenPaidInFullCount === 1 ? "plan is" : "plans are"} cancelled (paid in full) and hidden.
-                          Check <span className="text-th-tertiary">Show cancelled (paid in full)</span> to see{" "}
+                          Check <span className="text-sky-300 font-medium">Show cancelled (paid in full)</span> to see{" "}
                           {hiddenPaidInFullCount === 1 ? "it" : "them"}.
                         </>
                       ) : (
@@ -540,24 +545,24 @@ export default function PaymentPlansPage() {
                 {pageItems.map((row) => (
                   <tr key={row.id} className={TABLE_ROW}>
                     <td className="px-4 py-3">
-                      <span className="text-th-secondary">{row.name}</span>
+                      <span className="text-th-primary">{row.name}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-medium text-white tabular-nums">${Number(row.amount).toFixed(2)}</span>
+                      <span className="font-semibold text-th-primary tabular-nums">${Number(row.amount).toFixed(2)}</span>
                     </td>
-                    <td className="px-4 py-3 text-th-tertiary">{formatPaymentPlanCategory(row.category)}</td>
-                    <td className="px-4 py-3 text-th-tertiary">{formatPaymentPlanSchedule(row.payment_schedule)}</td>
-                    <td className="px-4 py-3 text-th-tertiary">{formatPaymentPlanPriority(row.priority_level)}</td>
-                    <td className="px-4 py-3 text-th-tertiary">{formatPaymentPlanStatus(row.status)}</td>
-                    <td className="px-4 py-3 text-th-tertiary hidden lg:table-cell">{formatPaymentPlanAccountType(row.account_type)}</td>
-                    <td className="px-4 py-3 text-th-tertiary hidden lg:table-cell">{formatPaymentPlanMethod(row.payment_method)}</td>
-                    <td className="px-4 py-3 text-th-tertiary hidden xl:table-cell">{formatPaymentPlanInstitution(row.institution)}</td>
-                    <td className="px-4 py-3 text-th-tertiary hidden xl:table-cell">{formatPaymentPlanTag(row.tag)}</td>
-                    <td className="px-4 py-3 text-th-tertiary hidden xl:table-cell">{formatPaymentPlanFrequency(row.frequency)}</td>
-                    <td className="px-4 py-3 text-th-tertiary hidden xl:table-cell text-right tabular-nums">
+                    <td className="px-4 py-3 text-th-primary">{formatPaymentPlanCategory(row.category)}</td>
+                    <td className="px-4 py-3 text-th-primary">{formatPaymentPlanSchedule(row.payment_schedule)}</td>
+                    <td className="px-4 py-3 text-th-primary">{formatPaymentPlanPriority(row.priority_level)}</td>
+                    <td className="px-4 py-3 text-th-primary">{formatPaymentPlanStatus(row.status)}</td>
+                    <td className="px-4 py-3 text-th-primary hidden lg:table-cell">{formatPaymentPlanAccountType(row.account_type)}</td>
+                    <td className="px-4 py-3 text-th-primary hidden lg:table-cell">{formatPaymentPlanMethod(row.payment_method)}</td>
+                    <td className="px-4 py-3 text-th-primary hidden xl:table-cell">{formatPaymentPlanInstitution(row.institution)}</td>
+                    <td className="px-4 py-3 text-th-primary hidden xl:table-cell">{formatPaymentPlanTag(row.tag)}</td>
+                    <td className="px-4 py-3 text-th-primary hidden xl:table-cell">{formatPaymentPlanFrequency(row.frequency)}</td>
+                    <td className="px-4 py-3 text-th-primary hidden xl:table-cell text-right tabular-nums">
                       {row.remaining_payments != null ? row.remaining_payments : "—"}
                     </td>
-                    <td className="px-4 py-3 text-th-subtle hidden md:table-cell">
+                    <td className="px-4 py-3 text-th-secondary hidden md:table-cell">
                       <span className="block max-w-[16rem] truncate">{row.notes || "—"}</span>
                     </td>
                     <td className={TABLE_TD_STICKY_ACTIONS_DEFAULT}>
