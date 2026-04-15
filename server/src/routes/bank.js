@@ -3,11 +3,26 @@ import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
 import { getPlaidClient, isPlaidConfigured, plaidCountryCodes, Products } from "../plaidService.js";
 import { paymentMetaFromSpentAt } from "../expenseEnums.js";
+import { decryptBankToken, encryptBankToken, isEncryptedBankToken } from "../bankTokenCrypto.js";
 
 export const bankRouter = Router();
 bankRouter.use(authRequired);
 
 const CLIENT_NAME = "Expense Tracker";
+
+async function resolvePlainAccessToken(connId, userId, storedToken) {
+  const plain = decryptBankToken(storedToken);
+  if (!plain) return null;
+  if (!isEncryptedBankToken(storedToken)) {
+    // One-way migration: rewrite legacy plaintext token as encrypted ciphertext.
+    await pool.query(`UPDATE bank_connections SET access_token = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`, [
+      encryptBankToken(plain),
+      connId,
+      userId,
+    ]);
+  }
+  return plain;
+}
 
 bankRouter.get("/plaid/status", (_req, res) => {
   res.json({
@@ -72,6 +87,7 @@ bankRouter.post("/plaid/exchange", async (req, res) => {
   }
 
   try {
+    const encryptedAccessToken = encryptBankToken(access_token);
     const existing = await pool.query(`SELECT id, user_id FROM bank_connections WHERE plaid_item_id = $1`, [
       item_id,
     ]);
@@ -85,7 +101,7 @@ bankRouter.post("/plaid/exchange", async (req, res) => {
         `UPDATE bank_connections SET access_token = $1, institution_name = COALESCE(NULLIF($2, ''), institution_name), updated_at = NOW()
          WHERE id = $3 AND user_id = $4
          RETURNING id, plaid_item_id, institution_name, created_at`,
-        [access_token, institution_name || "", hit.id, req.userId]
+        [encryptedAccessToken, institution_name || "", hit.id, req.userId]
       );
       row = up.rows[0];
     } else {
@@ -93,7 +109,7 @@ bankRouter.post("/plaid/exchange", async (req, res) => {
         `INSERT INTO bank_connections (user_id, provider, plaid_item_id, access_token, institution_name)
          VALUES ($1, 'plaid', $2, $3, $4)
          RETURNING id, plaid_item_id, institution_name, created_at`,
-        [req.userId, item_id, access_token, institution_name || "Linked account"]
+        [req.userId, item_id, encryptedAccessToken, institution_name || "Linked account"]
       );
       row = ins.rows[0];
     }
@@ -128,9 +144,13 @@ bankRouter.delete("/plaid/connections/:id", async (req, res) => {
   );
   const row = rows[0];
   if (!row) return res.status(404).json({ error: "Not found" });
+  const plainAccessToken = await resolvePlainAccessToken(id, req.userId, row.access_token);
+  if (!plainAccessToken) {
+    return res.status(500).json({ error: "Stored bank credential is invalid; reconnect this account" });
+  }
   if (plaid) {
     try {
-      await plaid.itemRemove({ access_token: row.access_token });
+      await plaid.itemRemove({ access_token: plainAccessToken });
     } catch (e) {
       console.warn("itemRemove:", e?.response?.data || e?.message);
     }
@@ -152,6 +172,10 @@ bankRouter.post("/plaid/connections/:id/sync", async (req, res) => {
   );
   const conn = rows[0];
   if (!conn) return res.status(404).json({ error: "Not found" });
+  const plainAccessToken = await resolvePlainAccessToken(id, req.userId, conn.access_token);
+  if (!plainAccessToken) {
+    return res.status(500).json({ error: "Stored bank credential is invalid; reconnect this account" });
+  }
 
   let cursor = conn.transactions_cursor || undefined;
   let inserted = 0;
@@ -160,7 +184,7 @@ bankRouter.post("/plaid/connections/:id/sync", async (req, res) => {
   try {
     while (hasMore) {
       const { data } = await plaid.transactionsSync({
-        access_token: conn.access_token,
+        access_token: plainAccessToken,
         cursor,
       });
       for (const t of data.added || []) {

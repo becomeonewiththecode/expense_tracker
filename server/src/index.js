@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { corsOriginCallback } from "./corsConfig.js";
 import { ensureJwtSecret } from "./ensureJwtSecret.js";
 import { initDb, pool } from "./db.js";
@@ -31,6 +32,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsRoot = path.join(__dirname, "..", "uploads");
 
 const app = express();
+app.set("trust proxy", 1);
 app.use(
   cors({
     origin: corsOriginCallback,
@@ -38,6 +40,7 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(cookieParser());
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, version: getAppVersion() });

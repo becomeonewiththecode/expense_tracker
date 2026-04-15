@@ -151,7 +151,7 @@ This diagram shows everything that runs inside the **Express** process and how i
 flowchart TB
   subgraph api [Express server/src/index.js]
     BOOT[index.js bootstrap]
-    MW[CORS allowlist plus JSON body plus error handler]
+    MW[CORS allowlist, cookie-parser, JSON body, trust proxy 1, errors]
     R0["GET /health — ok + version string"]
     R0b["/api/docs + /api/openapi.json"]
     R1["/api/auth"]
@@ -254,7 +254,7 @@ flowchart TB
 | Module file | Role | Integrations |
 |--------|------|----------------|
 | `routes/auth.js` | Registration, password login challenge plus user 2FA verify/setup verify, **`me`**, **`POST /refresh`** (new JWT from expired-but-signed token within grace), **`PATCH /profile`**, recovery **`POST`/`DELETE /recovery-code`** (persists **`recovery_code_ciphertext`** via **`recoveryCodeStorage.js`**), **`POST /recover-password`**, **`POST`/`DELETE /avatar`**, static **`/uploads`**; **per-IP rate limits** on **`/register`** and **`/login`** via **`rateLimit.js`** | `bcryptjs`, `pg`, `multer`, `crypto`; mounts **`oauth/*`** from `oauth/oauthRoutes.js`; uses `userSecurity.js` |
-| `oauth/oauthRoutes.js` with `oauthService.js`, `oauthState.js`, **`oauthLoginCode.js`** | Single sign-on: authorize, IdP callback, **`POST /oauth/login-code`** (exchange one-time **`login_code`** for **`token`** + **`user`**); **rate limit** on login-code exchange | `fetch` to identity providers, `pg` for **`oauth_identities`** |
+| `oauth/oauthRoutes.js` with `oauthService.js`, `oauthState.js`, **`oauthLoginCode.js`** | Single sign-on: authorize, IdP callback, **`POST /oauth/login-code`** (exchange one-time **`login_code`**, set **`expense_tracker_session`**, return **`user`**); **rate limit** on login-code exchange | `fetch` to identity providers, `pg` for **`oauth_identities`**, **`sessionCookie.js`** |
 | `corsConfig.js` | **`CLIENT_ORIGIN`** allowlist (comma-separated); no permissive reflect-all-origins when **`credentials: true`** | read from `process.env` |
 | `rateLimit.js` | Shared **in-memory** per-IP limiter for auth and OAuth exchange | used by **`auth`**, **`admin`**, **`oauth`** routes |
 | `routes/expenses.js` | Expense create, read, update, delete; optional list filter **`?category=`** (for example **`renewal`**) | JSON Web Token middleware, `pg`, `expenseEnums.js` |
@@ -273,7 +273,7 @@ flowchart TB
 | `paymentPlanEnums.js` | Payment plan allow-lists and parsers (category, schedule, priority, **status** including **`paid_in_full`**, account type, payment method, institution, tag, frequency, **`remaining_payments`**); **`resolvePaymentPlanStatusForRemaining`** | **`routes/paymentPlans.js`**, **`routes/backup.js`** (restore **`paymentPlans`**) |
 | `prescriptionEnums.js` | **`PRESCRIPTION_CATEGORIES`**, **`PRESCRIPTION_RENEWAL_PERIODS`**, **state**; **`parseIsoDate`**; **`normalizePrescriptionStateForBackup`** | **`routes/prescriptions.js`**, **`routes/backup.js`** |
 | `recoveryCodeStorage.js` | Encrypt/decrypt recovery plaintext for **`users.recovery_code_ciphertext`**; **`persistRecoveryCodeForUser`** shared by **`auth`** and **`backup`** | `crypto`, `bcryptjs` |
-| `middleware/auth.js` | Bearer token to **`req.userId`** with server-side session inactivity checks | `userSecurity.js` |
+| `middleware/auth.js` | **Bearer** or **`expense_tracker_session`** cookie → **`req.userId`** with server-side session inactivity checks | `userSecurity.js` |
 | `ensureJwtSecret.js` | Persist stable **`JWT_SECRET`** | filesystem write to `server/.env` |
 
 ---
@@ -468,7 +468,7 @@ flowchart TD
 
 | Concern | Implementation |
 |---------|------------------|
-| HTTP client | `api.js` — Axios with `/api` base URL; `Authorization` from `localStorage`; fatal auth **401** responses (`missing token`, `invalid token`, `session expired`, inactivity timeout) clear local auth and redirect to `/login?expired=1` (except auth endpoints such as **`/auth/refresh`**) |
+| HTTP client | `api.js` — Axios with `/api` base URL and `withCredentials`; user session is cookie-based; fatal auth **401** responses (`missing token`, `invalid token`, `session expired`, inactivity timeout) trigger session-invalid handling and redirect to `/login?expired=1` as needed (except auth endpoints such as **`/auth/refresh`**) |
 | Authentication state | `auth.jsx` — `AuthProvider`, protected routes, registers the session-invalid handler for `api.js` |
 | Expired session handling | Redirect to `/login?expired=1` for fatal auth 401s; `SessionExpiredModal.jsx` remains available for refresh-driven continuation flows |
 | Errors | `apiError.js` — network and proxy error messages |
@@ -476,7 +476,7 @@ flowchart TD
 | List edit modals (expenses / renewals) | **`ManualExpenseForm.jsx`** exports **`ManualExpenseFormFields`**; **`ExpenseEditModal.jsx`** wraps them for **`YourExpensesPage`** and **`RenewalsPage`** (**Escape**, backdrop, scroll lock). |
 | Main navigation (authenticated shell) | **`Layout.jsx`** — row 1: title + **`NotificationBell`** + avatar **account menu**; row 2: **Income** (**`/budget`**) + **Expenses** (**`/expenses/list`**, hamburger below **`md`**). **Profile**, **Upcoming expenses**, **Sign out**, and **theme** (**Profile** → **Appearance**) live in the avatar menu. |
 | Upcoming expenses | **`Layout.jsx`** (avatar menu, **badge** toggles tables, **`renewalTablesExpanded`**) + **`RenewalReminders.jsx`** + **`renewalSchedule.js`** + **`renewalPreferences.js`** (window **1**/**3**/**5**/**7**/**10**/**14**/**21**/**30**/**40** days, default **7**, in-panel and Profile) + **`renewalHiddenPreferences.js`** (auto-hidden cancelled list for Profile) — all main shell routes; see [Renewal reminders (client)](#renewal-reminders-client) |
-| Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads **`login_code`** (or **`error`**) from the query string, **`POST /auth/oauth/login-code`** with **`{ code }`**, then stores **`token`** and **`user`**; same post-login navigation as email and password |
+| Single sign-on return route | `OAuthCallbackPage` at `/oauth/callback` — reads **`login_code`** (or **`error`**) from the query string, **`POST /auth/oauth/login-code`** with **`{ code }`** (API sets HttpOnly session cookie), then stores **`user`**; same post-login navigation as email and password |
 | Profile and recovery | `ProfilePage` at `/profile` — **`PATCH /auth/profile`**, **`POST`/`DELETE /auth/recovery-code`** (masked UI when **`has_recovery_code`**), **`POST`/`DELETE /auth/avatar`**, **`GET /backup/export`**, **`POST /backup/restore`** (backup **`version`** **4** includes **`incomeEntries`** and expense **`bank_name`** when institution is **Bank**; client confirms when backup **`account.email`** differs from session); **Appearance** includes **Auto-hidden cancelled recurring items** (reads **`renewalHiddenPreferences.js`**); `RecoverPasswordPage` at `/recover` — **`POST /auth/recover-password`** |
 | Renewals (odd-interval contracts) | **`RenewalsPage`** embedded in **`ExpensesHubPage`** (**`/expenses/list?view=renewals`**; **`/renewals`** redirects) — **`GET /expenses?category=renewal`** (list includes **Cancelled** / **Paused** rows); manual add defaults to category **Renewal**; read-only **`ExpenseTable`** with **`showRenewalColumns`** and **`onRowProjection`**; **Edit** uses **`ExpenseEditModal`** + **`ManualExpenseFormFields`**. Combined header **Projection** and per-row **Projection** use **`projection.js`**; combined totals use **Active** rows only—non-**active** **`state`** excluded client-side. Hub **Import** tab (`ExpensesPage`) adds staging columns for **renewal type** and **website** when category is **Renewal**. See [RENEWALS.md](./RENEWALS.md). |
 | Prescriptions (health / supplies) | **`PrescriptionsPage`** embedded in **`ExpensesHubPage`** (**`/expenses/list?view=prescriptions`**) — **`/api/prescriptions`** CRUD; read-only table; **Edit** opens a **modal** with shared **`PrescriptionFormFields`** (same as add). **`renewal_period`** (**monthly** **1–11** or **years** **1–5**) + **`next_renewal_date`**; **Renewed** advances date by calendar months or years. Header flashes a short update icon on successful add/edit/renew saves. **`PrescriptionReminders`** + **`prescriptions-changed`**. See [PRESCRIPTIONS.md](./PRESCRIPTIONS.md). |
@@ -749,7 +749,7 @@ sequenceDiagram
 
   Browser->>Vite: GET /api/expenses
   Vite->>API: proxy GET /api/expenses
-  Note over API: auth middleware validates Authorization Bearer token
+  Note over API: auth middleware validates session cookie (or Bearer for compatibility)
   API->>PG: SELECT ... WHERE user_id = sub
   PG-->>API: rows
   API-->>Vite: 200 JSON
@@ -784,7 +784,7 @@ sequenceDiagram
 
 When the user clicks a provider on **Login** or **Register**, this is the high-level flow. The **redirect URI** you register at the identity provider must be `{CLIENT_ORIGIN}/api/auth/oauth/{provider}/callback`. During development, the browser first contacts Vite; Vite proxies to Express. With **deployment Docker Compose**, the browser contacts **nginx** on the published **`HTTP_PORT`**; nginx proxies `/api` to the **api** service (replace **Vite** with **nginx** in the sequence mentally for that topology).
 
-The API does **not** put the session JWT in the browser URL. After the IdP callback it stores a **one-time `login_code`** (~two minutes, single use) and redirects to **`/oauth/callback?login_code=…`**. The SPA exchanges that code with **`POST /api/auth/oauth/login-code`** so the bearer token only appears in the JSON response body (and then in **`localStorage`**). A compact copy of this sequence lives in **[`docs/diagrams/oauth-browser-login.mmd`](./diagrams/oauth-browser-login.mmd)** for tools such as [mermaid.live](https://mermaid.live).
+The API does **not** put the session JWT in the browser URL. After the IdP callback it stores a **one-time `login_code`** (~two minutes, single use) and redirects to **`/oauth/callback?login_code=…`**. The SPA exchanges that code with **`POST /api/auth/oauth/login-code`**; the API sets an HttpOnly session cookie and returns user data. A compact copy of this sequence lives in **[`docs/diagrams/oauth-browser-login.mmd`](./diagrams/oauth-browser-login.mmd)** for tools such as [mermaid.live](https://mermaid.live).
 
 ```mermaid
 sequenceDiagram
@@ -813,11 +813,11 @@ sequenceDiagram
   Browser->>Vite: POST /api/auth/oauth/login-code JSON body code
   Vite->>API: proxy
   API->>API: consume login_code, verify session
-  API-->>Browser: 200 JSON token + user
-  Browser->>Browser: OAuthCallbackPage stores session and navigates
+  API-->>Browser: 200 JSON user + Set-Cookie expense_tracker_session
+  Browser->>Browser: OAuthCallbackPage stores user state and navigates
 ```
 
-After this flow completes, later API calls follow **section 6** (Bearer JSON Web Token on paths such as `/api/expenses`).
+After this flow completes, later API calls follow **section 6** (cookie-authenticated requests on paths such as `/api/expenses`).
 
 ---
 

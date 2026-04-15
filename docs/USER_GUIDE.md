@@ -368,14 +368,14 @@ The application includes an **admin site** at **`/admin`** for operators. It is 
 
 ## Session and security
 
-- After **email and password** 2FA verification (or **single sign-on**) the application stores a **JSON Web Token** in the browser (`localStorage`) and sends it on API requests.
+- After **email and password** 2FA verification (or **single sign-on**) the API sets an **HttpOnly session cookie** (**`expense_tracker_session`**) used on API requests. If you run **production** over **plain HTTP** and the browser never stays signed in, check **`SESSION_COOKIE_SECURE`** and proxy **`X-Forwarded-Proto`** (see **[DEPLOYMENT.md](./DEPLOYMENT.md)** and **[API_AUTHORIZATION.md](./API_AUTHORIZATION.md)**).
 - User sessions end after **15 minutes of inactivity**. When this happens, protected requests fail and the browser redirects to **`/login?expired=1`**.
 - If the token signature is invalid (for example after rotating **`JWT_SECRET`**), the app also ends the browser session and sends you to sign in again.
 - For **Docker Compose** (**`npm run compose:build`** or **`compose:prod`**), **`ensure-env.mjs`** seeds **`JWT_SECRET`** into **`deployment/docker-compose/.env`** when missing; keep that file stable across rebuilds unless you intentionally want to invalidate sessions.
 - **Password accounts:** do not share your password; choose a strong password for your account.  
 - **Single sign-on accounts:** sign-in is delegated to Google, GitHub, GitLab, or Microsoft; use that provider’s account security settings (two-factor authentication, and so on) as appropriate.  
-- On a shared computer, **sign out** when finished (this clears the token from this browser).  
-- **Recovery codes** are as sensitive as passwords; anyone with the code can reset your password on **`/recover`** until the code is used or removed. **Backup JSON** may include **`account.recoveryCode`** when you download after generating or replacing the code—treat those files like a password vault.
+- On a shared computer, **sign out** when finished (this clears the session cookie from this browser).
+- **Recovery codes** are as sensitive as passwords; anyone with the code can reset your password on **`/recover`** until the code is used or removed. **Backup JSON** includes **`account.recoveryCode`** only when explicitly requested by export options—treat those files like a password vault.
 
 ---
 

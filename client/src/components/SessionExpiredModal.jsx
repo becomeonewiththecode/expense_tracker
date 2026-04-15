@@ -17,7 +17,7 @@ export default function SessionExpiredModal({ open, onClose }) {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/refresh");
-      setSession(data.token, data.user);
+      setSession(data.user);
       onClose();
       window.location.reload();
     } catch (err) {

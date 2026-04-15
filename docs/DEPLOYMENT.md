@@ -36,9 +36,21 @@ Copy `server/.env.example` to `server/.env` and edit values as needed. The defau
 - **Full-stack Docker Compose** does not auto-generate **`JWT_SECRET`** inside the container; use **`deployment/docker-compose/.env`** on the host. **`npm run compose:build`** and **`npm run compose:prod`** run **`ensure-env.mjs`** so **`JWT_SECRET`** is filled there automatically when unset.
 - You can also set secrets manually with `openssl rand -base64 32`.
 
+### BANK_TOKEN_ENCRYPTION_KEY (optional)
+
+- Used to encrypt stored Plaid bank access tokens at rest.
+- If unset, the API derives bank-token encryption from `JWT_SECRET`.
+- Recommended in production: set a dedicated long random value and keep it stable.
+
 ### CLIENT_ORIGIN
 
 Must match the URL users type in the browser to open the single-page application, for example `http://localhost:5173`. Use a **comma-separated list** if more than one origin must call the API (for example separate dev hosts). In **production**, set this explicitly: the API CORS allowlist is derived from it, and an empty or wrong value blocks the SPA from calling **`/api/*`** from the real UI host. This value is also required for OAuth redirect URLs after single sign-on.
+
+### User session cookies
+
+- The SPA authenticates to **`/api/*`** with an **HttpOnly** cookie named **`expense_tracker_session`** (set by **`/api/auth/*`** after login, register, OAuth exchange, profile refresh, and similar). The browser must send **`credentials`** (the client Axios instance uses **`withCredentials: true`**).
+- Optional **`SESSION_COOKIE_SECURE`:** forces the cookie **`Secure`** flag on or off. When unset, the API infers **`Secure`** from environment and request (including **`X-Forwarded-Proto`**); **`app.set("trust proxy", 1)`** is enabled so one reverse-proxy hop is honored. If users see **session expired** or **401** immediately after login over **plain HTTP**, set **`SESSION_COOKIE_SECURE=false`** or terminate TLS at the proxy and forward **`X-Forwarded-Proto: https`**.
+- Details and Swagger notes: **[API_AUTHORIZATION.md](./API_AUTHORIZATION.md)**.
 
 ### Admin site (`/admin`)
 

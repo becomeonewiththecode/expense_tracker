@@ -22,5 +22,5 @@ sequenceDiagram
   API-->>Browser: 302 to /oauth/callback?login_code=...
   Browser->>Edge: POST /api/auth/oauth/login-code
   Edge->>API: forward
-  API-->>Browser: 200 JSON token and user
-  Note over Browser: SPA stores session; subsequent calls use Authorization Bearer
+  API-->>Browser: 200 JSON user + Set-Cookie expense_tracker_session
+  Note over Browser: HttpOnly cookie; Secure follows server env and X-Forwarded-Proto; SPA stores user in memory; /api calls send the cookie

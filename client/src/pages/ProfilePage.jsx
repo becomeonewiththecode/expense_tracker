@@ -16,7 +16,7 @@ import BankSyncSection from "../components/BankSyncSection.jsx";
 import AdvisorShareSection from "../components/AdvisorShareSection.jsx";
 
 export default function ProfilePage() {
-  const { user, setSession, token, refreshUser } = useAuth();
+  const { user, setSession, refreshUser } = useAuth();
   const [email, setEmail] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -117,7 +117,7 @@ export default function ProfilePage() {
         body.currentPassword = currentPassword;
       }
       const { data } = await api.patch("/auth/profile", body);
-      setSession(data.token, data.user);
+      setSession(data.user);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -153,7 +153,7 @@ export default function ProfilePage() {
       const fd = new FormData();
       fd.append("file", file);
       const { data } = await api.post("/auth/avatar", fd);
-      setSession(token, data.user);
+      setSession(data.user);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       input.value = "";
@@ -379,7 +379,7 @@ export default function ProfilePage() {
     setRecoveryLoading(true);
     try {
       const { data } = await api.delete("/auth/recovery-code");
-      if (data.user) setSession(token, data.user);
+      if (data.user) setSession(data.user);
       setRecoveryOk("Recovery code removed.");
       await refreshUser();
     } catch (err) {
@@ -395,7 +395,7 @@ export default function ProfilePage() {
     setAvatarLoading(true);
     try {
       const { data } = await api.delete("/auth/avatar");
-      setSession(token, data.user);
+      setSession(data.user);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
       const input = document.getElementById("avatar-input");

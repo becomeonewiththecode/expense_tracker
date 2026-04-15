@@ -1,9 +1,9 @@
 import axios from "axios";
-import { TOKEN_KEY, USER_KEY } from "./authStorage.js";
 
 const api = axios.create({
   baseURL: "/api",
   headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 });
 
 /** Called when a protected request returns a session-invalid 401. */
@@ -24,12 +24,6 @@ export function setSessionInvalidHandler(fn) {
 }
 
 api.interceptors.request.use((config) => {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  } else {
-    delete config.headers.Authorization;
-  }
   if (config.data instanceof FormData) {
     delete config.headers["Content-Type"];
   }
@@ -41,26 +35,20 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     const reqUrl = String(error.config?.url || "");
+    const skipSessionInvalidHandler = Boolean(error.config?._skipSessionInvalidHandler);
     if (
       status === 401 &&
+      !skipSessionInvalidHandler &&
       isSessionFatal401(error) &&
       !reqUrl.includes("/auth/refresh") &&
       !reqUrl.includes("/auth/login") &&
       !reqUrl.includes("/auth/register") &&
       !reqUrl.includes("/auth/recover-password")
     ) {
-      const hadBearer = Boolean(error.config?.headers?.Authorization);
-      if (hadBearer) {
-        if (typeof localStorage !== "undefined") {
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
-        }
-        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-          window.location.replace("/login?expired=1");
-        }
-      } else {
-        sessionInvalidHandler?.();
+      if (typeof window !== "undefined" && window.location.pathname.startsWith("/login")) {
+        return Promise.reject(error);
       }
+      sessionInvalidHandler?.();
     }
     return Promise.reject(error);
   }

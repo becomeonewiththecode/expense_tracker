@@ -1,8 +1,8 @@
 import { verifyUserSessionToken } from "../userSecurity.js";
+import { getSessionTokenFromReq } from "../sessionCookie.js";
 
 export function authRequired(req, res, next) {
-  const header = req.headers.authorization;
-  const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
+  const token = getSessionTokenFromReq(req);
   if (!token) {
     return res.status(401).json({ error: "Missing token" });
   }

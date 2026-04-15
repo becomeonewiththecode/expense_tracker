@@ -8,13 +8,13 @@ This guide explains each **Authorize** entry in Swagger and how to obtain the va
 
 | Scheme in Swagger | How it is sent | Purpose |
 |-------------------|----------------|---------|
-| **`bearerAuth`** | `Authorization: Bearer <token>` | Normal **user** session JWT |
+| **`bearerAuth`** | `Authorization: Bearer <token>` | Legacy compatibility for **user** JWTs (primary user auth is cookie-based) |
 | **`adminBearerAuth`** | `Authorization: Bearer <token>` | **Admin** session JWT |
 | **`adminReauth`** | `x-admin-reauth: <token>` | Short-lived **admin re-authentication** token for sensitive operations |
 
 ---
 
-## 1. User token (`bearerAuth`)
+## 1. User session (cookie-first)
 
 ### Step A — Password login
 
@@ -41,13 +41,21 @@ Response includes **`challengeId`** (and flags for 2FA setup vs verify).
 }
 ```
 
-Response includes **`token`**.
+Response sets an **HttpOnly session cookie** and includes user profile data.
 
 ### Step C — Swagger
 
-Paste **`token`** into **`bearerAuth`** (Swagger adds the `Bearer ` prefix).
+For browser-based Swagger at the same origin, calls can use your session cookie automatically after sign-in.
 
-**Also issued without the login challenge:** `POST /api/auth/register` returns **`token`** immediately (new accounts without 2FA yet follow the same enrollment flow on first password login).
+**Also issued without the login challenge:** `POST /api/auth/register` sets the same session cookie immediately (new accounts without 2FA yet follow the same enrollment flow on first password login).
+
+### Session cookie details (`expense_tracker_session`)
+
+Successful **register**, **2FA verify/setup**, **profile** updates that rotate the session, **`POST /api/auth/refresh`**, **`POST /api/auth/logout`** (clears the cookie), and **`POST /api/auth/oauth/login-code`** set or clear an **HttpOnly** cookie named **`expense_tracker_session`** (**`SameSite=Lax`**, path **`/`**, about **7 days** max-age). Implementation: **`server/src/sessionCookie.js`**.
+
+- **`SESSION_COOKIE_SECURE`:** When set to **`true`** or **`false`** (also **`1`/`0`**, **`yes`/`no`**, **`on`/`off`**), the cookie’s **`Secure`** attribute is forced on or off. When unset, the server picks **`Secure`** per request: **non-production** uses non-**`Secure`** cookies; in **`NODE_ENV=production`**, **`CLIENT_ORIGIN`** starting with **`http://localhost`** or **`http://127.0.0.1`** selects non-**`Secure`** for local HTTP; otherwise **`req.secure`** and the first value of **`X-Forwarded-Proto`** matter, with production defaulting to **`Secure`** when inference is inconclusive.
+- **Reverse proxies:** **`server/src/index.js`** sets **`app.set("trust proxy", 1)`** so a single hop’s **`X-Forwarded-Proto: https`** is visible to Express when inferring **`Secure`** cookies.
+- **Swagger on another origin** cannot send this cookie to the API; use **`bearerAuth`** with a user JWT from a trusted source, or open Swagger from the same browser origin as **`/api`**.
 
 ### OAuth (Google, GitHub, GitLab, Microsoft)
 
@@ -56,9 +64,9 @@ The browser does **not** receive the JWT in the redirect query string.
 1. User opens **`GET /api/auth/oauth/{provider}`** (from **SsoButtons**); the API redirects to the identity provider.
 2. After consent, the IdP redirects to **`GET /api/auth/oauth/{provider}/callback`** with **`code`** and **`state`**.
 3. The API exchanges the code, creates or links the user, issues a session JWT, and responds with **`302`** to **`{CLIENT_ORIGIN}/oauth/callback?login_code=…`**.
-4. **`OAuthCallbackPage`** calls **`POST /api/auth/oauth/login-code`** with JSON **`{ "code": "<login_code from query>" }`** (no **`Authorization`** header required). Response **`200`** body includes **`token`** and **`user`** — use the same **`bearerAuth`** value in Swagger as for password login.
+4. **`OAuthCallbackPage`** calls **`POST /api/auth/oauth/login-code`** with JSON **`{ "code": "<login_code from query>" }`** (no **`Authorization`** header required). Response **`200`** sets the session cookie and returns **`user`**.
 
-**Rate limits:** Repeated failed **`POST /api/auth/login`** or **`POST /api/auth/register`** attempts from one IP may return **HTTP 429**. The login-code exchange endpoint is also rate-limited.
+**Rate limits:** Repeated failed **`POST /api/auth/login`** or **`POST /api/auth/register`** attempts from one IP may return **HTTP 429**. The login-code exchange endpoint and 2FA verification endpoints are also rate-limited.
 
 ---
 
@@ -151,9 +159,8 @@ Other admin routes typically need only **`adminBearerAuth`**.
 ### User-only endpoints (e.g. `GET /api/auth/me`)
 
 1. `POST /api/auth/login` → copy **`challengeId`**
-2. `POST /api/auth/verify-2fa` (or setup verify) → copy **`token`**
-3. **Authorize** → **`bearerAuth`** = that **`token`**
-4. Call protected user routes
+2. `POST /api/auth/verify-2fa` (or setup verify) → session cookie is set
+3. Call protected user routes from the same browser session
 
 ### Admin + sensitive admin action
 
@@ -169,6 +176,7 @@ Other admin routes typically need only **`adminBearerAuth`**.
 
 | Symptom | Likely cause |
 |--------|----------------|
+| **401** / **Missing token** on user routes right after login | Session cookie not stored or not sent: wrong **`CLIENT_ORIGIN`** (CORS), **`Secure`** cookie dropped on plain HTTP (set **`SESSION_COOKIE_SECURE=false`** or fix **`X-Forwarded-Proto`**), or Swagger on a different origin (use **`bearerAuth`** or same-origin **`/api/docs`**) |
 | **401** Missing admin token | **`adminBearerAuth`** not set or wrong scheme |
 | **401** Re-authentication required | Missing or empty **`adminReauth`** |
 | **401** Invalid re-authentication token | Wrong token, expired (**~120s**), or token for another admin session |
@@ -186,5 +194,6 @@ See also **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** for general login and pr
 | User auth routes | `server/src/routes/auth.js` |
 | Admin auth + reauth routes | `server/src/routes/admin.js` |
 | Admin JWT, reauth header validation, session TTL | `server/src/adminSecurity.js` |
-| User JWT middleware | `server/src/middleware/auth.js` |
+| User JWT middleware; reads **Bearer** or **`expense_tracker_session`** cookie | `server/src/middleware/auth.js` |
+| HttpOnly session cookie (**`expense_tracker_session`**, **`SESSION_COOKIE_SECURE`**) | `server/src/sessionCookie.js` |
 | Admin UI (reauth flow mirrors API) | `client/src/pages/AdminPage.jsx` |

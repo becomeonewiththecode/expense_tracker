@@ -17,8 +17,12 @@ import AdvisorShareViewPage from "./pages/AdvisorShareViewPage.jsx";
 
 /** Logged-out users see the landing page at `/`; other app paths redirect to login. */
 function AppShell() {
-  const { isAuthed } = useAuth();
+  const { isAuthed, isReady } = useAuth();
   const location = useLocation();
+
+  if (!isReady) {
+    return null;
+  }
 
   if (!isAuthed) {
     if (location.pathname === "/") {

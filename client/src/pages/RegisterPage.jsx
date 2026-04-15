@@ -23,7 +23,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/register", { email, password });
-      setSession(data.token, data.user);
+      setSession(data.user);
       navigate(await getPostLoginPath(), { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, "Registration failed"));

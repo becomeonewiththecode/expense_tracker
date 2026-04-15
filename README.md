@@ -31,7 +31,7 @@ The **client** is built with React, Tailwind CSS, Recharts, React Router, and Ax
 
 ### Reference
 
-- [API authorization (Swagger)](./docs/API_AUTHORIZATION.md) — How to obtain **`bearerAuth`**, **`adminBearerAuth`**, and **`adminReauth`** for **`/api/docs`**
+- [API authorization (Swagger)](./docs/API_AUTHORIZATION.md) — User **cookie** sessions (**`expense_tracker_session`**, optional **`SESSION_COOKIE_SECURE`**) and how to use **`bearerAuth`**, **`adminBearerAuth`**, and **`adminReauth`** in **`/api/docs`**
 - [Troubleshooting](./docs/TROUBLESHOOTING.md) — Common issues with login, OAuth, ports, and PM2
 
 ## Quick start

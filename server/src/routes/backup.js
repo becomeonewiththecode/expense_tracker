@@ -462,6 +462,8 @@ function normalizeEmailForCompare(s) {
 
 backupRouter.get("/export", authRequired, async (req, res) => {
   try {
+    const includeRecoveryCode =
+      String(req.query.includeRecoveryCode || "").toLowerCase() === "true";
     const { rows: userRows } = await pool.query(
       `SELECT id, email, recovery_code_ciphertext,
         (recovery_lookup IS NOT NULL) AS has_recovery_code
@@ -473,7 +475,7 @@ backupRouter.get("/export", authRequired, async (req, res) => {
     const email = userRow?.email ?? null;
     const hasRecoveryCode = Boolean(userRow?.has_recovery_code);
     const recoveryPlain =
-      userRow?.recovery_code_ciphertext && hasRecoveryCode
+      includeRecoveryCode && userRow?.recovery_code_ciphertext && hasRecoveryCode
         ? decryptRecoveryStored(userRow.recovery_code_ciphertext, userId)
         : null;
     const { rows } = await pool.query(
@@ -522,6 +524,7 @@ backupRouter.get("/export", authRequired, async (req, res) => {
         email,
         label: accountLabel,
         hasRecoveryCode,
+        recoveryCodeIncluded: Boolean(recoveryPlain),
         ...(recoveryPlain ? { recoveryCode: recoveryPlain } : {}),
       },
       expenseCount: expenses.length,

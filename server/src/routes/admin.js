@@ -20,6 +20,8 @@ import { ipRateLimit } from "../rateLimit.js";
 export const adminRouter = Router();
 
 const adminLoginLimiter = ipRateLimit({ windowMs: 15 * 60 * 1000, max: 20, name: "admin-login" });
+const adminVerify2faLimiter = ipRateLimit({ windowMs: 5 * 60 * 1000, max: 15, name: "admin-verify-2fa" });
+const adminSetup2faVerifyLimiter = ipRateLimit({ windowMs: 5 * 60 * 1000, max: 15, name: "admin-setup-2fa-verify" });
 
 function safeInt(v) {
   const n = Number(v);
@@ -65,11 +67,11 @@ adminRouter.post("/auth/login", adminLoginLimiter, async (req, res) => {
   }
 });
 
-adminRouter.post("/auth/verify-2fa", async (req, res) => {
+adminRouter.post("/auth/verify-2fa", adminVerify2faLimiter, async (req, res) => {
   const challengeId = String(req.body?.challengeId || "");
   const code = String(req.body?.code || "");
   if (!challengeId || !code) return res.status(400).json({ error: "challengeId and code are required" });
-  const challenge = consumeAdminChallenge(challengeId);
+  const challenge = getAdminChallenge(challengeId);
   if (!challenge) return res.status(401).json({ error: "2FA challenge expired" });
   try {
     const { rows } = await pool.query(
@@ -79,6 +81,7 @@ adminRouter.post("/auth/verify-2fa", async (req, res) => {
     const admin = rows[0];
     if (!admin) return res.status(401).json({ error: "Invalid challenge" });
     if (!verifyTotpCode(admin.totp_secret, code)) return res.status(401).json({ error: "Invalid 2FA code" });
+    consumeAdminChallenge(challengeId);
     const token = issueAdminSession(admin);
     res.json({ token, mustChangePassword: Boolean(admin.must_change_password) });
   } catch (e) {
@@ -87,7 +90,7 @@ adminRouter.post("/auth/verify-2fa", async (req, res) => {
   }
 });
 
-adminRouter.post("/auth/setup-2fa/verify", async (req, res) => {
+adminRouter.post("/auth/setup-2fa/verify", adminSetup2faVerifyLimiter, async (req, res) => {
   const challengeId = String(req.body?.challengeId || "");
   const code = String(req.body?.code || "");
   if (!challengeId || !code) return res.status(400).json({ error: "challengeId and code are required" });

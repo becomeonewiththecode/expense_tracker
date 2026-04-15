@@ -85,7 +85,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/verify-2fa", { challengeId, code: otp });
-      setSession(data.token, data.user);
+      setSession(data.user);
       navigate(await getPostLoginPath(), { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, "2FA verification failed"));
@@ -101,7 +101,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/setup-2fa/verify", { challengeId, code: otp });
-      setSession(data.token, data.user);
+      setSession(data.user);
       navigate(await getPostLoginPath(), { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, "2FA setup failed"));

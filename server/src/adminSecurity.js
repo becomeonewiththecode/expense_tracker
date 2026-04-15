@@ -65,7 +65,8 @@ export function verifyTotpCode(secret, code) {
   const normalized = String(code || "").trim();
   if (!/^\d{6}$/.test(normalized)) return false;
   const nowStep = Math.floor(Date.now() / 1000 / 30);
-  for (let drift = -1; drift <= 1; drift++) {
+  // Allow modest client/server clock skew (about +/-60 seconds).
+  for (let drift = -2; drift <= 2; drift++) {
     if (totpForStep(secret, nowStep + drift) === normalized) return true;
   }
   return false;

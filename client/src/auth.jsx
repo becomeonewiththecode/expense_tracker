@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import api, { setSessionInvalidHandler } from "./api.js";
 import SessionExpiredModal from "./components/SessionExpiredModal.jsx";
-import { TOKEN_KEY, USER_KEY } from "./authStorage.js";
+import { USER_KEY } from "./authStorage.js";
 
 const AuthCtx = createContext(null);
 
@@ -15,37 +15,53 @@ function readStoredUser() {
 }
 
 export function AuthProvider({ children }) {
-  const [token, setTokenState] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [user, setUser] = useState(readStoredUser);
+  const [isReady, setIsReady] = useState(false);
   const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
   const sessionPromptShownRef = useRef(false);
 
-  const setToken = (t, u) => {
-    if (t) localStorage.setItem(TOKEN_KEY, t);
-    else localStorage.removeItem(TOKEN_KEY);
+  const setSession = (u) => {
     if (u) localStorage.setItem(USER_KEY, JSON.stringify(u));
     else localStorage.removeItem(USER_KEY);
-    setTokenState(t);
     setUser(u ?? null);
   };
 
-  const logout = () => setToken(null, null);
-
-  const refreshUser = useCallback(async () => {
-    const t = localStorage.getItem(TOKEN_KEY);
-    if (!t) return;
+  const logout = useCallback(async () => {
     try {
-      const { data } = await api.get("/auth/me");
+      await api.post("/auth/logout");
+    } catch {
+      // Ignore logout API errors and still clear local state.
+    }
+    setSession(null);
+  }, []);
+
+  const fetchCurrentUser = useCallback(async ({ silent = false } = {}) => {
+    try {
+      const { data } = await api.get("/auth/me", {
+        _skipSessionInvalidHandler: Boolean(silent),
+      });
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
       setUser(data.user);
+      return data.user;
     } catch {
-      /* ignore */
+      localStorage.removeItem(USER_KEY);
+      setUser(null);
+      return null;
     }
   }, []);
 
+  const refreshUser = useCallback(async () => fetchCurrentUser(), [fetchCurrentUser]);
+
   useEffect(() => {
-    if (token) refreshUser();
-  }, [token, refreshUser]);
+    let mounted = true;
+    (async () => {
+      await fetchCurrentUser({ silent: true });
+      if (mounted) setIsReady(true);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [fetchCurrentUser]);
 
   const closeSessionExpiredModal = useCallback(() => {
     sessionPromptShownRef.current = false;
@@ -63,14 +79,14 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      token,
       user,
-      isAuthed: Boolean(token),
-      setSession: setToken,
+      isAuthed: Boolean(user),
+      isReady,
+      setSession,
       logout,
       refreshUser,
     }),
-    [token, user, refreshUser]
+    [user, isReady, logout, refreshUser]
   );
 
   return (

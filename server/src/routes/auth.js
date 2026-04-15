@@ -24,6 +24,11 @@ import {
   recoveryLookupFromCode,
   persistRecoveryCodeForUser,
 } from "../recoveryCodeStorage.js";
+import {
+  clearSessionCookie,
+  getSessionTokenFromReq,
+  setSessionCookie,
+} from "../sessionCookie.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const avatarsDir = path.join(__dirname, "..", "uploads", "avatars");
@@ -55,6 +60,8 @@ export const authRouter = Router();
 
 const registerLimiter = ipRateLimit({ windowMs: 60 * 60 * 1000, max: 10, name: "register" });
 const loginLimiter = ipRateLimit({ windowMs: 15 * 60 * 1000, max: 30, name: "login" });
+const verify2faLimiter = ipRateLimit({ windowMs: 5 * 60 * 1000, max: 15, name: "verify-2fa" });
+const setup2faVerifyLimiter = ipRateLimit({ windowMs: 5 * 60 * 1000, max: 15, name: "setup-2fa-verify" });
 
 const RECOVER_WINDOW_MS = 15 * 60 * 1000;
 const RECOVER_MAX_PER_WINDOW = 10;
@@ -238,7 +245,8 @@ authRouter.patch("/profile", authRequired, async (req, res) => {
     );
     const u = updated[0];
     const token = issueUserSession(u);
-    res.json({ user: u, token });
+    setSessionCookie(req, res, token);
+    res.json({ user: u });
   } catch (e) {
     console.error("auth/profile:", e);
     res.status(500).json({ error: "Failed to update profile" });
@@ -346,9 +354,9 @@ authRouter.post("/register", registerLimiter, async (req, res) => {
     );
     const user = rows[0];
     const token = issueUserSession(user);
+    setSessionCookie(req, res, token);
     res.status(201).json({
       user: { id: user.id, email: user.email, avatar_url: user.avatar_url, has_password: true, has_2fa: false },
-      token,
     });
   } catch (e) {
     if (e.code === "23505") {
@@ -433,11 +441,11 @@ authRouter.post("/login", loginLimiter, async (req, res) => {
   });
 });
 
-authRouter.post("/verify-2fa", async (req, res) => {
+authRouter.post("/verify-2fa", verify2faLimiter, async (req, res) => {
   const challengeId = String(req.body?.challengeId || "");
   const code = String(req.body?.code || "");
   if (!challengeId || !code) return res.status(400).json({ error: "challengeId and code are required" });
-  const challenge = consumeUserChallenge(challengeId);
+  const challenge = getUserChallenge(challengeId);
   if (!challenge) return res.status(401).json({ error: "2FA challenge expired" });
   try {
     const { rows } = await pool.query(
@@ -447,9 +455,10 @@ authRouter.post("/verify-2fa", async (req, res) => {
     const user = rows[0];
     if (!user) return res.status(401).json({ error: "Invalid challenge" });
     if (!verifyTotpCode(user.totp_secret, code)) return res.status(401).json({ error: "Invalid 2FA code" });
+    consumeUserChallenge(challengeId);
     const token = issueUserSession(user);
+    setSessionCookie(req, res, token);
     res.json({
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -465,7 +474,7 @@ authRouter.post("/verify-2fa", async (req, res) => {
   }
 });
 
-authRouter.post("/setup-2fa/verify", async (req, res) => {
+authRouter.post("/setup-2fa/verify", setup2faVerifyLimiter, async (req, res) => {
   const challengeId = String(req.body?.challengeId || "");
   const code = String(req.body?.code || "");
   if (!challengeId || !code) return res.status(400).json({ error: "challengeId and code are required" });
@@ -486,8 +495,8 @@ authRouter.post("/setup-2fa/verify", async (req, res) => {
     if (!user) return res.status(401).json({ error: "User not found" });
     consumeUserChallenge(challengeId);
     const token = issueUserSession(user);
+    setSessionCookie(req, res, token);
     res.json({
-      token,
       user: {
         id: user.id,
         email: user.email,
@@ -508,8 +517,7 @@ authRouter.post("/setup-2fa/verify", async (req, res) => {
  * Rejects tokens whose expiry is too far in the past (grace window after expiration).
  */
 authRouter.post("/refresh", async (req, res) => {
-  const header = req.headers.authorization;
-  const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
+  const token = getSessionTokenFromReq(req);
   if (!token) {
     return res.status(401).json({ error: "Missing token" });
   }
@@ -543,8 +551,8 @@ authRouter.post("/refresh", async (req, res) => {
     const u = rows[0];
     revokeUserSession(verified.jti);
     const newToken = issueUserSession(u);
+    setSessionCookie(req, res, newToken);
     res.json({
-      token: newToken,
       user: {
         id: u.id,
         email: u.email,
@@ -557,4 +565,16 @@ authRouter.post("/refresh", async (req, res) => {
     console.error("auth/refresh:", e);
     res.status(500).json({ error: "Could not refresh session" });
   }
+});
+
+authRouter.post("/logout", (req, res) => {
+  const token = getSessionTokenFromReq(req);
+  if (token) {
+    const verified = verifyUserSessionToken(token, { ignoreExpiration: true });
+    if (verified.ok && verified.jti) {
+      revokeUserSession(verified.jti);
+    }
+  }
+  clearSessionCookie(req, res);
+  res.json({ ok: true });
 });

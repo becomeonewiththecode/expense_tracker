@@ -11,6 +11,7 @@ import {
   findOrCreateUserFromOAuth,
   oauthRedirectUri,
 } from "./oauthService.js";
+import { setSessionCookie } from "../sessionCookie.js";
 
 function clientOrigin() {
   return String(process.env.CLIENT_ORIGIN || "http://localhost:5173").replace(/\/$/, "");
@@ -107,8 +108,8 @@ export function registerOAuthRoutes(authRouter) {
         return res.status(401).json({ error: "User not found" });
       }
       const u = rows[0];
+      setSessionCookie(req, res, token);
       res.json({
-        token,
         user: {
           id: u.id,
           email: u.email,

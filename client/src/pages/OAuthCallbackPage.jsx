@@ -27,7 +27,7 @@ export default function OAuthCallbackPage() {
       try {
         const { data } = await api.post("/auth/oauth/login-code", { code: loginCode });
         if (cancelled) return;
-        setSession(data.token, data.user);
+        setSession(data.user);
         const path = await getPostLoginPath();
         if (!cancelled) navigate(path, { replace: true });
       } catch (e) {
