@@ -369,7 +369,7 @@ The application includes an **admin site** at **`/admin`** for operators. It is 
 ## Session and security
 
 - After **email and password** 2FA verification (or **single sign-on**) the API sets an **HttpOnly session cookie** (**`expense_tracker_session`**) used on API requests. If you run **production** over **plain HTTP** and the browser never stays signed in, check **`SESSION_COOKIE_SECURE`** and proxy **`X-Forwarded-Proto`** (see **[DEPLOYMENT.md](./DEPLOYMENT.md)** and **[API_AUTHORIZATION.md](./API_AUTHORIZATION.md)**).
-- User sessions end after **15 minutes of inactivity**. When this happens, protected requests fail and the browser redirects to **`/login?expired=1`**.
+- User sessions end after **15 minutes of inactivity**. At the **13-minute mark**, an amber banner appears at the bottom of the screen warning that the session will expire in about 2 minutes. Choose **Stay signed in** to refresh the session silently, or **Sign out** to end it now. Any app interaction that triggers an API call also resets the timer and dismisses the banner. If the warning is ignored and the session expires, the **Session expired** dialog opens with the option to sign back in.
 - If the token signature is invalid (for example after rotating **`JWT_SECRET`**), the app also ends the browser session and sends you to sign in again.
 - For **Docker Compose** (**`npm run compose:build`** or **`compose:prod`**), **`ensure-env.mjs`** seeds **`JWT_SECRET`** into **`deployment/docker-compose/.env`** when missing; keep that file stable across rebuilds unless you intentionally want to invalidate sessions.
 - **Password accounts:** do not share your password; choose a strong password for your account.  

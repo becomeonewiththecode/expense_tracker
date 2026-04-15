@@ -99,8 +99,8 @@ The lifecycle is **development first**, **production second**: you run and test 
 
 - User sessions are stored in an **HttpOnly cookie** (`expense_tracker_session`) after registration, 2FA verification/setup verification, OAuth login-code exchange, profile update rotation, and refresh.
 - Axios in `api.js` uses **`withCredentials: true`**; user JWTs are not persisted in browser script-readable storage.
-- A **response interceptor** in `api.js` treats fatal auth **401** responses (`missing token`, `invalid token`, `session expired`, inactivity timeout) as terminal and invokes the shared session-invalid flow.
-- **`AuthProvider`** in `auth.jsx` resolves initial state via `GET /auth/me`, exposes session state (`setSession`, `logout`), and gates route rendering on readiness.
+- A **response interceptor** in `api.js` treats fatal auth **401** responses (`missing token`, `invalid token`, `session expired`, inactivity timeout) as terminal and invokes the shared session-invalid flow. It also calls an **activity handler** on every successful response so `auth.jsx` can reset the inactivity timer.
+- **`AuthProvider`** in `auth.jsx` resolves initial state via `GET /auth/me`, exposes session state (`setSession`, `logout`), and gates route rendering on readiness. It registers an **activity handler** via `api.js` to track the time of the last successful API call, runs a 30-second interval timer, and shows **`SessionExpiringBanner`** when the user has been idle for 13 minutes (2 minutes before the 15-minute server-side inactivity timeout).
 - **Route gating:** `AppShell` serves **`LandingPage`** for signed-out visits to `/`. For signed-out visits to authenticated app paths, it redirects to `/login`; signed-in users render `Layout` with nested routes.  
 - **Single sign-on:** **`SsoButtons`** send the browser to `GET /api/auth/oauth/:provider` (proxied to Express). The API redirects to the identity provider, then handles `GET /api/auth/oauth/:provider/callback`, exchanges the authorization code, issues a session JWT, stores a **one-time login code**, and redirects the browser to **`/oauth/callback?login_code=…`** or **`/oauth/callback?error=…`**. **`OAuthCallbackPage`** calls **`POST /api/auth/oauth/login-code`** with the code; the API sets the session cookie and returns `user`.
 
@@ -135,7 +135,8 @@ The lifecycle is **development first**, **production second**: you run and test 
 - **`BudgetHubPage`** at **`/budget`** — **Budget & reports** hub: tab order **Import**, **Income**, **Savings**, **Budget**, **Reports** (default **Income** when **`?view`** is absent). Renders **`ExpensesPage`**, **`IncomePage`**, **`SavingsGoalsPage`**, or **`ReportsPage`** (**`monthly_budget`** / **`full`**) with **`embedded`**, keyed by tab.  
 - **`ReportsPage`** — Fetches report and budget endpoints; **period tabs** when **`variant="full"`** or standalone **`/reports`**; **`variant="monthly_budget"`** locks monthly layout. **`embedded`** suppresses standalone **H1** / home link. **Monthly budget** card: **Show** / **Hide** (default **collapsed**).  
 - **`Layout`** — Sticky header: row 1 **Expense Tracker** + **NotificationBell** + avatar **account menu**; row 2 **`NavLink`** **Income** (**`/budget`**) and **Expenses** (**`/expenses/list`**), hidden below **`md`** until the **hamburger** toggles **`#layout-primary-nav`**. **`renewalTablesExpanded`** and **amber badge** behavior unchanged. **`RenewalReminders`** / **`PrescriptionReminders`** above **`Outlet`** on shell routes (including **`/budget`**, **`/expenses/list`**, and hub query tabs).  
-- **Session expiry handling** — Fatal auth responses clear local auth and send the user to **`/login?expired=1`**; `SessionExpiredModal` is retained for explicit refresh continuation patterns.
+- **Session expiry warning** — After **13 minutes** of idle time (no successful API responses), `auth.jsx` shows **`SessionExpiringBanner`**: a non-blocking amber banner that tells the user their session will expire in about 2 minutes and offers **Stay signed in** (calls `POST /auth/refresh`) or **Sign out**. Any new API activity automatically hides the banner and resets the timer. When the session does expire, the banner is dismissed and **`SessionExpiredModal`** takes over.
+- **Session expiry handling** — Fatal auth responses (server 401) dismiss the warning banner, open `SessionExpiredModal`, and (for hard redirects) send the user to **`/login?expired=1`**.
 
 ---
 
@@ -268,7 +269,7 @@ Schema changes use **`CREATE TABLE IF NOT EXISTS`** and **`ALTER TABLE … ADD C
 | OpenAPI and Swagger mounting | `server/src/openapi.js`, `server/src/index.js` (`/api/docs`, `/api/openapi.json`); human guide [**API_AUTHORIZATION.md**](./API_AUTHORIZATION.md) |
 | Recovery code encryption (backup round-trip) | `server/src/recoveryCodeStorage.js` |
 | Monthly job | `server/src/jobs/monthlySummary.js` |
-| Client HTTP client, cookie session handling, session-expired redirect | `client/src/api.js`, `client/src/auth.jsx`, `client/src/components/SessionExpiredModal.jsx` |
+| Client HTTP client, cookie session handling, session-expired redirect | `client/src/api.js`, `client/src/auth.jsx`, `client/src/components/SessionExpiringBanner.jsx`, `client/src/components/SessionExpiredModal.jsx` |
 | User session cookie helpers | `server/src/sessionCookie.js` |
 | Plaid token encryption at rest | `server/src/bankTokenCrypto.js`, `server/src/routes/bank.js` |
 | Renewal date math, grouped reminder UI, sortable renewal tables, badge toggle + account menu | `client/src/renewalSchedule.js`, `client/src/components/RenewalReminders.jsx`; mounted from **`Layout.jsx`** on all authenticated shell routes |

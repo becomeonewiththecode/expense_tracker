@@ -1,7 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import api, { setSessionInvalidHandler } from "./api.js";
+import api, { setSessionInvalidHandler, setActivityHandler } from "./api.js";
 import SessionExpiredModal from "./components/SessionExpiredModal.jsx";
+import SessionExpiringBanner from "./components/SessionExpiringBanner.jsx";
 import { USER_KEY } from "./authStorage.js";
+
+/** Must match USER_SESSION_TTL_MS in server/src/userSecurity.js (15 min). */
+const SESSION_INACTIVITY_TTL_MS = 15 * 60 * 1000;
+const WARN_BEFORE_MS = 2 * 60 * 1000;
 
 const AuthCtx = createContext(null);
 
@@ -18,13 +23,15 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(readStoredUser);
   const [isReady, setIsReady] = useState(false);
   const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
+  const [sessionWarningOpen, setSessionWarningOpen] = useState(false);
   const sessionPromptShownRef = useRef(false);
+  const lastActivityRef = useRef(Date.now());
 
-  const setSession = (u) => {
+  const setSession = useCallback((u) => {
     if (u) localStorage.setItem(USER_KEY, JSON.stringify(u));
     else localStorage.removeItem(USER_KEY);
     setUser(u ?? null);
-  };
+  }, []);
 
   const logout = useCallback(async () => {
     try {
@@ -33,22 +40,20 @@ export function AuthProvider({ children }) {
       // Ignore logout API errors and still clear local state.
     }
     setSession(null);
-  }, []);
+  }, [setSession]);
 
   const fetchCurrentUser = useCallback(async ({ silent = false } = {}) => {
     try {
       const { data } = await api.get("/auth/me", {
         _skipSessionInvalidHandler: Boolean(silent),
       });
-      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-      setUser(data.user);
+      setSession(data.user);
       return data.user;
     } catch {
-      localStorage.removeItem(USER_KEY);
-      setUser(null);
+      setSession(null);
       return null;
     }
-  }, []);
+  }, [setSession]);
 
   const refreshUser = useCallback(async () => fetchCurrentUser(), [fetchCurrentUser]);
 
@@ -72,10 +77,34 @@ export function AuthProvider({ children }) {
     setSessionInvalidHandler(() => {
       if (sessionPromptShownRef.current) return;
       sessionPromptShownRef.current = true;
+      setSessionWarningOpen(false);
       setSessionExpiredOpen(true);
     });
     return () => setSessionInvalidHandler(null);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    lastActivityRef.current = Date.now();
+
+    setActivityHandler(() => {
+      lastActivityRef.current = Date.now();
+      setSessionWarningOpen(false);
+    });
+
+    const interval = setInterval(() => {
+      const idle = Date.now() - lastActivityRef.current;
+      const warnThreshold = SESSION_INACTIVITY_TTL_MS - WARN_BEFORE_MS;
+      if (idle >= warnThreshold && !sessionPromptShownRef.current) {
+        setSessionWarningOpen(true);
+      }
+    }, 30_000);
+
+    return () => {
+      clearInterval(interval);
+      setActivityHandler(null);
+    };
+  }, [user]);
 
   const value = useMemo(
     () => ({
@@ -86,12 +115,16 @@ export function AuthProvider({ children }) {
       logout,
       refreshUser,
     }),
-    [user, isReady, logout, refreshUser]
+    [user, isReady, setSession, logout, refreshUser]
   );
 
   return (
     <AuthCtx.Provider value={value}>
       {children}
+      <SessionExpiringBanner
+        open={sessionWarningOpen}
+        onDismiss={() => setSessionWarningOpen(false)}
+      />
       <SessionExpiredModal open={sessionExpiredOpen} onClose={closeSessionExpiredModal} />
     </AuthCtx.Provider>
   );

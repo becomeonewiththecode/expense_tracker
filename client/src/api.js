@@ -9,6 +9,13 @@ const api = axios.create({
 /** Called when a protected request returns a session-invalid 401. */
 let sessionInvalidHandler = null;
 
+/** Called when any API request completes successfully (to reset the inactivity timer). */
+let activityHandler = null;
+
+export function setActivityHandler(fn) {
+  activityHandler = fn;
+}
+
 function isSessionFatal401(error) {
   const msg = String(error?.response?.data?.error || "").toLowerCase();
   return (
@@ -31,7 +38,10 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    activityHandler?.();
+    return response;
+  },
   (error) => {
     const status = error.response?.status;
     const reqUrl = String(error.config?.url || "");
