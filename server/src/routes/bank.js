@@ -15,11 +15,15 @@ async function resolvePlainAccessToken(connId, userId, storedToken) {
   if (!plain) return null;
   if (!isEncryptedBankToken(storedToken)) {
     // One-way migration: rewrite legacy plaintext token as encrypted ciphertext.
-    await pool.query(`UPDATE bank_connections SET access_token = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`, [
-      encryptBankToken(plain),
-      connId,
-      userId,
-    ]);
+    try {
+      await pool.query(`UPDATE bank_connections SET access_token = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3`, [
+        encryptBankToken(plain),
+        connId,
+        userId,
+      ]);
+    } catch (e) {
+      console.warn(`bank: failed to migrate plaintext token for connection ${connId}:`, e?.message);
+    }
   }
   return plain;
 }

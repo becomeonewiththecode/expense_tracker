@@ -2,13 +2,16 @@ import crypto from "crypto";
 
 const PREFIX = "v1:";
 
+let _cachedKey = null;
 function getKey() {
+  if (_cachedKey) return _cachedKey;
   const configured = String(process.env.BANK_TOKEN_ENCRYPTION_KEY || "").trim();
   const source = configured || String(process.env.JWT_SECRET || "").trim();
   if (!source) {
     throw new Error("BANK_TOKEN_ENCRYPTION_KEY or JWT_SECRET is required");
   }
-  return crypto.createHash("sha256").update(`bank-token:${source}`, "utf8").digest();
+  _cachedKey = crypto.createHash("sha256").update(`bank-token:${source}`, "utf8").digest();
+  return _cachedKey;
 }
 
 export function isEncryptedBankToken(value) {

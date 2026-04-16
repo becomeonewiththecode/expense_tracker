@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { extractBearerToken } from "./sessionCookie.js";
 
 const ADMIN_SESSION_TTL_MS = 15 * 60 * 1000;
 const REAUTH_TTL_SEC = 120;
@@ -118,8 +119,7 @@ export function issueAdminSession(admin) {
 }
 
 export function adminRequired(req, res, next) {
-  const header = req.headers.authorization;
-  const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
+  const token = extractBearerToken(req);
   if (!token) return res.status(401).json({ error: "Missing admin token" });
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);

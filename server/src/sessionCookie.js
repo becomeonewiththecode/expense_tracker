@@ -1,10 +1,11 @@
 export const SESSION_COOKIE_NAME = "expense_tracker_session";
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-function parseBoolEnv(value) {
+function parseBoolEnv(value, name) {
   const v = String(value || "").trim().toLowerCase();
   if (["1", "true", "yes", "on"].includes(v)) return true;
   if (["0", "false", "no", "off"].includes(v)) return false;
+  if (v) console.warn(`[sessionCookie] Unrecognized value for ${name}: "${v}" — expected true/false/1/0`);
   return null;
 }
 
@@ -14,7 +15,7 @@ function isLocalHttpOrigin(origin) {
 }
 
 function shouldUseSecureCookie(req) {
-  const explicit = parseBoolEnv(process.env.SESSION_COOKIE_SECURE);
+  const explicit = parseBoolEnv(process.env.SESSION_COOKIE_SECURE, "SESSION_COOKIE_SECURE");
   if (explicit != null) return explicit;
   if (process.env.NODE_ENV !== "production") return false;
   if (isLocalHttpOrigin(process.env.CLIENT_ORIGIN)) return false;
@@ -27,11 +28,13 @@ function shouldUseSecureCookie(req) {
   return true;
 }
 
-export function getSessionTokenFromReq(req) {
+export function extractBearerToken(req) {
   const header = req.headers.authorization;
-  const bearer = header?.startsWith("Bearer ") ? header.slice(7) : null;
-  const cookieToken = req.cookies?.[SESSION_COOKIE_NAME];
-  return bearer || cookieToken || null;
+  return header?.startsWith("Bearer ") ? header.slice(7) : null;
+}
+
+export function getSessionTokenFromReq(req) {
+  return extractBearerToken(req) || req.cookies?.[SESSION_COOKIE_NAME] || null;
 }
 
 export function setSessionCookie(req, res, token) {
