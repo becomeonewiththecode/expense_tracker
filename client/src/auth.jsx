@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api, { setSessionInvalidHandler, setActivityHandler } from "./api.js";
-import SessionExpiredModal from "./components/SessionExpiredModal.jsx";
 import SessionExpiringBanner from "./components/SessionExpiringBanner.jsx";
 import { USER_KEY } from "./authStorage.js";
 
@@ -22,10 +22,10 @@ function readStoredUser() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readStoredUser);
   const [isReady, setIsReady] = useState(false);
-  const [sessionExpiredOpen, setSessionExpiredOpen] = useState(false);
   const [sessionWarningOpen, setSessionWarningOpen] = useState(false);
   const sessionPromptShownRef = useRef(false);
   const lastActivityRef = useRef(Date.now());
+  const navigate = useNavigate();
 
   const setSession = useCallback((u) => {
     if (u) localStorage.setItem(USER_KEY, JSON.stringify(u));
@@ -68,20 +68,20 @@ export function AuthProvider({ children }) {
     };
   }, [fetchCurrentUser]);
 
-  const closeSessionExpiredModal = useCallback(() => {
-    sessionPromptShownRef.current = false;
-    setSessionExpiredOpen(false);
-  }, []);
-
   useEffect(() => {
     setSessionInvalidHandler(() => {
       if (sessionPromptShownRef.current) return;
       sessionPromptShownRef.current = true;
       setSessionWarningOpen(false);
-      setSessionExpiredOpen(true);
+      // Clear local session state immediately
+      localStorage.removeItem(USER_KEY);
+      setUser(null);
+      // Fire-and-forget server-side logout (session already expired, errors ignored)
+      api.post("/auth/logout").catch(() => {});
+      navigate("/login?expired=1", { replace: true });
     });
     return () => setSessionInvalidHandler(null);
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     if (!user) return;
@@ -125,7 +125,6 @@ export function AuthProvider({ children }) {
         open={sessionWarningOpen}
         onDismiss={() => setSessionWarningOpen(false)}
       />
-      <SessionExpiredModal open={sessionExpiredOpen} onClose={closeSessionExpiredModal} />
     </AuthCtx.Provider>
   );
 }

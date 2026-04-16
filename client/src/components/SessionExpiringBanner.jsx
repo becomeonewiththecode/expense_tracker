@@ -20,6 +20,12 @@ export default function SessionExpiringBanner({ open, onDismiss }) {
       setSession(data.user);
       onDismiss();
     } catch (err) {
+      if (err?.response?.status === 401) {
+        // Session already expired on the server — clear state and redirect to login.
+        setSession(null);
+        navigate("/login?expired=1", { replace: true });
+        return;
+      }
       setError(getApiErrorMessage(err, "Could not refresh your session"));
     } finally {
       setLoading(false);
