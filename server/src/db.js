@@ -219,6 +219,7 @@ export async function initDb() {
       UNIQUE (user_id, dedupe_key)
     );
     CREATE INDEX IF NOT EXISTS idx_user_notifications_user_created ON user_notifications(user_id, created_at DESC);
+    ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMPTZ NULL;
 
     CREATE TABLE IF NOT EXISTS income_entries (
       id SERIAL PRIMARY KEY,

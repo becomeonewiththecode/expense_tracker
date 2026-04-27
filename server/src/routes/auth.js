@@ -29,6 +29,13 @@ import {
   getSessionTokenFromReq,
   setSessionCookie,
 } from "../sessionCookie.js";
+import { sendEmail } from "../email.js";
+import {
+  welcomeEmail,
+  passwordChangedEmail,
+  recoveryCodeGeneratedEmail,
+  passwordResetEmail,
+} from "../emailTemplates.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const avatarsDir = path.join(__dirname, "..", "uploads", "avatars");
@@ -84,9 +91,12 @@ function checkRecoverRateLimit(ip) {
 
 registerOAuthRoutes(authRouter);
 
-/** One-time random code; store hash + derived lookup + ciphertext for backup export. User must save the code—no email is sent. */
+/** One-time random code; store hash + derived lookup + ciphertext for backup export. User must save the code. */
 authRouter.post("/recovery-code", authRequired, async (req, res) => {
+  let notifyEmail = null;
   try {
+    const { rows: uRows } = await pool.query(`SELECT email FROM users WHERE id = $1`, [req.userId]);
+    notifyEmail = uRows[0]?.email ?? null;
     const plain = crypto.randomBytes(24).toString("base64url");
     await persistRecoveryCodeForUser(pool, req.userId, plain);
     res.status(201).json({ recoveryCode: plain });
@@ -96,7 +106,9 @@ authRouter.post("/recovery-code", authRequired, async (req, res) => {
     }
     console.error("auth/recovery-code:", e);
     res.status(500).json({ error: "Failed to create recovery code" });
+    return;
   }
+  if (notifyEmail) sendEmail({ to: notifyEmail, ...recoveryCodeGeneratedEmail(notifyEmail) });
 });
 
 authRouter.delete("/recovery-code", authRequired, async (req, res) => {
@@ -158,6 +170,7 @@ authRouter.post("/recover-password", async (req, res) => {
       [hash, user.id]
     );
     res.json({ ok: true });
+    sendEmail({ to: user.email, ...passwordResetEmail(user.email) });
   } catch (e) {
     console.error("auth/recover-password:", e);
     res.status(500).json({ error: "Password reset failed" });
@@ -247,6 +260,10 @@ authRouter.patch("/profile", authRequired, async (req, res) => {
     const token = issueUserSession(u);
     setSessionCookie(req, res, token);
     res.json({ user: u });
+    if (newPassword) {
+      const tpl = passwordChangedEmail(u.email);
+      sendEmail({ to: u.email, ...tpl });
+    }
   } catch (e) {
     console.error("auth/profile:", e);
     res.status(500).json({ error: "Failed to update profile" });
@@ -358,6 +375,8 @@ authRouter.post("/register", registerLimiter, async (req, res) => {
     res.status(201).json({
       user: { id: user.id, email: user.email, avatar_url: user.avatar_url, has_password: true, has_2fa: false },
     });
+    const tpl = welcomeEmail(user.email);
+    sendEmail({ to: user.email, ...tpl });
   } catch (e) {
     if (e.code === "23505") {
       return res.status(409).json({ error: "Email already registered" });

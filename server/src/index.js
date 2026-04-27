@@ -26,6 +26,8 @@ import { savingsGoalsRouter } from "./routes/savingsGoals.js";
 import swaggerUi from "swagger-ui-express";
 import { openApiSpec } from "./openapi.js";
 import { startMonthlySummaryJob } from "./jobs/monthlySummary.js";
+import { startUpcomingRemindersJob } from "./jobs/upcomingReminders.js";
+import { verifyMailgunConfig } from "./email.js";
 import { getAppVersion } from "./appVersion.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -85,7 +87,9 @@ const port = Number(process.env.PORT) || 4000;
 async function main() {
   ensureJwtSecret();
   await initDb();
+  verifyMailgunConfig();
   startMonthlySummaryJob();
+  startUpcomingRemindersJob();
   const server = app.listen(port, () => {
     console.log(`API listening on http://localhost:${port}`);
   });

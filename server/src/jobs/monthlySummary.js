@@ -1,5 +1,7 @@
 import cron from "node-cron";
 import { pool } from "../db.js";
+import { sendEmail } from "../email.js";
+import { monthlySummaryEmail } from "../emailTemplates.js";
 
 /** Recompute previous calendar month totals for all users (runs 1st of month 03:00 UTC). */
 export function startMonthlySummaryJob() {
@@ -14,7 +16,7 @@ export function startMonthlySummaryJob() {
     const endStr = `${year}-${pad(month)}-${String(last.getUTCDate()).padStart(2, "0")}`;
 
     try {
-      const { rows: users } = await pool.query(`SELECT id FROM users`);
+      const { rows: users } = await pool.query(`SELECT id, email FROM users`);
       for (const u of users) {
         const { rows } = await pool.query(
           `SELECT COALESCE(SUM(amount), 0) AS total FROM expenses
@@ -28,6 +30,17 @@ export function startMonthlySummaryJob() {
            ON CONFLICT (user_id, year, month) DO UPDATE SET total = EXCLUDED.total, generated_at = NOW()`,
           [u.id, year, month, total]
         );
+
+        if (u.email) {
+          const { rows: catRows } = await pool.query(
+            `SELECT category, SUM(amount)::float AS total FROM expenses
+             WHERE user_id = $1 AND spent_at >= $2 AND spent_at <= $3
+             GROUP BY category ORDER BY total DESC LIMIT 5`,
+            [u.id, startStr, endStr]
+          );
+          const tpl = monthlySummaryEmail(u.email, year, month, total, catRows);
+          sendEmail({ to: u.email, ...tpl });
+        }
       }
       console.log(`Monthly summaries generated for ${year}-${pad(month)}`);
     } catch (e) {

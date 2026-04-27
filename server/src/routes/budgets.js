@@ -2,6 +2,8 @@ import { Router } from "express";
 import { pool } from "../db.js";
 import { authRequired } from "../middleware/auth.js";
 import { parseCategory } from "../expenseEnums.js";
+import { sendEmail } from "../email.js";
+import { budgetAlertEmail } from "../emailTemplates.js";
 
 export const budgetsRouter = Router();
 budgetsRouter.use(authRequired);
@@ -64,7 +66,8 @@ function buildInsights(totalBudget, actualTotal, lineVariance) {
 }
 
 /**
- * Create or refresh in-app notifications when spending crosses user-defined thresholds.
+ * Create or refresh in-app notifications when spending crosses user-defined thresholds,
+ * and send a one-time email alert per threshold crossing per month.
  * @param {number} userId
  * @param {Awaited<ReturnType<typeof loadBudgetPayload>>} payload
  */
@@ -72,6 +75,24 @@ export async function syncBudgetThresholdNotifications(userId, payload) {
   if (!payload.budget || !payload.variance) return;
 
   const { year, month, budget, variance } = payload;
+
+  // Atomically claim the first email send for a notification (email_sent_at IS NULL → set it).
+  // Returns true only once per dedupe_key, preventing duplicate emails on repeated page loads.
+  async function claimEmailSend(dedupe) {
+    const { rows } = await pool.query(
+      `UPDATE user_notifications SET email_sent_at = NOW()
+       WHERE user_id = $1 AND dedupe_key = $2 AND email_sent_at IS NULL
+       RETURNING id`,
+      [userId, dedupe]
+    );
+    return rows.length > 0;
+  }
+
+  async function getUserEmail() {
+    const { rows } = await pool.query(`SELECT email FROM users WHERE id = $1`, [userId]);
+    return rows[0]?.email ?? null;
+  }
+
   const totalTh = budget.totalAlertThresholdPercent;
   if (totalTh != null && variance.total.budgeted > 0) {
     const pct = (variance.total.actual / variance.total.budgeted) * 100;
@@ -87,6 +108,10 @@ export async function syncBudgetThresholdNotifications(userId, payload) {
            body = EXCLUDED.body`,
         [userId, title, body, dedupe]
       );
+      if (await claimEmailSend(dedupe)) {
+        const email = await getUserEmail();
+        if (email) sendEmail({ to: email, ...budgetAlertEmail(email, title, body) });
+      }
     }
   }
 
@@ -106,6 +131,10 @@ export async function syncBudgetThresholdNotifications(userId, payload) {
          ON CONFLICT (user_id, dedupe_key) DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body`,
         [userId, title, body, dedupe]
       );
+      if (await claimEmailSend(dedupe)) {
+        const email = await getUserEmail();
+        if (email) sendEmail({ to: email, ...budgetAlertEmail(email, title, body) });
+      }
     }
   }
 }

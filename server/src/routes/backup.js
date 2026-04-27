@@ -58,6 +58,8 @@ import {
   REMAINING_PAYMENTS_ERROR,
 } from "../paymentPlanEnums.js";
 import { syncPaymentPlanForExpense } from "../paymentPlanSync.js";
+import { sendEmail } from "../email.js";
+import { backupExportedEmail, backupRestoredEmail } from "../emailTemplates.js";
 
 export const BACKUP_FORMAT = "expense-tracker-backup";
 /** v1: expenses only. v2: prescriptions. v3: payment plans. v4: income entries. */
@@ -548,6 +550,19 @@ backupRouter.get("/export", authRequired, async (req, res) => {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.json(payload);
+    if (email) {
+      const renewalCount = expenses.filter((e) => e.category === "renewal").length;
+      sendEmail({
+        to: email,
+        ...backupExportedEmail(email, payload.exportedAt, {
+          expenses: expenses.length - renewalCount,
+          renewals: renewalCount,
+          prescriptions: prescriptions.length,
+          paymentPlans: paymentPlans.length,
+          incomeEntries: incomeEntries.length,
+        }),
+      });
+    }
   } catch (e) {
     console.error("backup/export:", e);
     res.status(500).json({ error: "Export failed" });
@@ -809,6 +824,18 @@ backupRouter.post(
           incomeEntries: restoredIncomeEntries,
         },
       });
+      if (currentEmail) {
+        sendEmail({
+          to: currentEmail,
+          ...backupRestoredEmail(currentEmail, mode, {
+            expenses: restoredExpenses,
+            renewals: restoredRenewals,
+            prescriptions: restoredPrescriptions,
+            paymentPlans: restoredPaymentPlans,
+            incomeEntries: restoredIncomeEntries,
+          }),
+        });
+      }
     } catch (e) {
       await client.query("ROLLBACK");
       console.error("backup/restore:", e);
