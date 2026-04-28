@@ -5,6 +5,11 @@ const TEXT = "#1a1a1a";
 const MUTED = "#6b7280";
 const BORDER = "#e5e7eb";
 
+const APP_URL = (() => {
+  const raw = String(process.env.CLIENT_ORIGIN || "").split(",")[0].trim();
+  return raw || null;
+})();
+
 function base(title, bodyHtml) {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -34,6 +39,7 @@ function base(title, bodyHtml) {
         <tr>
           <td style="padding-top:24px;text-align:center;font-size:12px;color:${MUTED};">
             &copy; UrExpense &mdash; You are receiving this email because you have an account at UrExpense.
+            ${APP_URL ? `<br/><a href="${APP_URL}" style="color:${PRIMARY};text-decoration:none;font-weight:600;">Open UrExpense &rarr;</a>` : ""}
           </td>
         </tr>
       </table>
@@ -511,4 +517,43 @@ Log in to UrExpense to view your full report and plan ahead.
 — The UrExpense Team`;
 
   return { subject: `Your ${monthName} ${year} spending summary`, html, text };
+}
+
+export function advisorShareLinkEmail({ advisorEmail, ownerEmail, shareUrl, label }) {
+  const labelLine = label ? `<p style="margin:0 0 8px;font-size:13px;color:${MUTED};">Label: <strong>${label}</strong></p>` : "";
+  const labelText = label ? `Label: ${label}\n` : "";
+
+  const html = base(
+    "You've been shared a read-only financial link",
+    `
+    ${h1("Read-only financial summary")}
+    ${p(`<strong>${ownerEmail}</strong> has shared a read-only view of their monthly spending summary with you.`)}
+    ${labelLine}
+    ${divider()}
+    <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:${MUTED};text-transform:uppercase;letter-spacing:0.5px;">Your access link</p>
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+      style="background:${BG};border-radius:8px;margin-bottom:16px;">
+      <tr>
+        <td style="padding:14px 20px;">
+          <a href="${shareUrl}" style="font-size:13px;color:${PRIMARY};word-break:break-all;">${shareUrl}</a>
+        </td>
+      </tr>
+    </table>
+    ${divider()}
+    ${muted("This link shows monthly totals and category breakdown only — no line-item expenses. You do not need an account to view it. The link can be revoked at any time by the account owner.")}
+    `
+  );
+
+  const text = `Read-only financial summary
+
+${ownerEmail} has shared a read-only view of their monthly spending summary with you.
+${labelText}
+Access link: ${shareUrl}
+
+This link shows monthly totals and category breakdown only — no line-item expenses.
+You do not need an account to view it. The link can be revoked by the account owner at any time.
+
+— The UrExpense Team`;
+
+  return { subject: `${ownerEmail} shared a financial summary with you`, html, text };
 }

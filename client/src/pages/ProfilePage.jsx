@@ -14,6 +14,7 @@ import { getHiddenCancelledRenewalsForUser } from "../renewalHiddenPreferences.j
 import { formatProjectionCurrency } from "../projection.js";
 import BankSyncSection from "../components/BankSyncSection.jsx";
 import AdvisorShareSection from "../components/AdvisorShareSection.jsx";
+import { TIMEZONE_OPTIONS } from "../timezoneOptions.js";
 
 export default function ProfilePage() {
   const { user, setSession, refreshUser } = useAuth();
@@ -54,12 +55,36 @@ export default function ProfilePage() {
   const [backupHelpOpen, setBackupHelpOpen] = useState(false);
   const [recoveryHelpOpen, setRecoveryHelpOpen] = useState(false);
 
+  const [notifCollapsed, setNotifCollapsed] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifError, setNotifError] = useState("");
+  const [notifOk, setNotifOk] = useState("");
+  const [reminderDays, setReminderDays] = useState([3, 5, 7]);
+  const [notifTimezone, setNotifTimezone] = useState("UTC");
+  const [notifEmail, setNotifEmail] = useState("");
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailMsg, setTestEmailMsg] = useState(null);
+
   const hasPassword = Boolean(user?.has_password);
   const hasRecoveryCode = Boolean(user?.has_recovery_code);
 
   useEffect(() => {
     if (user?.email) setEmail(user.email);
   }, [user?.email]);
+
+  useEffect(() => {
+    if (Array.isArray(user?.expense_reminder_days) && user.expense_reminder_days.length) {
+      setReminderDays(user.expense_reminder_days.map(Number));
+    }
+  }, [user?.expense_reminder_days]);
+
+  useEffect(() => {
+    if (user?.notification_timezone) setNotifTimezone(user.notification_timezone);
+  }, [user?.notification_timezone]);
+
+  useEffect(() => {
+    setNotifEmail(user?.notification_email || "");
+  }, [user?.notification_email]);
 
   useEffect(() => {
     const onChange = () => setRowsPerPageUi(getRowsPerPage());
@@ -91,6 +116,49 @@ export default function ProfilePage() {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  async function onSendTestEmail() {
+    setTestEmailMsg(null);
+    setTestEmailLoading(true);
+    try {
+      const { data } = await api.post("/auth/test-reminder-email");
+      if (data.ok) {
+        const parts = [];
+        if (data.expenseCount > 0) parts.push(`${data.expenseCount} expense(s)`);
+        if (data.prescriptionCount > 0) parts.push(`${data.prescriptionCount} prescription(s)`);
+        setTestEmailMsg({ ok: true, text: `Test email sent to ${user?.email} — ${parts.join(", ")} included.` });
+      } else {
+        setTestEmailMsg({ ok: false, text: data.message || "Nothing to send." });
+      }
+    } catch (err) {
+      setTestEmailMsg({ ok: false, text: getApiErrorMessage(err, "Failed to send test email") });
+    } finally {
+      setTestEmailLoading(false);
+    }
+  }
+
+  async function onSaveNotifPrefs() {
+    setNotifError("");
+    setNotifOk("");
+    if (reminderDays.length === 0) {
+      setNotifError("Select at least one reminder day.");
+      return;
+    }
+    setNotifLoading(true);
+    try {
+      const { data } = await api.patch("/auth/notification-preferences", {
+        expense_reminder_days: reminderDays,
+        notification_timezone: notifTimezone,
+        notification_email: notifEmail.trim() || null,
+      });
+      if (data.user) setSession(data.user);
+      setNotifOk("Notification preferences saved.");
+    } catch (err) {
+      setNotifError(getApiErrorMessage(err, "Save failed"));
+    } finally {
+      setNotifLoading(false);
+    }
+  }
 
   async function onSubmitProfile(e) {
     e.preventDefault();
@@ -598,6 +666,135 @@ export default function ProfilePage() {
             Cancelled expenses, renewals, and payment plans are hidden from Upcoming expenses after they are at least one day past renewal.
           </p>
         </div>
+      </div>
+
+      <div className="bg-th-surface border border-th-border rounded-xl p-6 shadow-xl space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-medium text-th-tertiary">Email notifications</h2>
+          <button
+            type="button"
+            onClick={() => setNotifCollapsed((v) => !v)}
+            className="text-xs text-th-subtle hover:text-th-secondary rounded-full border border-th-border-bright/70 px-2 py-0.5"
+            aria-expanded={!notifCollapsed}
+          >
+            {notifCollapsed ? "Show" : "Hide"}
+          </button>
+        </div>
+        {!notifCollapsed && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-medium text-th-subtle mb-2">
+                Send email reminder when expenses are due in:
+              </p>
+              <div className="flex gap-3">
+                {[3, 5, 7].map((day) => (
+                  <label
+                    key={day}
+                    className={[
+                      "flex items-center gap-2 cursor-pointer rounded-lg border px-3 py-2 text-sm transition-colors select-none",
+                      reminderDays.includes(day)
+                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                        : "bg-th-input border-th-border-bright text-th-secondary hover:bg-th-surface-alt",
+                    ].join(" ")}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={reminderDays.includes(day)}
+                      onChange={(e) => {
+                        setNotifError("");
+                        setNotifOk("");
+                        setReminderDays((prev) =>
+                          e.target.checked
+                            ? [...prev, day].sort((a, b) => a - b)
+                            : prev.filter((d) => d !== day)
+                        );
+                      }}
+                    />
+                    {day} days before
+                  </label>
+                ))}
+              </div>
+              <p className="text-[10px] text-th-muted mt-2">
+                The daily job checks for upcoming expenses and sends email reminders on the selected days. In-app notifications are always created for all three windows.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="notif-email" className="block text-xs font-medium text-th-subtle mb-1">
+                Notification email
+              </label>
+              <input
+                id="notif-email"
+                type="email"
+                value={notifEmail}
+                onChange={(e) => { setNotifError(""); setNotifOk(""); setNotifEmail(e.target.value); }}
+                placeholder={user?.email || "Same as account email"}
+                className="w-full rounded-lg border border-th-border-bright bg-th-input text-th-secondary text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-500 placeholder:text-th-muted"
+              />
+              <p className="text-[10px] text-th-muted mt-1">
+                Leave blank to use your account email. Set a different address to receive reminders there instead.
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-th-subtle mb-2">Notification timezone</p>
+              <div className="flex gap-2 items-center">
+                <select
+                  value={notifTimezone}
+                  onChange={(e) => { setNotifError(""); setNotifOk(""); setNotifTimezone(e.target.value); }}
+                  className="flex-1 rounded-lg border border-th-border-bright bg-th-input text-th-secondary text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <option key={tz.value} value={tz.value}>{tz.label}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const valid = TIMEZONE_OPTIONS.some((t) => t.value === browserTz);
+                    if (valid) { setNotifTimezone(browserTz); setNotifError(""); setNotifOk(""); }
+                    else setNotifError(`Browser timezone "${browserTz}" is not in the list. Select manually.`);
+                  }}
+                  className="rounded-lg border border-th-border-bright bg-th-input hover:bg-th-surface-alt text-th-secondary text-xs font-medium py-2 px-3 whitespace-nowrap"
+                >
+                  Use browser timezone
+                </button>
+              </div>
+              <p className="text-[10px] text-th-muted mt-2">
+                Reminder emails are sent at 8:00 AM in this timezone.
+              </p>
+            </div>
+            {notifError && (
+              <p className="text-sm text-rose-400 bg-rose-950/50 border border-rose-900 rounded-lg px-3 py-2">
+                {notifError}
+              </p>
+            )}
+            {notifOk && <p className="text-sm text-emerald-400">{notifOk}</p>}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={notifLoading}
+                onClick={onSaveNotifPrefs}
+                className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium py-2 px-4"
+              >
+                {notifLoading ? "Saving…" : "Save notification preferences"}
+              </button>
+              <button
+                type="button"
+                disabled={testEmailLoading}
+                onClick={onSendTestEmail}
+                className="rounded-lg border border-th-border-bright bg-th-input hover:bg-th-surface-alt disabled:opacity-50 text-th-secondary text-sm font-medium py-2 px-4"
+              >
+                {testEmailLoading ? "Sending…" : "Send test email"}
+              </button>
+            </div>
+            {testEmailMsg && (
+              <p className={`text-sm ${testEmailMsg.ok ? "text-emerald-400" : "text-amber-400"}`}>
+                {testEmailMsg.text}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <form

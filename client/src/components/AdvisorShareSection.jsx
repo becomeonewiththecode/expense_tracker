@@ -8,6 +8,7 @@ export default function AdvisorShareSection() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [label, setLabel] = useState("");
+  const [advisorEmail, setAdvisorEmail] = useState("");
   const [newLink, setNewLink] = useState(null);
 
   const load = useCallback(async () => {
@@ -29,9 +30,13 @@ export default function AdvisorShareSection() {
     setBusy(true);
     setNewLink(null);
     try {
-      const { data } = await api.post("/advisor-shares", { label: label.trim() });
+      const { data } = await api.post("/advisor-shares", {
+        label: label.trim(),
+        advisor_email: advisorEmail.trim() || undefined,
+      });
       setNewLink(data);
       setLabel("");
+      setAdvisorEmail("");
       await load();
     } catch (e) {
       setError(getApiErrorMessage(e, "Could not create link"));
@@ -73,15 +78,22 @@ export default function AdvisorShareSection() {
       {!collapsed && (
         <>
           <p className="text-xs text-th-muted leading-relaxed">
-            Create a secret link that shows monthly spending totals and category breakdown only—no login, no line-item expenses.
-            Treat the URL like a password; revoke it anytime.
+            Create a secret link that shows monthly spending totals and category breakdown
+            only&mdash;no login, no line-item expenses. Treat the URL like a password; revoke it anytime.
           </p>
 
           {error && <p className="text-sm text-rose-400">{error}</p>}
 
           {newLink?.token && (
             <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/30 px-3 py-2 space-y-2">
-              <p className="text-xs text-emerald-200/90">Copy this URL once. The raw token is not shown again.</p>
+              <p className="text-xs text-emerald-200/90">
+                Copy this URL once &mdash; the raw token is not shown again.
+                {newLink.advisor_email && (
+                  <span className="block mt-0.5 text-emerald-300/80">
+                    Link emailed to <strong>{newLink.advisor_email}</strong>.
+                  </span>
+                )}
+              </p>
               <p className="font-mono text-[11px] text-emerald-100 break-all select-all">
                 {origin}
                 {newLink.share_path}
@@ -98,22 +110,34 @@ export default function AdvisorShareSection() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="space-y-2">
             <input
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Optional label (e.g. “Tax advisor”)"
-              className="flex-1 rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              placeholder="Label (e.g. Tax advisor)"
+              className="w-full rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             />
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void createLink()}
-              className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium py-2 px-4 shrink-0"
-            >
-              {busy ? "Creating…" : "Create link"}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="email"
+                value={advisorEmail}
+                onChange={(e) => setAdvisorEmail(e.target.value)}
+                placeholder="Advisor email (optional - sends link automatically)"
+                className="flex-1 rounded-lg bg-th-input border border-th-border-bright px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void createLink()}
+                className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-medium py-2 px-4 shrink-0"
+              >
+                {busy ? "Creating..." : "Create link"}
+              </button>
+            </div>
+            <p className="text-[10px] text-th-muted">
+              If an email is provided, the share link will be sent to that address automatically.
+            </p>
           </div>
 
           {links.length === 0 ? (
@@ -125,8 +149,13 @@ export default function AdvisorShareSection() {
                   <div className="min-w-0">
                     <p className="text-sm text-white">{row.label || "Share link"}</p>
                     <p className="text-[11px] text-th-muted">
-                      Created {row.created_at ? new Date(row.created_at).toLocaleDateString() : "—"}
+                      Created {row.created_at ? new Date(row.created_at).toLocaleDateString() : "-"}
                     </p>
+                    {row.advisor_email && (
+                      <p className="text-[11px] text-th-subtle mt-0.5">
+                        Sent to {row.advisor_email}
+                      </p>
+                    )}
                   </div>
                   <button
                     type="button"

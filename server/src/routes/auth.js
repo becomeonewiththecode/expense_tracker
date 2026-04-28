@@ -35,7 +35,10 @@ import {
   passwordChangedEmail,
   recoveryCodeGeneratedEmail,
   passwordResetEmail,
+  upcomingExpensesEmail,
+  upcomingPrescriptionsEmail,
 } from "../emailTemplates.js";
+import { sod, isoStr, nextRenewalDate } from "../renewalDateUtils.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const avatarsDir = path.join(__dirname, "..", "uploads", "avatars");
@@ -181,7 +184,8 @@ authRouter.get("/me", authRequired, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
-        (recovery_lookup IS NOT NULL) AS has_recovery_code
+        (recovery_lookup IS NOT NULL) AS has_recovery_code,
+        expense_reminder_days, notification_timezone, notification_email
       FROM users WHERE id = $1`,
       [req.userId]
     );
@@ -267,6 +271,149 @@ authRouter.patch("/profile", authRequired, async (req, res) => {
   } catch (e) {
     console.error("auth/profile:", e);
     res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+authRouter.patch("/notification-preferences", authRequired, async (req, res) => {
+  const raw = req.body?.expense_reminder_days;
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return res.status(400).json({ error: "expense_reminder_days must be a non-empty array" });
+  }
+  const validDays = [3, 5, 7];
+  const days = raw.map(Number).filter(n => validDays.includes(n));
+  if (days.length === 0) {
+    return res.status(400).json({ error: "expense_reminder_days must contain values from [3, 5, 7]" });
+  }
+
+  const tzRaw = req.body?.notification_timezone;
+  let timezone = null;
+  if (tzRaw != null) {
+    const tzStr = String(tzRaw).trim();
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: tzStr });
+      timezone = tzStr;
+    } catch {
+      return res.status(400).json({ error: "Invalid timezone" });
+    }
+  }
+
+  const notifEmailRaw = req.body?.notification_email;
+  let notifEmail = undefined;
+  if (notifEmailRaw != null) {
+    const trimmed = String(notifEmailRaw).trim().toLowerCase();
+    if (trimmed === "") {
+      notifEmail = null;
+    } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      notifEmail = trimmed;
+    } else {
+      return res.status(400).json({ error: "Invalid notification email address" });
+    }
+  }
+
+  try {
+    const setClauses = ["expense_reminder_days = $1"];
+    const params = [days, req.userId];
+    if (timezone != null) { setClauses.push(`notification_timezone = $${params.push(timezone)}`); }
+    if (notifEmail !== undefined) { setClauses.push(`notification_email = $${params.push(notifEmail)}`); }
+    await pool.query(
+      `UPDATE users SET ${setClauses.join(", ")} WHERE id = $2`,
+      params
+    );
+    const { rows } = await pool.query(
+      `SELECT id, email, avatar_url, (password_hash IS NOT NULL) AS has_password,
+        (recovery_lookup IS NOT NULL) AS has_recovery_code,
+        expense_reminder_days, notification_timezone, notification_email
+      FROM users WHERE id = $1`,
+      [req.userId]
+    );
+    res.json({ user: rows[0] });
+  } catch (e) {
+    console.error("auth/notification-preferences:", e);
+    res.status(500).json({ error: "Failed to update notification preferences" });
+  }
+});
+
+authRouter.post("/test-reminder-email", authRequired, async (req, res) => {
+  try {
+    const { rows: userRows } = await pool.query(
+      `SELECT COALESCE(notification_email, email) AS email FROM users WHERE id = $1`,
+      [req.userId]
+    );
+    const email = userRows[0]?.email;
+    if (!email) return res.status(404).json({ error: "User not found" });
+
+    const now = new Date();
+    const today = sod(now);
+
+    // Cast spent_at::text to guarantee an ISO string regardless of pg type parsing
+    const { rows: expenses } = await pool.query(
+      `SELECT id, description, amount, financial_institution, bank_name,
+              frequency, spent_at::text AS spent_at, payment_day_2
+       FROM expenses
+       WHERE user_id = $1 AND state = 'active' AND frequency <> 'once'`,
+      [req.userId]
+    );
+
+    const expItems = [];
+    for (const exp of expenses) {
+      const next = nextRenewalDate(exp, now);
+      if (!next) continue;
+      const daysUntil = Math.round((sod(next).getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+      expItems.push({
+        id: exp.id,
+        description: exp.description || "Expense",
+        amount: exp.amount,
+        institution: exp.financial_institution,
+        bankName: exp.bank_name,
+        renewsOn: isoStr(next),
+        daysUntil,
+      });
+    }
+    // Sort by soonest first, take the 5 nearest regardless of distance
+    expItems.sort((a, b) => a.daysUntil - b.daysUntil);
+
+    // Prescriptions: take the 5 nearest upcoming regardless of distance
+    const { rows: rxRows } = await pool.query(
+      `SELECT id, name, category, next_renewal_date::text AS next_renewal_date
+       FROM prescriptions
+       WHERE user_id = $1 AND state = 'active'
+       ORDER BY next_renewal_date ASC`,
+      [req.userId]
+    );
+
+    const rxItems = [];
+    for (const rx of rxRows) {
+      if (!rx.next_renewal_date) continue;
+      const d = new Date(rx.next_renewal_date + "T00:00:00");
+      const daysUntil = Math.round((sod(d).getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+      rxItems.push({ id: rx.id, name: rx.name, category: rx.category, renewsOn: rx.next_renewal_date, daysUntil });
+    }
+
+    let sent = 0;
+
+    if (expItems.length > 0) {
+      const tpl = upcomingExpensesEmail(email, expItems.slice(0, 5));
+      await sendEmail({ to: email, subject: `[TEST] ${tpl.subject}`, html: tpl.html, text: tpl.text });
+      sent++;
+    }
+
+    if (rxItems.length > 0) {
+      const tpl = upcomingPrescriptionsEmail(email, rxItems.slice(0, 5));
+      await sendEmail({ to: email, subject: `[TEST] ${tpl.subject}`, html: tpl.html, text: tpl.text });
+      sent++;
+    }
+
+    if (sent === 0) {
+      return res.status(200).json({
+        ok: false,
+        message: "No active recurring expenses or prescriptions found. Add a recurring expense to preview the reminder email.",
+      });
+    }
+
+    res.json({ ok: true, sent, expenseCount: expItems.length, prescriptionCount: rxItems.length });
+  } catch (e) {
+    console.error("auth/test-reminder-email:", e);
+    res.status(500).json({ error: "Failed to send test email" });
   }
 });
 

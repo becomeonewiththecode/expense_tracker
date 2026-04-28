@@ -268,6 +268,7 @@ export async function initDb() {
       UNIQUE (token)
     );
     CREATE INDEX IF NOT EXISTS idx_advisor_share_links_user ON advisor_share_links(user_id);
+    ALTER TABLE advisor_share_links ADD COLUMN IF NOT EXISTS advisor_email TEXT NULL;
 
     CREATE TABLE IF NOT EXISTS import_category_rules (
       id SERIAL PRIMARY KEY,
@@ -294,6 +295,10 @@ export async function initDb() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS idx_savings_goals_user ON savings_goals(user_id);
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS expense_reminder_days INTEGER[] DEFAULT '{3,5,7}';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_timezone TEXT NOT NULL DEFAULT 'UTC';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_email TEXT NULL;
   `);
 
   const adminUsername = String(process.env.ADMIN_USERNAME || "").trim();
